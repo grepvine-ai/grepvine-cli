@@ -4,6 +4,12 @@
 
 ## Install
 
+With Homebrew on macOS or Linux:
+
+```sh
+brew install grepvine-ai/tap/gv
+```
+
 With Go 1.27 or later:
 
 ```sh
