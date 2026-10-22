@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+    # A snapshot commit is checked by regenerate.yml, which commits the
+    # regenerated client right after it.
+    paths-ignore: ["spec/**"]
 
 permissions:
   contents: read
