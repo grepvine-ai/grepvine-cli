@@ -1,6 +1,6 @@
 name: Regenerate the API client
 
-# Grepvine's "Update SDK snapshots" workflow commits a new spec/ snapshot to
+# Grepvine's "Update API client snapshots" workflow commits a new spec/ snapshot to
 # main and then dispatches this workflow with that commit.
 on:
   workflow_dispatch:
