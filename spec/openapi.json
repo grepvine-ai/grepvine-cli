@@ -1,0 +1,2856 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Grepvine API",
+    "version": "0.1.0",
+    "description": "Control-plane and search API for the Grepvine beta.",
+    "license": {
+      "name": "Apache 2.0",
+      "identifier": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.grepvine.ai/v1"
+    }
+  ],
+  "security": [
+    {
+      "cookieAuth": []
+    },
+    {
+      "apiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Local user sessions and passwords."
+    },
+    {
+      "name": "Device login",
+      "description": "Device authorization for the command-line client."
+    },
+    {
+      "name": "API keys",
+      "description": "Programmatic credentials for a user."
+    },
+    {
+      "name": "Organizations",
+      "description": "Organization membership and ownership."
+    },
+    {
+      "name": "Indexes",
+      "description": "Search index lifecycle operations."
+    },
+    {
+      "name": "Objects",
+      "description": "Document storage and retrieval."
+    },
+    {
+      "name": "Search",
+      "description": "Lexical search operations."
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a local user",
+        "description": "A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.",
+        "operationId": "registerUser",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The user and session were created.",
+            "headers": {
+              "X-Csrf-Token": {
+                "$ref": "#/components/headers/CSRFToken"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/usernames/{name}": {
+      "get": {
+        "summary": "Check whether a username is available",
+        "operationId": "getUsernameAvailability",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whether an account can register this username now. Accounts and organizations share one namespace. The answer can change before the name is registered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsernameAvailability"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Create a user session",
+        "operationId": "login",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The session was created.",
+            "headers": {
+              "X-Csrf-Token": {
+                "$ref": "#/components/headers/CSRFToken"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Revoke the current session",
+        "operationId": "logout",
+        "tags": [
+          "Authentication"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The session was revoked.",
+            "headers": {
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get the current user",
+        "operationId": "getCurrentUser",
+        "tags": [
+          "Authentication"
+        ],
+        "responses": {
+          "200": {
+            "description": "The authenticated user.",
+            "headers": {
+              "X-Csrf-Token": {
+                "$ref": "#/components/headers/CSRFToken"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/password": {
+      "put": {
+        "summary": "Change the current password",
+        "operationId": "changePassword",
+        "tags": [
+          "Authentication"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The password was changed."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/device/authorizations": {
+      "post": {
+        "summary": "Start device authorization",
+        "operationId": "startDeviceAuthorization",
+        "tags": [
+          "Device login"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAuthorizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The device authorization was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAuthorization"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/device/authorizations/approve": {
+      "post": {
+        "summary": "Approve device authorization",
+        "operationId": "approveDeviceAuthorization",
+        "tags": [
+          "Device login"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The device authorization was approved."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/device/authorizations/deny": {
+      "post": {
+        "summary": "Deny device authorization",
+        "operationId": "denyDeviceAuthorization",
+        "tags": [
+          "Device login"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The device authorization was denied."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/device/token": {
+      "post": {
+        "summary": "Poll for a device API key",
+        "operationId": "pollDeviceToken",
+        "tags": [
+          "Device login"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The device API key. The key is shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api-keys": {
+      "get": {
+        "summary": "List API keys",
+        "operationId": "listAPIKeys",
+        "tags": [
+          "API keys"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of API keys.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an API key",
+        "operationId": "createAPIKey",
+        "tags": [
+          "API keys"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAPIKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new API key. The key is shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyCreated"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api-keys/{api_key_id}": {
+      "delete": {
+        "summary": "Revoke an API key",
+        "operationId": "revokeAPIKey",
+        "tags": [
+          "API keys"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/APIKeyID"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The API key was revoked."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations": {
+      "get": {
+        "summary": "List organizations",
+        "operationId": "listOrganizations",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of organizations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an organization",
+        "operationId": "createOrganization",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The organization was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}": {
+      "get": {
+        "summary": "Get an organization",
+        "operationId": "getOrganization",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The organization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an organization",
+        "operationId": "deleteOrganization",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Organization deletion started."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/members": {
+      "get": {
+        "summary": "List organization members",
+        "operationId": "listOrganizationMembers",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of organization members.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add an organization member",
+        "operationId": "addOrganizationMember",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The member was added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/members/{user}": {
+      "put": {
+        "summary": "Change an organization member role",
+        "operationId": "updateOrganizationMember",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/User"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The member role was changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove an organization member",
+        "operationId": "removeOrganizationMember",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/User"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The member was removed."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/owner": {
+      "put": {
+        "summary": "Transfer organization ownership",
+        "operationId": "transferOrganizationOwnership",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOwnershipRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Ownership was transferred."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes": {
+      "get": {
+        "summary": "List indexes",
+        "operationId": "listIndexes",
+        "tags": [
+          "Indexes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/IndexPrefix"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of indexes, ordered by name. Document counts, sizes and last write times can trail the most recent writes by a few seconds; read one index for its current values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an index",
+        "operationId": "createIndex",
+        "tags": [
+          "Indexes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIndexRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The index was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Index"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}": {
+      "get": {
+        "summary": "Get an index",
+        "operationId": "getIndex",
+        "tags": [
+          "Indexes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The index.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Index"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update an index",
+        "description": "Changes the index's description or tags. A field absent from the request is left as it is. The name is immutable.",
+        "operationId": "updateIndex",
+        "tags": [
+          "Indexes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIndexRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated index.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Index"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an index",
+        "operationId": "deleteIndex",
+        "tags": [
+          "Indexes"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Index deletion started."
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}/objects": {
+      "get": {
+        "summary": "List documents",
+        "operationId": "listDocuments",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Prefix"
+          },
+          {
+            "$ref": "#/components/parameters/Delimiter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of documents and folded common prefixes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Store one document",
+        "description": "Stores one document of at most 1 GiB. Content that is valid UTF-8 and at most 100 MiB is\nsearchable. Any other content, such as an image or a larger file, is stored, listed, and served\nby the document endpoints but is never matched by a search. The `searchable` field of a listing\nreports which applies.\n",
+        "operationId": "putDocument",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PutDocumentForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The document was stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}/objects/{key}": {
+      "get": {
+        "summary": "Get a document",
+        "operationId": "getDocument",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/DocumentKey"
+          },
+          {
+            "$ref": "#/components/parameters/Range"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The complete document content.",
+            "headers": {
+              "Accept-Ranges": {
+                "$ref": "#/components/headers/AcceptRanges"
+              },
+              "Content-Length": {
+                "$ref": "#/components/headers/ContentLength"
+              },
+              "Etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-Grepvine-Metadata": {
+                "$ref": "#/components/headers/DocumentMetadata"
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested document byte range.",
+            "headers": {
+              "Accept-Ranges": {
+                "$ref": "#/components/headers/AcceptRanges"
+              },
+              "Content-Length": {
+                "$ref": "#/components/headers/ContentLength"
+              },
+              "Content-Range": {
+                "$ref": "#/components/headers/ContentRange"
+              },
+              "Etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "X-Grepvine-Metadata": {
+                "$ref": "#/components/headers/DocumentMetadata"
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "416": {
+            "description": "The byte range does not overlap the document.",
+            "headers": {
+              "Content-Range": {
+                "$ref": "#/components/headers/ContentRange"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete one document",
+        "operationId": "deleteDocument",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/DocumentKey"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document was deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}/objects:batch": {
+      "post": {
+        "summary": "Store a batch of documents",
+        "description": "Stores up to 2,048 documents. Each document is stored on its own: a document whose precondition\nfails is not stored, the others are, and the result of each document says which happened. Retrying\nwith the same Idempotency-Key returns the same results and stores any document an interrupted\nattempt did not reach. Batch content is text carried as JSON strings, so every document stored this\nway is searchable. Store binary content, or a document over 16 MiB, with the\nsingle-document endpoint. The body may be sent with `Content-Encoding: gzip`; the service decodes it\nbefore applying the limits below, and answers any other content encoding with 415\n`unsupported_content_encoding`.\n",
+        "operationId": "putObjects",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-ndjson": {
+              "schema": {
+                "type": "string",
+                "description": "One PutObjectRecord JSON value per line; at most 2,048 records and 16 MiB of combined object content."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The batch was applied. Each result reports one document, in request order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationBatchResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}/objects:delete": {
+      "post": {
+        "summary": "Delete a batch of documents",
+        "description": "Deletes up to 2,048 documents. Each document is deleted on its own: a document that does not\nexist or whose precondition fails is not deleted, the others are, and the result of each document\nsays which happened. Retrying with the same Idempotency-Key returns the same results.\n",
+        "operationId": "deleteObjects",
+        "tags": [
+          "Objects"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteObjectsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The batch was applied. Each result reports one document, in request order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationBatchResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/indexes/{index}/query": {
+      "post": {
+        "summary": "Search an index",
+        "operationId": "queryIndex",
+        "tags": [
+          "Search"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Index"
+          },
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A page of results. Each result is one match, or several matches that share lines, together with the lines it covers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "headers": {
+      "AcceptRanges": {
+        "description": "The range unit accepted for document reads.",
+        "schema": {
+          "type": "string",
+          "const": "bytes"
+        }
+      },
+      "ContentLength": {
+        "description": "The number of content bytes in this response.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "ContentRange": {
+        "description": "The returned range and complete document size, or the complete size for an unsatisfied range.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ETag": {
+        "description": "The opaque document revision.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "DocumentMetadata": {
+        "description": "The document Metadata object encoded as JSON.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "CSRFToken": {
+        "description": "The token for state changes that use cookie authentication.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "SessionCookie": {
+        "description": "The secure opaque session cookie, or an expired cookie when the session is cleared.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RequestID": {
+        "description": "The request identifier used for support and audit correlation.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RetryAfter": {
+        "description": "Seconds to wait before retrying. Sent with every 429 so a client slows down instead of failing.",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-grepvine-session"
+      },
+      "apiKeyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "GrepvineAPIKey"
+      }
+    },
+    "parameters": {
+      "Amount": {
+        "name": "amount",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "Organization": {
+        "name": "organization",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Name"
+        }
+      },
+      "Index": {
+        "name": "index",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/IndexName"
+        }
+      },
+      "IndexPrefix": {
+        "name": "prefix",
+        "in": "query",
+        "description": "Lists only the indexes whose names start with this literal prefix, compared without regard to case. A page token is valid only with the prefix it was issued for.",
+        "schema": {
+          "type": "string",
+          "maxLength": 63
+        }
+      },
+      "DocumentKey": {
+        "name": "key",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      },
+      "Prefix": {
+        "name": "prefix",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "Delimiter": {
+        "name": "delimiter",
+        "in": "query",
+        "description": "Folds documents that share the substring through the first delimiter after prefix into one common prefix.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        }
+      },
+      "Range": {
+        "name": "Range",
+        "in": "header",
+        "description": "One HTTP bytes range. Multiple ranges are not supported.",
+        "schema": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "User": {
+        "name": "user",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Name"
+        }
+      },
+      "APIKeyID": {
+        "name": "api_key_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "CSRFToken": {
+        "name": "X-Csrf-Token",
+        "in": "header",
+        "description": "Required for a state change that uses cookie authentication.",
+        "schema": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 256
+        }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "schema": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "IfNoneMatch": {
+        "name": "If-None-Match",
+        "in": "header",
+        "schema": {
+          "type": "string",
+          "const": "*"
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          },
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication is required or failed.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The resource does not exist or is not visible.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request conflicts with current state.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "PreconditionFailed": {
+        "description": "A revision precondition failed.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "reason",
+          "error"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A page may hold fewer results than the requested amount, possibly none, while has_next is true; a query page stops at the server's soft time budget and next_page_id resumes exactly after the last candidate it examined. Clients continue while has_next is true.",
+        "required": [
+          "next_page_id",
+          "has_next"
+        ],
+        "properties": {
+          "next_page_id": {
+            "type": "string"
+          },
+          "has_next": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Name": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9-]{2,62}$",
+        "description": "An account or organization name. Accounts and organizations share one namespace. A name keeps the case it was created with, and any spelling that differs only in case refers to it; no other account or organization can take such a spelling."
+      },
+      "IndexName": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9-]{0,62}$",
+        "description": "An index name, unique in its organization. A name keeps the case it was created with, and any spelling that differs only in case refers to it; no other index in the organization can take such a spelling."
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "email",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 320
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 1024
+          }
+        }
+      },
+      "UsernameAvailability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "available"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "maxLength": 320,
+            "description": "A username or an email address, matched case-insensitively."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 1024
+          }
+        }
+      },
+      "DeviceAuthorizationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_key_name"
+        ],
+        "properties": {
+          "api_key_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "DeviceAuthorization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "device_code",
+          "user_code",
+          "verification_uri",
+          "verification_uri_complete",
+          "expires_in",
+          "interval"
+        ],
+        "properties": {
+          "device_code": {
+            "type": "string"
+          },
+          "user_code": {
+            "type": "string"
+          },
+          "verification_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "verification_uri_complete": {
+            "type": "string",
+            "format": "uri"
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "interval": {
+            "type": "integer",
+            "minimum": 5
+          }
+        }
+      },
+      "DeviceDecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_code"
+        ],
+        "properties": {
+          "user_code": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 16
+          }
+        }
+      },
+      "DeviceTokenRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "device_code"
+        ],
+        "properties": {
+          "device_code": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateAPIKeyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "APIKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "APIKeyCreated": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/APIKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "APIKeyPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/APIKey"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "role",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrganizationPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Organization"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "CreateOrganizationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          }
+        }
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "admin",
+          "developer",
+          "reader"
+        ]
+      },
+      "Member": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "role",
+          "created_at"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MemberPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "AddMemberRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "role"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "developer",
+              "reader"
+            ]
+          }
+        }
+      },
+      "UpdateMemberRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "developer",
+              "reader"
+            ]
+          }
+        }
+      },
+      "TransferOwnershipRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/Name"
+          }
+        }
+      },
+      "IndexState": {
+        "type": "string",
+        "enum": [
+          "creating",
+          "ready",
+          "deleting",
+          "delete_failed"
+        ]
+      },
+      "IndexSummary": {
+        "description": "An index as a listing returns it.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organization",
+          "name",
+          "canonical_id",
+          "description",
+          "tags",
+          "state",
+          "document_count",
+          "content_bytes",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "name": {
+            "$ref": "#/components/schemas/IndexName"
+          },
+          "canonical_id": {
+            "type": "string"
+          },
+          "description": {
+            "$ref": "#/components/schemas/IndexDescription"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/IndexTags"
+          },
+          "state": {
+            "$ref": "#/components/schemas/IndexState"
+          },
+          "document_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "content_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Index": {
+        "description": "An index as a read of that one index returns it, which adds the progress of its background optimization.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/IndexSummary"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "optimization_progress_percent": {
+                "description": "How far the background optimization of this index has progressed, as a percentage. Omitted when no optimization is running.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        ]
+      },
+      "IndexPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexSummary"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "CreateIndexRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/IndexName"
+          },
+          "description": {
+            "$ref": "#/components/schemas/IndexDescription"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/IndexTags"
+          }
+        }
+      },
+      "UpdateIndexRequest": {
+        "description": "The fields to change. A field that is absent is left as it is; at least one must be present.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/IndexDescription"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/IndexTagChanges"
+          }
+        }
+      },
+      "IndexDescription": {
+        "description": "What the index holds, in Markdown. Empty when no description was set. Clients render it without raw HTML.",
+        "type": "string",
+        "maxLength": 16384
+      },
+      "IndexTags": {
+        "description": "Key/value labels on the index, for example the commit it was synced from. At most 64 tags. A key is 1 to 128 characters without whitespace or control characters; a value is at most 1,024 characters without control characters. Empty when none was set.",
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "IndexTagChanges": {
+        "description": "Tags to set, by key, and tags to remove, given as null. A key absent from the map is unchanged.",
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1024
+        }
+      },
+      "StringMetadataValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "string"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 8192
+          }
+        }
+      },
+      "IntegerMetadataValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "integer"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "NumberMetadataValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "number"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "BooleanMetadataValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "boolean"
+          },
+          "value": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TimestampMetadataValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "timestamp"
+          },
+          "value": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MetadataValue": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StringMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/IntegerMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/NumberMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/BooleanMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/TimestampMetadataValue"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "string": "#/components/schemas/StringMetadataValue",
+            "integer": "#/components/schemas/IntegerMetadataValue",
+            "number": "#/components/schemas/NumberMetadataValue",
+            "boolean": "#/components/schemas/BooleanMetadataValue",
+            "timestamp": "#/components/schemas/TimestampMetadataValue"
+          }
+        }
+      },
+      "Metadata": {
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "$ref": "#/components/schemas/MetadataValue"
+        }
+      },
+      "PutDocumentForm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "content"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "metadata": {
+            "type": "string",
+            "description": "A Metadata JSON object."
+          },
+          "content": {
+            "type": "string",
+            "format": "binary",
+            "description": "The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is stored without being searchable."
+          }
+        }
+      },
+      "PutObjectRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "content"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "content": {
+            "type": "string",
+            "description": "The document text. A batch carries text only, so every document it stores is searchable."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "if_match": {
+            "type": "string"
+          },
+          "if_none_match": {
+            "type": "string",
+            "const": "*"
+          }
+        }
+      },
+      "DeleteObjectRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "if_match": {
+            "type": "string"
+          }
+        }
+      },
+      "DeleteObjectsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "objects"
+        ],
+        "properties": {
+          "objects": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2048,
+            "items": {
+              "$ref": "#/components/schemas/DeleteObjectRecord"
+            }
+          }
+        }
+      },
+      "MutationResult": {
+        "description": "The outcome of one document. A stored or deleted document has a revision; a document a batch did not change has an error instead.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      },
+      "MutationBatchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MutationResult"
+            }
+          }
+        }
+      },
+      "DocumentSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "revision",
+          "content_bytes",
+          "metadata",
+          "updated_at",
+          "searchable"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "content_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the document's current revision was stored."
+          },
+          "searchable": {
+            "type": "boolean",
+            "description": "Whether a search can match this document. False for content that is not valid UTF-8 or is over 100 MiB; such a document is stored and served but never returned by a query."
+          }
+        }
+      },
+      "DocumentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "common_prefixes",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentSummary"
+            }
+          },
+          "common_prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "regex",
+              "literal"
+            ],
+            "default": "regex"
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "default": true
+          },
+          "whole_word": {
+            "type": "boolean",
+            "default": false
+          },
+          "multiline": {
+            "type": "boolean",
+            "default": false,
+            "description": "Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's edges, and a character class never matches a line break; a pattern that contains a line break is rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line edges, `\\A` and `\\z` mark the document's edges, and a match may contain line breaks."
+          },
+          "filter": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "lines_before": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 0,
+            "description": "How many lines before each result to return with it, from the same document."
+          },
+          "lines_after": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 0,
+            "description": "How many lines after each result to return with it, from the same document."
+          }
+        }
+      },
+      "Match": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "offset",
+          "length"
+        ],
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "QueryResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One match, or several matches that share lines, together with the lines it covers. A result covers one line unless the query set multiline and a match spans lines.",
+        "required": [
+          "key",
+          "revision",
+          "line_number",
+          "last_line_number",
+          "line_start_offset",
+          "line_end_offset",
+          "text_start_offset",
+          "text_line_number",
+          "text",
+          "matches",
+          "text_truncated",
+          "matches_truncated"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "line_number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based number of the first line the result covers."
+          },
+          "last_line_number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based number of the last line the result covers. Equal to line_number unless a match spans lines."
+          },
+          "line_start_offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Byte offset of the first covered line's start within the document."
+          },
+          "line_end_offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Byte offset just past the last covered line, excluding its line break."
+          },
+          "text_start_offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Byte offset of the first byte of text within the document."
+          },
+          "text_line_number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based number of the line text begins on. Equal to line_number unless text was cut at its start."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 65536,
+            "description": "The covered lines, up to 64 KiB, centered on the first match when they are longer. Line breaks between covered lines are kept; the last line's break is not."
+          },
+          "matches": {
+            "type": "array",
+            "description": "Every match on the covered lines that lies at least partly within text, with byte offsets and lengths relative to the document. A match that consumed the last line's break extends one byte past text.",
+            "items": {
+              "$ref": "#/components/schemas/Match"
+            }
+          },
+          "text_truncated": {
+            "type": "boolean",
+            "description": "Whether text was cut at either end."
+          },
+          "matches_truncated": {
+            "type": "boolean",
+            "description": "Whether matches were left out, because there were more than 4096 or because they lie outside text."
+          },
+          "lines_before": {
+            "type": "array",
+            "description": "The requested lines before the result, in document order, ending at the line just above its first line. Fewer are returned at the start of the document, and the field is omitted when there are none.",
+            "items": {
+              "$ref": "#/components/schemas/ContextLine"
+            }
+          },
+          "lines_after": {
+            "type": "array",
+            "description": "The requested lines after the result, in document order, starting at the line just below its last line. Fewer are returned at the end of the document, and the field is omitted when there are none.",
+            "items": {
+              "$ref": "#/components/schemas/ContextLine"
+            }
+          }
+        }
+      },
+      "ContextLine": {
+        "type": "object",
+        "description": "One line near a result. Text is returned whole up to 64 KiB, and up to 64 KiB away from the result; a line that extends past either bound is returned in part and marked truncated.",
+        "additionalProperties": false,
+        "required": [
+          "line_number",
+          "text",
+          "text_truncated"
+        ],
+        "properties": {
+          "line_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "text_truncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QueryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results",
+          "pagination"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryResult"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      }
+    }
+  }
+}

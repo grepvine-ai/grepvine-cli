@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ogen-go/ogen/main/schemas/ogen.jsonschema.json
+generator:
+  # ogen's built-in initialisms, plus ETag so the header's Go name is ETag rather than Etag.
+  initialisms: [inherit, ETag]
