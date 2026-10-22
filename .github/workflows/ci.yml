@@ -21,12 +21,21 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
+        with:
+          # gitleaks scans every commit, not only the tip.
+          fetch-depth: 0
 
       - name: Install Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Check public wording
+        run: scripts/check-public.sh
+
+      - name: Scan for secrets
+        run: go tool -modfile=tools/gitleaks/go.mod gitleaks git --redact --no-banner .
 
       - name: Check generated code
         run: make verify-generated
