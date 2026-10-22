@@ -13,7 +13,7 @@ make build      # build dist/gv
 make verify     # all of the above
 ```
 
-`internal/httpapi` is generated from the API description in `spec/openapi.json`. Don't edit either one by hand. The snapshot is updated from the Grepvine API, and `make generate` regenerates the client from it. CI fails when the generated code is out of date (`make verify-generated`).
+`internal/httpapi` is generated from the API description in `spec/openapi.json`. Don't edit either one by hand. The snapshot is updated from the Grepvine API: an update commits the new `spec/` and then runs the **Regenerate the API client** workflow, which regenerates, lints, tests and builds, and commits `internal/httpapi` only if all of that passes. Locally, `make generate` regenerates the client. CI fails when the generated code is out of date (`make verify-generated`).
 
 ## Pull requests
 
