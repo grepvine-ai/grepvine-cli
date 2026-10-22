@@ -114,8 +114,8 @@ func TestConfigPrecedenceAndPermissions(t *testing.T) {
 	}
 }
 
-func TestCLIAgainstInProcessControlIndexStack(t *testing.T) {
-	stack := &cliControlIndexStack{objects: map[string]string{}, revisions: map[string]string{}}
+func TestCLIAgainstInProcessService(t *testing.T) {
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}}
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
 	if err != nil {
 		t.Fatal(err)
@@ -168,7 +168,7 @@ func TestCLIAgainstInProcessControlIndexStack(t *testing.T) {
 // back by info and ls, replaced from standard input, cleared with an empty
 // flag, and refused when both flags are given.
 func TestIndexCommandsListShowAndDescribe(t *testing.T) {
-	stack := &cliControlIndexStack{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
 	if err != nil {
 		t.Fatal(err)
@@ -294,7 +294,7 @@ func TestIndexCommandsListShowAndDescribe(t *testing.T) {
 // them without regard to it, so gv sends a mixed-case name as typed and
 // accepts one in every response.
 func TestIndexCommandsKeepMixedCaseNames(t *testing.T) {
-	stack := &cliControlIndexStack{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
 	if err != nil {
 		t.Fatal(err)
@@ -347,7 +347,7 @@ func TestIndexCommandsKeepMixedCaseNames(t *testing.T) {
 }
 
 func TestIndexRemoveConfirmsUnlessForced(t *testing.T) {
-	stack := &cliControlIndexStack{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
 	if err != nil {
 		t.Fatal(err)
@@ -849,7 +849,7 @@ func TestUploadResumeAfterInterruptDoesNotDuplicateRevision(t *testing.T) {
 		}, nil
 	})
 	a := &app{sleep: func(ctx context.Context, _ time.Duration) error { return ctx.Err() }}
-	client, err := httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+	client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -871,7 +871,7 @@ func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 	return f(request)
 }
 
-type cliControlIndexStack struct {
+type fakeService struct {
 	httpapi.UnimplementedHandler
 	mu        sync.Mutex
 	objects   map[string]string
@@ -903,16 +903,16 @@ func refusedResult(key string) httpapi.MutationResult {
 	return httpapi.MutationResult{Key: key, Error: httpapi.NewOptError(httpapi.Error{Code: "precondition_failed", Reason: "precondition", Error: "the document's precondition failed"})}
 }
 
-// NewError maps the stack's errors to the public error shape, as the control
+// NewError maps the stack's errors to the public error shape, as the
 // service does. Without it the embedded handler answers status zero.
-func (s *cliControlIndexStack) NewError(_ context.Context, err error) *httpapi.ErrorStatusCodeWithHeaders {
+func (s *fakeService) NewError(_ context.Context, err error) *httpapi.ErrorStatusCodeWithHeaders {
 	return &httpapi.ErrorStatusCodeWithHeaders{StatusCode: http.StatusInternalServerError, Response: httpapi.Error{Code: "internal_error", Reason: "internal", Error: err.Error()}}
 }
 
 // DeleteObjects applies each document of the batch on its own, as the
 // service does: a missing key is reported as not found and the rest are
 // deleted.
-func (s *cliControlIndexStack) DeleteObjects(_ context.Context, request *httpapi.DeleteObjectsRequest, params httpapi.DeleteObjectsParams) (*httpapi.MutationBatchResult, error) {
+func (s *fakeService) DeleteObjects(_ context.Context, request *httpapi.DeleteObjectsRequest, params httpapi.DeleteObjectsParams) (*httpapi.MutationBatchResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.deleteIDs == nil {
@@ -960,7 +960,7 @@ func metadataFromRecord(fields map[string]any) httpapi.Metadata {
 	return metadata
 }
 
-func (s *cliControlIndexStack) ListIndexes(_ context.Context, params httpapi.ListIndexesParams) (*httpapi.IndexPage, error) {
+func (s *fakeService) ListIndexes(_ context.Context, params httpapi.ListIndexesParams) (*httpapi.IndexPage, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	names := make([]string, 0, len(s.indexes))
@@ -988,7 +988,7 @@ func (s *cliControlIndexStack) ListIndexes(_ context.Context, params httpapi.Lis
 	return &httpapi.IndexPage{Results: results, Pagination: page}, nil
 }
 
-func (s *cliControlIndexStack) GetIndex(_ context.Context, params httpapi.GetIndexParams) (httpapi.GetIndexRes, error) {
+func (s *fakeService) GetIndex(_ context.Context, params httpapi.GetIndexParams) (httpapi.GetIndexRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index, ok := s.indexes[strings.ToLower(string(params.Index))]
@@ -999,7 +999,7 @@ func (s *cliControlIndexStack) GetIndex(_ context.Context, params httpapi.GetInd
 	return &copied, nil
 }
 
-func (s *cliControlIndexStack) CreateIndex(_ context.Context, request *httpapi.CreateIndexRequest, params httpapi.CreateIndexParams) (httpapi.CreateIndexRes, error) {
+func (s *fakeService) CreateIndex(_ context.Context, request *httpapi.CreateIndexRequest, params httpapi.CreateIndexParams) (httpapi.CreateIndexRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.indexes[strings.ToLower(string(request.Name))]; exists {
@@ -1015,7 +1015,7 @@ func (s *cliControlIndexStack) CreateIndex(_ context.Context, request *httpapi.C
 	return &copied, nil
 }
 
-func (s *cliControlIndexStack) UpdateIndex(_ context.Context, request *httpapi.UpdateIndexRequest, params httpapi.UpdateIndexParams) (httpapi.UpdateIndexRes, error) {
+func (s *fakeService) UpdateIndex(_ context.Context, request *httpapi.UpdateIndexRequest, params httpapi.UpdateIndexParams) (httpapi.UpdateIndexRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	index, ok := s.indexes[strings.ToLower(string(params.Index))]
@@ -1042,7 +1042,7 @@ func (s *cliControlIndexStack) UpdateIndex(_ context.Context, request *httpapi.U
 	return &copied, nil
 }
 
-func (s *cliControlIndexStack) DeleteIndex(_ context.Context, params httpapi.DeleteIndexParams) (httpapi.DeleteIndexRes, error) {
+func (s *fakeService) DeleteIndex(_ context.Context, params httpapi.DeleteIndexParams) (httpapi.DeleteIndexRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.indexes[strings.ToLower(string(params.Index))]; !ok {
@@ -1053,18 +1053,18 @@ func (s *cliControlIndexStack) DeleteIndex(_ context.Context, params httpapi.Del
 }
 
 //nolint:revive // implements the generated ogen interface
-func (s *cliControlIndexStack) HandleApiKeyAuth(ctx context.Context, _ httpapi.OperationName, token httpapi.ApiKeyAuth) (context.Context, error) {
+func (s *fakeService) HandleApiKeyAuth(ctx context.Context, _ httpapi.OperationName, token httpapi.ApiKeyAuth) (context.Context, error) {
 	if token.Token != "test-key" {
 		return nil, errors.New("invalid test key")
 	}
 	return ctx, nil
 }
 
-func (*cliControlIndexStack) HandleCookieAuth(ctx context.Context, _ httpapi.OperationName, _ httpapi.CookieAuth) (context.Context, error) {
+func (*fakeService) HandleCookieAuth(ctx context.Context, _ httpapi.OperationName, _ httpapi.CookieAuth) (context.Context, error) {
 	return ctx, ogenerrors.ErrSkipServerSecurity
 }
 
-func (s *cliControlIndexStack) PutObjects(_ context.Context, request httpapi.PutObjectsReq, params httpapi.PutObjectsParams) (httpapi.PutObjectsRes, error) {
+func (s *fakeService) PutObjects(_ context.Context, request httpapi.PutObjectsReq, params httpapi.PutObjectsParams) (httpapi.PutObjectsRes, error) {
 	scanner := bufio.NewScanner(request.Data)
 	results := make([]httpapi.MutationResult, 0)
 	s.mu.Lock()
@@ -1098,7 +1098,7 @@ func (s *cliControlIndexStack) PutObjects(_ context.Context, request httpapi.Put
 	return &httpapi.MutationBatchResult{Results: results}, nil
 }
 
-func (s *cliControlIndexStack) QueryIndex(_ context.Context, request *httpapi.QueryRequest, _ httpapi.QueryIndexParams) (*httpapi.QueryPage, error) {
+func (s *fakeService) QueryIndex(_ context.Context, request *httpapi.QueryRequest, _ httpapi.QueryIndexParams) (*httpapi.QueryPage, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	results := make([]httpapi.QueryResult, 0)
@@ -1115,7 +1115,7 @@ func (s *cliControlIndexStack) QueryIndex(_ context.Context, request *httpapi.Qu
 	return &httpapi.QueryPage{Results: results, Pagination: httpapi.Pagination{}}, nil
 }
 
-func (s *cliControlIndexStack) GetDocument(_ context.Context, params httpapi.GetDocumentParams) (httpapi.GetDocumentRes, error) {
+func (s *fakeService) GetDocument(_ context.Context, params httpapi.GetDocumentParams) (httpapi.GetDocumentRes, error) {
 	s.mu.Lock()
 	content, exists := s.objects[params.Key]
 	s.mu.Unlock()
@@ -1139,7 +1139,7 @@ func (s *cliControlIndexStack) GetDocument(_ context.Context, params httpapi.Get
 // a command's paging is exercised by a handful of files.
 const stackPageSize = 2
 
-func (s *cliControlIndexStack) ListDocuments(_ context.Context, params httpapi.ListDocumentsParams) (*httpapi.DocumentPage, error) {
+func (s *fakeService) ListDocuments(_ context.Context, params httpapi.ListDocumentsParams) (*httpapi.DocumentPage, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.listings++
@@ -1185,7 +1185,7 @@ func (s *cliControlIndexStack) ListDocuments(_ context.Context, params httpapi.L
 	return &httpapi.DocumentPage{Results: documents, CommonPrefixes: prefixes, Pagination: page}, nil
 }
 
-func (s *cliControlIndexStack) DeleteDocument(_ context.Context, params httpapi.DeleteDocumentParams) (httpapi.DeleteDocumentRes, error) {
+func (s *fakeService) DeleteDocument(_ context.Context, params httpapi.DeleteDocumentParams) (httpapi.DeleteDocumentRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.singleDeletes++

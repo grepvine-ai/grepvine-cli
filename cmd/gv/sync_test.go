@@ -23,8 +23,8 @@ import (
 )
 
 // newSyncStack is an in-process stack with one ready index, acme/docs.
-func newSyncStack() *cliControlIndexStack {
-	return &cliControlIndexStack{
+func newSyncStack() *fakeService {
+	return &fakeService{
 		objects: map[string]string{}, revisions: map[string]string{}, metadata: map[string]httpapi.Metadata{},
 		indexes: map[string]*httpapi.Index{"docs": {
 			ID: uuid.New(), Organization: "acme", Name: "docs", CanonicalID: "canonical", Tags: httpapi.IndexTags{},
@@ -34,7 +34,7 @@ func newSyncStack() *cliControlIndexStack {
 }
 
 // startStack serves the stack and returns an app configured against it.
-func startStack(t *testing.T, stack *cliControlIndexStack) (*app, *bytes.Buffer, *bytes.Buffer) {
+func startStack(t *testing.T, stack *fakeService) (*app, *bytes.Buffer, *bytes.Buffer) {
 	t.Helper()
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
 	if err != nil {
@@ -126,7 +126,7 @@ func sortedKeys(objects map[string]string) []string {
 	return keys
 }
 
-func indexTags(stack *cliControlIndexStack) httpapi.IndexTags {
+func indexTags(stack *fakeService) httpapi.IndexTags {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 	copied := httpapi.IndexTags{}
@@ -375,7 +375,7 @@ func TestSyncResumesAfterAnInterruptedDeletion(t *testing.T) {
 // seedTwoWayStack stores three documents: one with no local file, one that
 // matches its local file in size and modification time, and one whose size
 // differs. It returns the stack with the git tags set, as after a git sync.
-func seedTwoWayStack(t *testing.T, dir string) *cliControlIndexStack {
+func seedTwoWayStack(t *testing.T, dir string) *fakeService {
 	t.Helper()
 	writeFiles(t, dir, map[string]string{"same.txt": "same\n", "changed.txt": "changed locally\n", "new.txt": "new\n"})
 	info, err := os.Stat(filepath.Join(dir, "same.txt"))
@@ -661,7 +661,7 @@ func TestDeleteBatchRetriesAndSlowsDown(t *testing.T) {
 	})
 	slept := 0
 	a := &app{stderr: &bytes.Buffer{}, sleep: func(context.Context, time.Duration) error { slept++; return nil }}
-	client, err := httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+	client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -683,7 +683,7 @@ func TestDeleteBatchRetriesAndSlowsDown(t *testing.T) {
 		notFoundRequests++
 		return &http.Response{StatusCode: http.StatusNotFound, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"code":"not_found","reason":"resource","error":"gone"}`)), Request: request}, nil
 	})
-	client, err = httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: notFound}))
+	client, err = httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: notFound}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -706,7 +706,7 @@ func TestDeleteBatchReportsDocumentsItDidNotDelete(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: request}, nil
 	})
 	a := &app{stderr: &bytes.Buffer{}, sleep: func(context.Context, time.Duration) error { return nil }}
-	client, err := httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+	client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -814,7 +814,7 @@ func TestSyncKeepsTheTagsWhenADocumentIsNotDeleted(t *testing.T) {
 // TestIndexTagCommandsSetListAndRemove drives `gv index tag` and `--tag`
 // against the in-process stack.
 func TestIndexTagCommandsSetListAndRemove(t *testing.T) {
-	stack := &cliControlIndexStack{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
 	a, stdout, stderr := startStack(t, stack)
 	if err := runGv(a, stdout, stderr, "index", "create", "acme/repo", "--tag", "team=search", "--tag", "env=dev"); err != nil {
 		t.Fatal(err)

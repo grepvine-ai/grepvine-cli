@@ -36,7 +36,7 @@ func TestUploadSurvivesBriefConnectionRefusalWithSameRequest(t *testing.T) {
 				}
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"results":[{"key":"a","revision":"r1"}]}`))}, nil
 			})
-			client, err := httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+			client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +66,7 @@ func TestUploadJobReturnsTheDocumentsItDidNotStore(t *testing.T) {
 		body := `{"results":[{"key":"a","revision":"r1"},{"key":"b","error":{"code":"precondition_failed","reason":"precondition","error":"the document's precondition failed"}}]}`
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: request}, nil
 	})
-	client, err := httpapi.NewClient("http://control.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+	client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
 	if err != nil {
 		t.Fatal(err)
 	}
