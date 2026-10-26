@@ -111,6 +111,7 @@ func newRootCommand(a *app) *cobra.Command {
 		newSearchCommand(a),
 		newUploadCommand(a),
 		newSyncCommand(a),
+		newPutDocumentCommand(a),
 		newGetDocumentCommand(a),
 		newListDocumentsCommand(a),
 		newDeleteDocumentCommand(a),

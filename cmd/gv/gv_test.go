@@ -223,7 +223,7 @@ func TestCLIAgainstInProcessService(t *testing.T) {
 		t.Fatalf("matches=%d output=%q", matches, stdout.String())
 	}
 	stdout.Reset()
-	if err := a.deleteDocument(t.Context(), "acme", "code", "src/café.txt", deleteDocumentOptions{ifMatch: "r1"}); err != nil {
+	if err := a.deleteDocuments(t.Context(), "acme", "code", []string{"src/café.txt"}, deleteDocumentOptions{ifMatch: "r1"}); err != nil {
 		t.Fatal(err)
 	}
 	if stdout.String() != "src/café.txt\tr-delete\n" {
@@ -1257,6 +1257,33 @@ func (s *fakeService) ListDocuments(_ context.Context, params httpapi.ListDocume
 	return &httpapi.DocumentPage{Results: documents, CommonPrefixes: prefixes, Pagination: page}, nil
 }
 
+// PutDocument stores one document with the metadata it carries, and refuses
+// to replace one when the request asks for an absent key.
+func (s *fakeService) PutDocument(_ context.Context, request *httpapi.PutDocumentFormMultipart, params httpapi.PutDocumentParams) (httpapi.PutDocumentRes, error) {
+	content, err := io.ReadAll(request.Content.File)
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.objects[request.Key]; exists && params.IfNoneMatch.Or("") == "*" {
+		return &httpapi.PreconditionFailedHeaders{Response: httpapi.Error{Code: "precondition_failed", Reason: "precondition", Error: "the document's precondition failed"}}, nil
+	}
+	s.objects[request.Key] = string(content)
+	if fields, ok := request.Metadata.Get(); ok {
+		var decoded map[string]any
+		if err := json.Unmarshal([]byte(fields), &decoded); err != nil {
+			return nil, err
+		}
+		if s.metadata == nil {
+			s.metadata = map[string]httpapi.Metadata{}
+		}
+		s.metadata[request.Key] = metadataFromRecord(decoded)
+	}
+	s.writes++
+	return &httpapi.MutationResult{Key: request.Key, Revision: httpapi.NewOptString("r-put")}, nil
+}
+
 func (s *fakeService) DeleteDocument(_ context.Context, params httpapi.DeleteDocumentParams) (httpapi.DeleteDocumentRes, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -2111,5 +2138,82 @@ func TestConfigFileFromEnvironment(t *testing.T) {
 	a.configPath = ""
 	if path, _ := a.resolvedConfigPath(); path != envPath {
 		t.Fatalf("GREPVINE_CONFIG ignored, got %s", path)
+	}
+}
+
+// TestPutAndDeleteSeveralDocuments stores documents from a file and from
+// standard input with metadata, then deletes several keys in one call, one of
+// them missing.
+func TestPutAndDeleteSeveralDocuments(t *testing.T) {
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}}
+	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	a, stdout, stderr := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+	execute := func(stdin string, args ...string) error {
+		stdout.Reset()
+		stderr.Reset()
+		a.stdin = strings.NewReader(stdin)
+		command := newRootCommand(a)
+		command.SetArgs(args)
+		return command.Execute()
+	}
+	source := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(source, []byte("from a file\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := execute("", "put", "acme/docs", "a.txt", source, "-m", "team=search", "-m", "pages:integer=3"); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "a.txt\tr-put\n" || stack.objects["a.txt"] != "from a file\n" {
+		t.Fatalf("put output = %q, stored %q", stdout.String(), stack.objects["a.txt"])
+	}
+	if team, _ := stack.metadata["a.txt"]["team"].GetStringMetadataValue(); team.Value != "search" {
+		t.Fatalf("team metadata = %+v", stack.metadata["a.txt"])
+	}
+	if pages, _ := stack.metadata["a.txt"]["pages"].GetIntegerMetadataValue(); pages.Value != 3 {
+		t.Fatalf("pages metadata = %+v", stack.metadata["a.txt"])
+	}
+	if err := execute("from stdin", "put", "acme/docs", "b.txt", "-", "--json"); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != `{"key":"b.txt","revision":"r-put"}`+"\n" || stack.objects["b.txt"] != "from stdin" {
+		t.Fatalf("put --json output = %q, stored %q", stdout.String(), stack.objects["b.txt"])
+	}
+	if err := execute("again", "put", "acme/docs", "b.txt", "-", "--if-absent"); err == nil || !strings.Contains(err.Error(), "precondition_failed") {
+		t.Fatalf("put --if-absent over a document = %v", err)
+	}
+	for _, field := range []string{"pages:integer=many", "size:bytes=3", "=x", "nothing"} {
+		if err := execute("", "put", "acme/docs", "c.txt", "-", "-m", field); err == nil || !strings.Contains(err.Error(), "metadata") {
+			t.Fatalf("put -m %q = %v", field, err)
+		}
+	}
+
+	if err := execute("", "delete", "acme/docs", "a.txt", "b.txt", "--if-match", "r1"); err == nil || !strings.Contains(err.Error(), "--if-match") {
+		t.Fatalf("delete --if-match with two keys = %v", err)
+	}
+	err = execute("", "delete", "acme/docs", "a.txt", "missing.txt", "b.txt")
+	if _, ok := errors.AsType[*rejectedError](err); !ok || err.Error() != "1 document was not deleted" {
+		t.Fatalf("delete with a missing key = %v", err)
+	}
+	if stdout.String() != "a.txt\tr-delete\nb.txt\tr-delete\n" || !strings.Contains(stderr.String(), "missing.txt was not deleted") {
+		t.Fatalf("delete stdout = %q stderr = %q", stdout.String(), stderr.String())
+	}
+	if len(stack.objects) != 0 || len(stack.batchSizes) != 1 {
+		t.Fatalf("objects left = %v, batches = %v", stack.objects, stack.batchSizes)
+	}
+	err = execute("", "delete", "acme/docs", "gone.txt", "--json")
+	if _, ok := errors.AsType[*rejectedError](err); !ok {
+		t.Fatalf("delete --json of a missing key = %v", err)
+	}
+	if !strings.HasPrefix(stdout.String(), `{"key":"gone.txt","error":{"code":"not_found"`) {
+		t.Fatalf("delete --json output = %q", stdout.String())
 	}
 }

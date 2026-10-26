@@ -65,14 +65,21 @@ The source can also be an S3 object or prefix. `gv` reads it with your AWS crede
 gv upload --recursive s3://my-bucket/docs/ --index example/docs
 ```
 
-Search, list, download and delete documents:
+Store one document from a file, or from standard input with `-`. Each `--metadata` flag sets one field: `NAME=VALUE` stores a string, and `NAME:TYPE=VALUE` a value of type `string`, `integer`, `number`, `boolean` or `timestamp`:
+
+```sh
+gv put example/docs notes/today.md today.md --metadata team=search --metadata pages:integer=3
+echo "hello" | gv put example/docs hello.txt -
+```
+
+Search, list, download and delete documents. `delete` takes one or more keys:
 
 ```sh
 gv search -F example/docs Grepvine
 gv list example/docs --delimiter /
 gv get example/docs README.md --output README.copy.md
 gv get example/docs README.md --range bytes=0-127
-gv delete example/docs README.md
+gv delete example/docs README.md notes/today.md hello.txt
 ```
 
 Keep an index in step with a directory or a git repository. After the first sync, a later sync in a git repository uploads only the files that changed since the last synced commit:
@@ -114,6 +121,8 @@ Add `--json` to print one JSON object per line, with fields as in the API:
 - `search`: one result per line. `matches[].offset` counts bytes from the start of the document; subtract `text_start_offset` to find the match within `text`.
 - `list`: one document per line; with `--delimiter`, each common prefix comes first as `{"prefix": ...}`.
 - `whoami`, and the `org`, `member`, `key` and `index` commands: the objects they show.
+- `put`: the stored document's `{"key", "revision"}`.
+- `delete`: one result per key, in order: `{"key", "revision"}` when deleted, `{"key", "error"}` when not.
 - `upload` and `sync`: each document the index refused, as the API reports it, then a last line of totals: `{"uploaded", "bytes", "deleted", "failed"}`. A refused upload stops `sync` before it deletes anything, so one run reports refused uploads or refused deletions, not both.
 - `sync --dry-run`: each planned change, as `{"action": "upload"|"delete"|"tag", "key", ...}`. A tag change carries its new `value`, or `null` when the tag is removed.
 
