@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ const deleteBatchKeys = 2048
 
 type syncOptions struct {
 	dryRun bool
+	json   bool
 }
 
 func newSyncCommand(a *app) *cobra.Command {
@@ -60,10 +62,16 @@ document that was not stored, and it changes no tags after either.`,
 			if err != nil {
 				return err
 			}
-			return a.sync(command.Context(), organization, index, args[0], options)
+			a.jsonOutput = options.json
+			err = a.sync(command.Context(), organization, index, args[0], options)
+			if options.dryRun {
+				return err
+			}
+			return a.reportTotals(err)
 		},
 	}
 	command.Flags().BoolVar(&options.dryRun, "dry-run", false, "print what would change without writing to the index")
+	command.Flags().BoolVar(&options.json, "json", false, `print a JSON line for each document that is not stored or deleted, then a final line with the totals; with --dry-run, print each change as {"action": "upload", "delete" or "tag", ...}`)
 	return command
 }
 
@@ -81,7 +89,7 @@ func (a *app) sync(ctx context.Context, organization, index, directory string, o
 		return err
 	}
 
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	a.status.Store(status)
 	defer a.status.Store(nil)
 	status.start()
@@ -167,7 +175,11 @@ func (a *app) sync(ctx context.Context, organization, index, directory string, o
 
 	if options.dryRun {
 		finish()
-		printSyncPlan(a.stdout, plan, patch)
+		if options.json {
+			printSyncPlanJSON(a.stdout, plan, patch)
+		} else {
+			printSyncPlan(a.stdout, plan, patch)
+		}
 		fmt.Fprintf(a.stderr, "gv: dry run: %d to upload, %d to delete, %d tag %s; nothing written\n", len(plan.uploads), len(plan.deletes), len(patch), plural(int64(len(patch)), "change"))
 		return nil
 	}
@@ -659,6 +671,25 @@ func walkedFiles(directory string, seen func(directoriesFound, directoriesDone, 
 			}
 			return emit(file, info)
 		}, seen)
+	}
+}
+
+// printSyncPlanJSON writes a dry run as one JSON line per upload, deletion and
+// tag change; a removed tag has no value.
+func printSyncPlanJSON(w io.Writer, plan syncPlan, patch httpapi.IndexTagChanges) {
+	encoder := json.NewEncoder(w)
+	for _, file := range plan.uploads {
+		_ = encoder.Encode(map[string]string{"action": "upload", "key": file.key})
+	}
+	for _, key := range plan.deletes {
+		_ = encoder.Encode(map[string]string{"action": "delete", "key": key})
+	}
+	for _, key := range sortedTagKeys(httpapi.IndexTags(tagPatchKeys(patch))) {
+		if value, ok := patch[key].Get(); ok {
+			_ = encoder.Encode(map[string]string{"action": "tag", "key": key, "value": value})
+		} else {
+			_ = encoder.Encode(map[string]string{"action": "tag", "key": key})
+		}
 	}
 }
 

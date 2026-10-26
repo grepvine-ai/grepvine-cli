@@ -93,7 +93,7 @@ type uploadRecord struct {
 
 func newUploadCommand(a *app) *cobra.Command {
 	var target string
-	var recursive, records, archive bool
+	var recursive, records, archive, asJSON bool
 	var concurrency int
 	var compress string
 	command := &cobra.Command{
@@ -123,6 +123,7 @@ or without .gz, are imported as records.`,
 			if err != nil {
 				return err
 			}
+			a.jsonOutput = asJSON
 			if concurrency < 1 || concurrency > maxUploadConcurrency {
 				return fmt.Errorf("--concurrency must be between 1 and %d", maxUploadConcurrency)
 			}
@@ -151,18 +152,10 @@ or without .gz, are imported as records.`,
 			}
 			a.uploadConcurrency = concurrency
 			a.compression.Store(int32(mode))
-			if records {
-				return a.uploadRecords(command.Context(), organization, index, source, prefix, recursive, archive)
-			}
-			if archive {
-				return a.uploadZip(command.Context(), organization, index, source, prefix)
-			}
-			if remote {
-				return a.uploadS3(command.Context(), organization, index, location, prefix, recursive)
-			}
-			return a.upload(command.Context(), organization, index, source, prefix)
+			return a.reportTotals(a.runUpload(command.Context(), organization, index, source, prefix, location, remote, recursive, records, archive))
 		},
 	}
+	command.Flags().BoolVar(&asJSON, "json", false, `print a JSON line for each document that is not stored, then a final line with the totals: {"uploaded","bytes","deleted","failed"}`)
 	command.Flags().StringVar(&target, "index", "", "destination ORGANIZATION/INDEX")
 	command.Flags().BoolVarP(&recursive, "recursive", "r", false, "recursively upload a directory or an S3 prefix")
 	command.Flags().BoolVar(&records, "records", false, "read documents from NDJSON record files instead of uploading the files")
@@ -170,6 +163,18 @@ or without .gz, are imported as records.`,
 	command.Flags().IntVar(&concurrency, "concurrency", defaultUploadConcurrency, "batches to keep in flight")
 	command.Flags().StringVar(&compress, "compress", "auto", "compress batches: auto (not to a local endpoint), always, or never")
 	return command
+}
+
+func (a *app) runUpload(ctx context.Context, organization, index, source, prefix string, location s3Location, remote, recursive, records, archive bool) error {
+	switch {
+	case records:
+		return a.uploadRecords(ctx, organization, index, source, prefix, recursive, archive)
+	case archive:
+		return a.uploadZip(ctx, organization, index, source, prefix)
+	case remote:
+		return a.uploadS3(ctx, organization, index, location, prefix, recursive)
+	}
+	return a.upload(ctx, organization, index, source, prefix)
 }
 
 func uploadArguments(args []string, target string) (string, string, string, string, error) {
@@ -208,7 +213,7 @@ func (a *app) upload(ctx context.Context, organization, index, source, prefix st
 	}
 	recursive := sourceInfo.IsDir()
 
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	a.status.Store(status)
 	defer a.status.Store(nil)
 	status.start()
@@ -402,6 +407,7 @@ func batchFailures(results []httpapi.MutationResult) []httpapi.MutationResult {
 func reportRejected(status *progress, result httpapi.MutationResult, action string) {
 	reason := result.Error.Value
 	status.printf("gv: %s was not %s: %s (%s)\n", result.Key, action, reason.Error, reason.Code)
+	status.rejected(result.Key, reason.Code, reason.Error)
 }
 
 func normalizeRemotePath(value string, allowEmpty bool) (string, error) {

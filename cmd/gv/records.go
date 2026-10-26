@@ -52,7 +52,7 @@ func (a *app) uploadRecords(ctx context.Context, organization, index, source, pr
 	if err != nil {
 		return fmt.Errorf("remote prefix: %w", err)
 	}
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	status.noun = "document"
 	a.status.Store(status)
 	defer a.status.Store(nil)

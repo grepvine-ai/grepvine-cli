@@ -696,7 +696,7 @@ func (a *app) uploadS3(ctx context.Context, organization, index string, location
 		return err
 	}
 
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	a.status.Store(status)
 	defer a.status.Store(nil)
 	status.start()

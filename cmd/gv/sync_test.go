@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -877,5 +878,83 @@ func TestIndexTagCommandsSetListAndRemove(t *testing.T) {
 	}
 	if err := runGv(a, stdout, stderr, "index", "tag", "ls", "acme/missing"); err == nil || !strings.Contains(err.Error(), "not_found") {
 		t.Fatalf("missing index error = %v", err)
+	}
+}
+
+func TestSyncDryRunJSONPrintsOneLinePerChange(t *testing.T) {
+	dir := plainDir(t)
+	stack := seedTwoWayStack(t, dir)
+	a, stdout, stderr := startStack(t, stack)
+	if err := runGv(a, stdout, stderr, "sync", "--dry-run", "--json", dir, "acme/docs"); err != nil {
+		t.Fatalf("dry run: %v\n%s", err, stderr.String())
+	}
+	want := `{"action":"upload","key":"changed.txt"}` + "\n" +
+		`{"action":"upload","key":"new.txt"}` + "\n" +
+		`{"action":"delete","key":"stale.txt"}` + "\n" +
+		`{"action":"tag","key":"git.branch"}` + "\n" +
+		`{"action":"tag","key":"git.commit"}` + "\n"
+	if stdout.String() != want {
+		t.Fatalf("dry run output = %q, want %q", stdout.String(), want)
+	}
+	if stack.writes != 0 {
+		t.Fatalf("dry run wrote %d times", stack.writes)
+	}
+}
+
+// TestSyncJSONReportsRefusedDocumentsAndTotals has the index refuse one of
+// two uploads: stdout carries the refused document, then totals that count
+// only what was stored.
+func TestSyncJSONReportsRefusedDocumentsAndTotals(t *testing.T) {
+	dir, git := gitRepoForTest(t)
+	writeFiles(t, dir, map[string]string{"guide.md": "guide\n", "README.md": "one\n"})
+	git("add", ".")
+	git("commit", "-q", "-m", "initial")
+	stack := newSyncStack()
+	a, stdout, stderr := startStack(t, stack)
+	if err := runGv(a, stdout, stderr, "sync", "--json", dir, "acme/docs"); err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"uploaded":2,"bytes":10,"deleted":0,"failed":0}` + "\n"; stdout.String() != want {
+		t.Fatalf("totals = %q, want %q", stdout.String(), want)
+	}
+
+	git("mv", "guide.md", "intro.md")
+	writeFiles(t, dir, map[string]string{"README.md": "two\n"})
+	git("add", ".")
+	git("commit", "-q", "-m", "second")
+	stack.mu.Lock()
+	stack.refuse = map[string]bool{"intro.md": true}
+	stack.mu.Unlock()
+	if err := runGv(a, stdout, stderr, "sync", "--json", dir, "acme/docs"); err == nil {
+		t.Fatal("sync succeeded with a refused document")
+	}
+	want := `{"key":"intro.md","error":{"code":"precondition_failed","message":"the document's precondition failed"}}` + "\n" +
+		`{"uploaded":1,"bytes":4,"deleted":0,"failed":1}` + "\n"
+	if stdout.String() != want {
+		t.Fatalf("output = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestUploadJSONPrintsNoTotalsWhenNothingWasWritten(t *testing.T) {
+	dir := plainDir(t)
+	a, stdout, stderr := startStack(t, newSyncStack())
+	if err := runGv(a, stdout, stderr, "upload", "--recursive", "--json", dir, "--index", "acme/docs"); err == nil {
+		t.Fatal("upload of an empty directory succeeded")
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestUploadJSONPrintsTotals(t *testing.T) {
+	dir := plainDir(t)
+	writeFiles(t, dir, map[string]string{"one.txt": "one\n"})
+	a, stdout, stderr := startStack(t, newSyncStack())
+	if err := runGv(a, stdout, stderr, "upload", "--recursive", "--json", dir, "--index", "acme/docs"); err != nil {
+		t.Fatalf("upload: %v\n%s", err, stderr.String())
+	}
+	var totals transferSummary
+	if err := json.Unmarshal(stdout.Bytes(), &totals); err != nil || totals.Uploaded < 1 || totals.Failed != 0 || strings.Count(stdout.String(), "\n") != 1 {
+		t.Fatalf("totals = %q, %v", stdout.String(), err)
 	}
 }

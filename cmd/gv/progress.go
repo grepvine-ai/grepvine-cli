@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -61,8 +62,13 @@ type progress struct {
 	inDeletion   bool
 	deleteTotal  int64
 	filesDeleted int64
-	pausedUntil  time.Time
-	width        int
+	// json, when set, receives one line per document the service refused.
+	// totals, when set, receives what the command did when it finishes.
+	json        io.Writer
+	totals      *transferSummary
+	failed      int64
+	pausedUntil time.Time
+	width       int
 
 	sampled       time.Time
 	sampledFound  int64
@@ -73,6 +79,27 @@ type progress struct {
 	sentRate      float64
 	byteRate      float64
 	sourceRate    float64
+}
+
+// newStatus is the progress of the command now running, which reports its
+// totals and refused documents on stdout under --json.
+func (a *app) newStatus() *progress {
+	status := newProgress(a.stderr, a.isTTY)
+	if a.jsonOutput {
+		status.json = a.stdout
+		status.totals = &a.totals
+	}
+	return status
+}
+
+// reportTotals prints the totals of a command run with --json, as its last
+// line. A command that failed before it wrote anything prints none, so a
+// line of zeros never stands for a run that did not happen.
+func (a *app) reportTotals(err error) error {
+	if a.jsonOutput && (err == nil || a.totals != (transferSummary{})) {
+		_ = json.NewEncoder(a.stdout).Encode(a.totals)
+	}
+	return err
 }
 
 func newProgress(out io.Writer, enabled bool) *progress {
@@ -111,11 +138,14 @@ func (p *progress) start() {
 func (p *progress) finish() {
 	close(p.stop)
 	<-p.stopped
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.totals != nil {
+		*p.totals = transferSummary{Uploaded: p.filesSent, Bytes: p.bytesSent, Deleted: p.filesDeleted, Failed: p.failed}
+	}
 	if !p.enabled {
 		return
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	p.clear()
 	if p.filesSent == 0 && p.filesDeleted == 0 {
 		return
@@ -210,6 +240,37 @@ func (p *progress) reportPause(until time.Time) bool {
 		p.pausedUntil = until
 	}
 	return true
+}
+
+// transferSummary is the last line of the JSON output of upload and sync.
+// Only documents the service stored or deleted are counted.
+type transferSummary struct {
+	Uploaded int64 `json:"uploaded"`
+	Bytes    int64 `json:"bytes"`
+	Deleted  int64 `json:"deleted"`
+	Failed   int64 `json:"failed"`
+}
+
+// rejectedDocument is one document the service did not change.
+type rejectedDocument struct {
+	Key   string `json:"key"`
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// rejected counts a document the service did not change and, with --json,
+// reports it on stdout.
+func (p *progress) rejected(key, code, message string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.failed++
+	if p.json != nil {
+		document := rejectedDocument{Key: key}
+		document.Error.Code, document.Error.Message = code, message
+		_ = json.NewEncoder(p.json).Encode(document)
+	}
 }
 
 // printf writes one message above the status line.

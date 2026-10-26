@@ -41,7 +41,11 @@ type app struct {
 	// means defaultUploadConcurrency. compression holds the upload's
 	// --compress mode for the transport.
 	uploadConcurrency int
-	compression       atomic.Int32
+	// jsonOutput is the --json flag of upload and sync: report each refused
+	// document and, last, the totals as JSON lines on stdout.
+	jsonOutput  bool
+	totals      transferSummary
+	compression atomic.Int32
 	// openS3 returns the client an upload reads an S3 bucket through; nil
 	// means the default AWS configuration chain.
 	openS3 func(ctx context.Context, bucket string) (s3API, error)
