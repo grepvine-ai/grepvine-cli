@@ -84,6 +84,29 @@ gv index rm example/handbook
 
 Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to listing commands for machine-readable output. Run `gv <command> --help` for every flag.
 
+## Shell completion
+
+`gv` completes commands and flags in bash, zsh, fish and PowerShell. Load it in the current session:
+
+```sh
+source <(gv completion bash)                          # bash
+source <(gv completion zsh)                           # zsh
+gv completion fish | source                           # fish
+gv completion powershell | Out-String | Invoke-Expression   # PowerShell
+```
+
+To load it in every new session, save the script once and start a new shell:
+
+```sh
+gv completion bash > $(brew --prefix)/etc/bash_completion.d/gv                 # bash, macOS
+gv completion bash > /etc/bash_completion.d/gv                                 # bash, Linux
+gv completion zsh > $(brew --prefix)/share/zsh/site-functions/_gv              # zsh, macOS
+gv completion zsh > "${fpath[1]}/_gv"                                          # zsh, Linux
+gv completion fish > ~/.config/fish/completions/gv.fish                        # fish
+```
+
+For PowerShell, add the `Invoke-Expression` line above to your profile. Run `gv completion <shell> --help` for details.
+
 ## Build from source
 
 ```sh
