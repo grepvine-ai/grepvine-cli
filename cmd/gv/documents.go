@@ -27,7 +27,7 @@ func newGetDocumentCommand(a *app) *cobra.Command {
 		Short: "Download a document",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -100,7 +100,7 @@ func newListDocumentsCommand(a *app) *cobra.Command {
 		Short: "List documents and common prefixes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func newDeleteDocumentCommand(a *app) *cobra.Command {
 		Short: "Delete a document",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -222,12 +222,40 @@ func (a *app) deleteDocument(ctx context.Context, organization, index, key strin
 	}
 }
 
-func parseIndexReference(value string) (string, string, error) {
+// parseIndexReference reads ORGANIZATION/INDEX, or a bare INDEX in the
+// default organization.
+func (a *app) parseIndexReference(value string) (string, string, error) {
 	organization, index, ok := strings.Cut(value, "/")
-	if !ok || organization == "" || index == "" || strings.Contains(index, "/") {
-		return "", "", fmt.Errorf("index must be ORGANIZATION/INDEX")
+	if !ok {
+		cfg, _, err := a.endpointAndKey()
+		if err != nil {
+			return "", "", err
+		}
+		if cfg.Organization == "" {
+			return "", "", errors.New("index must be ORGANIZATION/INDEX, or set a default organization to pass only INDEX")
+		}
+		organization, index = cfg.Organization, value
+	}
+	if organization == "" || index == "" || strings.Contains(index, "/") {
+		return "", "", errors.New("index must be ORGANIZATION/INDEX")
 	}
 	return organization, index, nil
+}
+
+// organizationArgument returns the ORGANIZATION argument, or the default
+// organization when it is omitted.
+func (a *app) organizationArgument(args []string) (string, error) {
+	if len(args) > 0 {
+		return args[0], nil
+	}
+	cfg, _, err := a.endpointAndKey()
+	if err != nil {
+		return "", err
+	}
+	if cfg.Organization == "" {
+		return "", errors.New("pass ORGANIZATION, or set a default with `organization` in the configuration file or GREPVINE_ORGANIZATION")
+	}
+	return cfg.Organization, nil
 }
 
 func friendlyAPIError(err error) error {

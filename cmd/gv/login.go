@@ -57,7 +57,11 @@ func (a *app) login(ctx context.Context, name string) error {
 		}
 		switch result := response.(type) {
 		case *httpapi.APIKeyCreated:
-			stored := config{APIKey: result.Key}
+			stored, _, err := a.loadConfig()
+			if err != nil {
+				return err
+			}
+			stored.APIKey, stored.Endpoint = result.Key, ""
 			if resolved.Endpoint != defaultEndpoint {
 				stored.Endpoint = resolved.Endpoint
 			}

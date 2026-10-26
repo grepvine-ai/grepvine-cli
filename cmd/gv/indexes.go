@@ -64,12 +64,16 @@ type indexListOptions struct {
 func newIndexListCommand(a *app) *cobra.Command {
 	var options indexListOptions
 	command := &cobra.Command{
-		Use:     "ls ORGANIZATION",
+		Use:     "ls [ORGANIZATION]",
 		Aliases: []string{"list"},
 		Short:   "List the indexes of an organization",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			return a.listIndexes(command.Context(), args[0], options)
+			organization, err := a.organizationArgument(args)
+			if err != nil {
+				return err
+			}
+			return a.listIndexes(command.Context(), organization, options)
 		},
 	}
 	command.Flags().BoolVar(&options.json, "json", false, "print one JSON object per index instead of a table")
@@ -146,7 +150,7 @@ func newIndexInfoCommand(a *app) *cobra.Command {
 		Short:   "Show an index, including its description",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -244,7 +248,7 @@ func newIndexCreateCommand(a *app) *cobra.Command {
 		Short: "Create an index, optionally with a description and tags",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -302,7 +306,7 @@ file with --description-file (use - for standard input). An empty
 --description clears it.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -353,7 +357,7 @@ func newIndexRemoveCommand(a *app) *cobra.Command {
 Without --force, gv asks you to type the index name to confirm.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -504,7 +508,7 @@ func newIndexTagListCommand(a *app) *cobra.Command {
 		Short:   "List an index's tags",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -546,7 +550,7 @@ func newIndexTagSetCommand(a *app) *cobra.Command {
 		Short: "Set tags on an index, leaving the others as they are",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}
@@ -570,7 +574,7 @@ func newIndexTagRemoveCommand(a *app) *cobra.Command {
 		Short:   "Remove tags from an index",
 		Args:    cobra.MinimumNArgs(2),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[0])
+			organization, index, err := a.parseIndexReference(args[0])
 			if err != nil {
 				return err
 			}

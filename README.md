@@ -84,6 +84,19 @@ gv index rm example/handbook
 
 Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Run `gv <command> --help` for every flag.
 
+### Default organization
+
+Set `organization` in `~/.grepvine/config.yaml`, or `GREPVINE_ORGANIZATION`, to omit the organization: `docs` then means `example/docs`, and `gv index ls`, `gv org info` and `gv member ls` need no argument. An explicit `ORGANIZATION/INDEX` still wins, and `GREPVINE_ORGANIZATION` wins over the file.
+
+```yaml
+organization: example
+```
+
+```sh
+gv search -F docs Grepvine
+gv index ls
+```
+
 ## JSON output
 
 Add `--json` to print one JSON object per line, with fields as in the API:

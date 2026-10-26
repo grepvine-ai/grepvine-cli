@@ -57,7 +57,7 @@ step, then stops with a non-zero exit status. It deletes nothing after a
 document that was not stored, and it changes no tags after either.`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, err := parseIndexReference(args[1])
+			organization, index, err := a.parseIndexReference(args[1])
 			if err != nil {
 				return err
 			}

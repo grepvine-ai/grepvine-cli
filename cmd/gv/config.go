@@ -11,8 +11,9 @@ import (
 )
 
 type config struct {
-	Endpoint string `yaml:"endpoint,omitempty"`
-	APIKey   string `yaml:"api_key,omitempty"`
+	Endpoint     string `yaml:"endpoint,omitempty"`
+	APIKey       string `yaml:"api_key,omitempty"`
+	Organization string `yaml:"organization,omitempty"`
 }
 
 func (a *app) resolvedConfigPath() (string, error) {
@@ -111,5 +112,9 @@ func (a *app) endpointAndKey() (config, string, error) {
 	if key == "" {
 		key = cfg.APIKey
 	}
-	return config{Endpoint: endpoint, APIKey: key}, path, nil
+	organization := a.getenv("GREPVINE_ORGANIZATION")
+	if organization == "" {
+		organization = cfg.Organization
+	}
+	return config{Endpoint: endpoint, APIKey: key, Organization: organization}, path, nil
 }

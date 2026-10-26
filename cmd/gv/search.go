@@ -40,7 +40,7 @@ func newSearchCommand(a *app) *cobra.Command {
 		Short: "Search an index",
 		Args:  cobra.RangeArgs(1, 3),
 		RunE: func(command *cobra.Command, args []string) error {
-			organization, index, pattern, err := searchArgumentsWithIndex(args, options.indexRef)
+			organization, index, pattern, err := a.searchArgumentsWithIndex(args, options.indexRef)
 			if err != nil {
 				return err
 			}
@@ -80,22 +80,25 @@ func newSearchCommand(a *app) *cobra.Command {
 	return command
 }
 
-func searchArgumentsWithIndex(args []string, indexRef string) (string, string, string, error) {
+func (a *app) searchArgumentsWithIndex(args []string, indexRef string) (string, string, string, error) {
 	if indexRef == "" {
-		return searchArguments(args)
+		return a.searchArguments(args)
 	}
 	if len(args) != 1 {
 		return "", "", "", errors.New("with --index, pass exactly one PATTERN")
 	}
-	organization, index, err := parseIndexReference(indexRef)
+	organization, index, err := a.parseIndexReference(indexRef)
 	return organization, index, args[0], err
 }
 
-func searchArguments(args []string) (string, string, string, error) {
+func (a *app) searchArguments(args []string) (string, string, string, error) {
 	if len(args) == 3 {
 		return args[0], args[1], args[2], nil
 	}
-	organization, index, err := parseIndexReference(args[0])
+	if len(args) != 2 {
+		return "", "", "", errors.New("pass ORGANIZATION/INDEX and PATTERN, or use --index")
+	}
+	organization, index, err := a.parseIndexReference(args[0])
 	return organization, index, args[1], err
 }
 
