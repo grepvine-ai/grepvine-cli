@@ -7,13 +7,13 @@
 On macOS or Linux, install the latest release into `~/.local/bin`:
 
 ```sh
-curl -fsSL https://grepvine-ai.github.io/grepvine-cli/install.sh | sh
+curl -fsSL https://get.grepvine.ai/install.sh | sh
 ```
 
 The script downloads the archive for your platform from the [releases](https://github.com/grepvine-ai/grepvine-cli/releases) page and checks it against `checksums.txt` before installing. Pass `--version` to install a specific release, or `--bin-dir` to install somewhere else:
 
 ```sh
-curl -fsSL https://grepvine-ai.github.io/grepvine-cli/install.sh | sh -s -- --version v0.1.1 --bin-dir ~/bin
+curl -fsSL https://get.grepvine.ai/install.sh | sh -s -- --version v0.1.1 --bin-dir ~/bin
 ```
 
 With Homebrew on macOS or Linux:

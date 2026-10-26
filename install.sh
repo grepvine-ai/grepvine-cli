@@ -1,8 +1,8 @@
 #!/bin/sh
 # Installs gv, the Grepvine CLI, from its GitHub releases.
 #
-#   curl -fsSL https://grepvine-ai.github.io/grepvine-cli/install.sh | sh
-#   curl -fsSL https://grepvine-ai.github.io/grepvine-cli/install.sh | sh -s -- --version v0.1.1 --bin-dir ~/bin
+#   curl -fsSL https://get.grepvine.ai/install.sh | sh
+#   curl -fsSL https://get.grepvine.ai/install.sh | sh -s -- --version v0.1.1 --bin-dir ~/bin
 #
 # GV_VERSION and GV_INSTALL_DIR can be set instead of the flags.
 #
