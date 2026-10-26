@@ -61,7 +61,7 @@ document that was not stored, and it changes no tags after either.`,
 			if err != nil {
 				return err
 			}
-			a.jsonOutput = options.json
+			a.jsonOutput, a.totals = options.json, transferSummary{}
 			err = a.sync(command.Context(), organization, index, args[0], options)
 			if options.dryRun {
 				return err
@@ -677,17 +677,17 @@ func walkedFiles(directory string, seen func(directoriesFound, directoriesDone, 
 // tag change; a removed tag has a null value.
 func printSyncPlanJSON(w io.Writer, plan syncPlan, patch httpapi.IndexTagChanges) {
 	for _, file := range plan.uploads {
-		_ = encodeJSONLine(w, map[string]string{"action": "upload", "key": file.key})
+		_ = writeJSONLine(w, map[string]string{"action": "upload", "key": file.key})
 	}
 	for _, key := range plan.deletes {
-		_ = encodeJSONLine(w, map[string]string{"action": "delete", "key": key})
+		_ = writeJSONLine(w, map[string]string{"action": "delete", "key": key})
 	}
 	for _, key := range sortedTagKeys(httpapi.IndexTags(tagPatchKeys(patch))) {
 		var value *string
 		if v, ok := patch[key].Get(); ok {
 			value = &v
 		}
-		_ = encodeJSONLine(w, map[string]any{"action": "tag", "key": key, "value": value})
+		_ = writeJSONLine(w, map[string]any{"action": "tag", "key": key, "value": value})
 	}
 }
 

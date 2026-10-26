@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -89,18 +88,9 @@ func (a *app) newStatus() *progress {
 	status := newProgress(a.stderr, a.isTTY)
 	if a.jsonOutput {
 		status.json = a.stdout
-		a.totals = transferSummary{}
 		status.totals = &a.totals
 	}
 	return status
-}
-
-// encodeJSONLine writes value as one line of JSON. Like the generated
-// marshalers, it leaves <, > and & as they are.
-func encodeJSONLine(w io.Writer, value any) error {
-	encoder := json.NewEncoder(w)
-	encoder.SetEscapeHTML(false)
-	return encoder.Encode(value)
 }
 
 // reportTotals prints the totals of a command run with --json, as its last
@@ -108,7 +98,7 @@ func encodeJSONLine(w io.Writer, value any) error {
 // line of zeros never stands for a run that did not happen.
 func (a *app) reportTotals(err error) error {
 	if a.jsonOutput && (err == nil || a.totals != (transferSummary{})) {
-		_ = encodeJSONLine(a.stdout, a.totals)
+		_ = writeJSONLine(a.stdout, a.totals)
 	}
 	return err
 }

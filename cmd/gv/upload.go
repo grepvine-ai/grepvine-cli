@@ -118,12 +118,13 @@ writing them to disk. REMOTE_PATH, when given, prefixes every key. With
 --zip and --records together, the archive's .ndjson and .jsonl files, with
 or without .gz, are imported as records.`,
 		Args: cobra.RangeArgs(1, 4),
-		RunE: func(command *cobra.Command, args []string) error {
+		RunE: func(command *cobra.Command, args []string) (err error) {
+			a.jsonOutput, a.totals = asJSON, transferSummary{}
+			defer func() { err = a.reportTotals(err) }()
 			organization, index, source, prefix, err := uploadArguments(args, target)
 			if err != nil {
 				return err
 			}
-			a.jsonOutput = asJSON
 			if concurrency < 1 || concurrency > maxUploadConcurrency {
 				return fmt.Errorf("--concurrency must be between 1 and %d", maxUploadConcurrency)
 			}
@@ -152,7 +153,16 @@ or without .gz, are imported as records.`,
 			}
 			a.uploadConcurrency = concurrency
 			a.compression.Store(int32(mode))
-			return a.reportTotals(a.runUpload(command.Context(), organization, index, source, prefix, location, remote, recursive, records, archive))
+			if records {
+				return a.uploadRecords(command.Context(), organization, index, source, prefix, recursive, archive)
+			}
+			if archive {
+				return a.uploadZip(command.Context(), organization, index, source, prefix)
+			}
+			if remote {
+				return a.uploadS3(command.Context(), organization, index, location, prefix, recursive)
+			}
+			return a.upload(command.Context(), organization, index, source, prefix)
 		},
 	}
 	command.Flags().BoolVar(&asJSON, "json", false, "print refused documents and the totals as JSON")
@@ -163,18 +173,6 @@ or without .gz, are imported as records.`,
 	command.Flags().IntVar(&concurrency, "concurrency", defaultUploadConcurrency, "batches to keep in flight")
 	command.Flags().StringVar(&compress, "compress", "auto", "compress batches: auto (not to a local endpoint), always, or never")
 	return command
-}
-
-func (a *app) runUpload(ctx context.Context, organization, index, source, prefix string, location s3Location, remote, recursive, records, archive bool) error {
-	switch {
-	case records:
-		return a.uploadRecords(ctx, organization, index, source, prefix, recursive, archive)
-	case archive:
-		return a.uploadZip(ctx, organization, index, source, prefix)
-	case remote:
-		return a.uploadS3(ctx, organization, index, location, prefix, recursive)
-	}
-	return a.upload(ctx, organization, index, source, prefix)
 }
 
 func uploadArguments(args []string, target string) (string, string, string, string, error) {
