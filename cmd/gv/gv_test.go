@@ -2095,3 +2095,21 @@ func TestListJSONAcrossPages(t *testing.T) {
 		t.Fatalf("list --json = %q, want %q", got, want)
 	}
 }
+func TestConfigFileFromEnvironment(t *testing.T) {
+	a, _, _ := testApp(t, "")
+	flagPath := a.configPath
+	envPath := filepath.Join(t.TempDir(), "stage.yaml")
+	a.getenv = func(name string) string {
+		if name == "GREPVINE_CONFIG" {
+			return envPath
+		}
+		return ""
+	}
+	if path, _ := a.resolvedConfigPath(); path != flagPath {
+		t.Fatalf("--config should win, got %s", path)
+	}
+	a.configPath = ""
+	if path, _ := a.resolvedConfigPath(); path != envPath {
+		t.Fatalf("GREPVINE_CONFIG ignored, got %s", path)
+	}
+}
