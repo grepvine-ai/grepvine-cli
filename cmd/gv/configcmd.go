@@ -109,8 +109,9 @@ func newConfigCommand(a *app) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "config",
 		Short: "Show and change the configuration file",
-		Long: `Show and change the configuration file, ~/.grepvine/config.yaml or the
-file passed with --config. Environment variables override the file.`,
+		Long: `Show and change the configuration file: the file passed with --config, else
+$GREPVINE_CONFIG, else ~/.grepvine/config.yaml. Environment variables override
+the settings in the file.`,
 	}
 	command.AddCommand(
 		newConfigListCommand(a),
