@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -71,7 +70,7 @@ document that was not stored, and it changes no tags after either.`,
 		},
 	}
 	command.Flags().BoolVar(&options.dryRun, "dry-run", false, "print what would change without writing to the index")
-	command.Flags().BoolVar(&options.json, "json", false, `print a JSON line for each document that is not stored or deleted, then a final line with the totals; with --dry-run, print each change as {"action": "upload", "delete" or "tag", ...}`)
+	command.Flags().BoolVar(&options.json, "json", false, "print refused documents and the totals, or the --dry-run plan, as JSON")
 	return command
 }
 
@@ -675,21 +674,20 @@ func walkedFiles(directory string, seen func(directoriesFound, directoriesDone, 
 }
 
 // printSyncPlanJSON writes a dry run as one JSON line per upload, deletion and
-// tag change; a removed tag has no value.
+// tag change; a removed tag has a null value.
 func printSyncPlanJSON(w io.Writer, plan syncPlan, patch httpapi.IndexTagChanges) {
-	encoder := json.NewEncoder(w)
 	for _, file := range plan.uploads {
-		_ = encoder.Encode(map[string]string{"action": "upload", "key": file.key})
+		_ = encodeJSONLine(w, map[string]string{"action": "upload", "key": file.key})
 	}
 	for _, key := range plan.deletes {
-		_ = encoder.Encode(map[string]string{"action": "delete", "key": key})
+		_ = encodeJSONLine(w, map[string]string{"action": "delete", "key": key})
 	}
 	for _, key := range sortedTagKeys(httpapi.IndexTags(tagPatchKeys(patch))) {
-		if value, ok := patch[key].Get(); ok {
-			_ = encoder.Encode(map[string]string{"action": "tag", "key": key, "value": value})
-		} else {
-			_ = encoder.Encode(map[string]string{"action": "tag", "key": key})
+		var value *string
+		if v, ok := patch[key].Get(); ok {
+			value = &v
 		}
+		_ = encodeJSONLine(w, map[string]any{"action": "tag", "key": key, "value": value})
 	}
 }
 

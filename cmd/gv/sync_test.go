@@ -891,8 +891,8 @@ func TestSyncDryRunJSONPrintsOneLinePerChange(t *testing.T) {
 	want := `{"action":"upload","key":"changed.txt"}` + "\n" +
 		`{"action":"upload","key":"new.txt"}` + "\n" +
 		`{"action":"delete","key":"stale.txt"}` + "\n" +
-		`{"action":"tag","key":"git.branch"}` + "\n" +
-		`{"action":"tag","key":"git.commit"}` + "\n"
+		`{"action":"tag","key":"git.branch","value":null}` + "\n" +
+		`{"action":"tag","key":"git.commit","value":null}` + "\n"
 	if stdout.String() != want {
 		t.Fatalf("dry run output = %q, want %q", stdout.String(), want)
 	}
@@ -928,7 +928,7 @@ func TestSyncJSONReportsRefusedDocumentsAndTotals(t *testing.T) {
 	if err := runGv(a, stdout, stderr, "sync", "--json", dir, "acme/docs"); err == nil {
 		t.Fatal("sync succeeded with a refused document")
 	}
-	want := `{"key":"intro.md","error":{"code":"precondition_failed","message":"the document's precondition failed"}}` + "\n" +
+	want := `{"key":"intro.md","error":{"code":"precondition_failed","reason":"precondition","error":"the document's precondition failed"}}` + "\n" +
 		`{"uploaded":1,"bytes":4,"deleted":0,"failed":1}` + "\n"
 	if stdout.String() != want {
 		t.Fatalf("output = %q, want %q", stdout.String(), want)
@@ -956,5 +956,64 @@ func TestUploadJSONPrintsTotals(t *testing.T) {
 	var totals transferSummary
 	if err := json.Unmarshal(stdout.Bytes(), &totals); err != nil || totals.Uploaded < 1 || totals.Failed != 0 || strings.Count(stdout.String(), "\n") != 1 {
 		t.Fatalf("totals = %q, %v", stdout.String(), err)
+	}
+}
+
+func TestSyncDryRunJSONPrintsTheValueOfASetTag(t *testing.T) {
+	dir, git := gitRepoForTest(t)
+	writeFiles(t, dir, map[string]string{"a.md": "a\n"})
+	git("add", ".")
+	git("commit", "-q", "-m", "initial")
+	head := git("rev-parse", "HEAD")
+	a, stdout, stderr := startStack(t, newSyncStack())
+	if err := runGv(a, stdout, stderr, "sync", "--dry-run", "--json", dir, "acme/docs"); err != nil {
+		t.Fatalf("dry run: %v\n%s", err, stderr.String())
+	}
+	if want := `{"action":"tag","key":"git.commit","value":"` + head + `"}`; !strings.Contains(stdout.String(), want) {
+		t.Fatalf("dry run output = %q, want a line %s", stdout.String(), want)
+	}
+}
+
+// TestSyncJSONReportsARefusedDeletion has the index refuse one of two
+// deletions: its result is printed, and the totals count the other.
+func TestSyncJSONReportsARefusedDeletion(t *testing.T) {
+	dir, git := gitRepoForTest(t)
+	writeFiles(t, dir, map[string]string{"keep.txt": "keep\n", "old.md": "old\n", "stuck.md": "stuck\n"})
+	git("add", ".")
+	git("commit", "-q", "-m", "initial")
+	stack := newSyncStack()
+	a, stdout, stderr := startStack(t, stack)
+	if err := runGv(a, stdout, stderr, "sync", dir, "acme/docs"); err != nil {
+		t.Fatal(err)
+	}
+	git("rm", "-q", "old.md", "stuck.md")
+	git("commit", "-q", "-m", "remove")
+	stack.mu.Lock()
+	stack.refuse = map[string]bool{"stuck.md": true}
+	stack.mu.Unlock()
+	if err := runGv(a, stdout, stderr, "sync", "--json", dir, "acme/docs"); err == nil {
+		t.Fatal("sync succeeded with a refused deletion")
+	}
+	want := `{"key":"stuck.md","error":{"code":"precondition_failed","reason":"precondition","error":"the document's precondition failed"}}` + "\n" +
+		`{"uploaded":0,"bytes":0,"deleted":1,"failed":1}` + "\n"
+	if stdout.String() != want {
+		t.Fatalf("output = %q, want %q", stdout.String(), want)
+	}
+}
+
+// TestUploadJSONPrintsTotalsWhenEveryDocumentIsRefused checks that a run
+// that stored nothing but was refused still reports what happened.
+func TestUploadJSONPrintsTotalsWhenEveryDocumentIsRefused(t *testing.T) {
+	dir := plainDir(t)
+	writeFiles(t, dir, map[string]string{"a.txt": "a\n", "b.txt": "b\n"})
+	stack := newSyncStack()
+	stack.refuse = map[string]bool{"a.txt": true, "b.txt": true}
+	a, stdout, stderr := startStack(t, stack)
+	if err := runGv(a, stdout, stderr, "upload", "--recursive", "--json", dir, "--index", "acme/docs"); err == nil {
+		t.Fatal("upload succeeded with every document refused")
+	}
+	lines := strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n")
+	if len(lines) != 3 || lines[2] != `{"uploaded":0,"bytes":0,"deleted":0,"failed":2}` {
+		t.Fatalf("output = %q", stdout.String())
 	}
 }

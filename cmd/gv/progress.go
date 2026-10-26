@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/grepvine-ai/grepvine-cli/internal/httpapi"
 )
 
 const (
@@ -87,9 +89,18 @@ func (a *app) newStatus() *progress {
 	status := newProgress(a.stderr, a.isTTY)
 	if a.jsonOutput {
 		status.json = a.stdout
+		a.totals = transferSummary{}
 		status.totals = &a.totals
 	}
 	return status
+}
+
+// encodeJSONLine writes value as one line of JSON. Like the generated
+// marshalers, it leaves <, > and & as they are.
+func encodeJSONLine(w io.Writer, value any) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	return encoder.Encode(value)
 }
 
 // reportTotals prints the totals of a command run with --json, as its last
@@ -97,7 +108,7 @@ func (a *app) newStatus() *progress {
 // line of zeros never stands for a run that did not happen.
 func (a *app) reportTotals(err error) error {
 	if a.jsonOutput && (err == nil || a.totals != (transferSummary{})) {
-		_ = json.NewEncoder(a.stdout).Encode(a.totals)
+		_ = encodeJSONLine(a.stdout, a.totals)
 	}
 	return err
 }
@@ -251,25 +262,14 @@ type transferSummary struct {
 	Failed   int64 `json:"failed"`
 }
 
-// rejectedDocument is one document the service did not change.
-type rejectedDocument struct {
-	Key   string `json:"key"`
-	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
 // rejected counts a document the service did not change and, with --json,
-// reports it on stdout.
-func (p *progress) rejected(key, code, message string) {
+// reports its result on stdout.
+func (p *progress) rejected(result httpapi.MutationResult) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.failed++
 	if p.json != nil {
-		document := rejectedDocument{Key: key}
-		document.Error.Code, document.Error.Message = code, message
-		_ = json.NewEncoder(p.json).Encode(document)
+		_ = writeJSONLine(p.json, &result)
 	}
 }
 
