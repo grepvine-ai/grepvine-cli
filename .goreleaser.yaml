@@ -47,7 +47,7 @@ homebrew_casks:
       post:
         # The binaries are not notarized, so clear the quarantine flag that
         # would make macOS refuse to run gv.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gv"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/gv"]
           end
