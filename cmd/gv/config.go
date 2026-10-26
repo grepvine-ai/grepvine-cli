@@ -20,6 +20,9 @@ func (a *app) resolvedConfigPath() (string, error) {
 	if a.configPath != "" {
 		return a.configPath, nil
 	}
+	if path := a.getenv("GREPVINE_CONFIG"); path != "" {
+		return path, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("find home directory: %w", err)

@@ -36,7 +36,7 @@ Or download an archive for your platform from the [releases](https://github.com/
 gv login
 ```
 
-`gv login` opens a browser so you can approve this device. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
+`gv login` opens a browser so you can approve this device. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
 
 ## Use
 

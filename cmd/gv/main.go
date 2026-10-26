@@ -104,7 +104,7 @@ func newRootCommand(a *app) *cobra.Command {
 	root.SetIn(a.stdin)
 	root.SetOut(a.stdout)
 	root.SetErr(a.stderr)
-	root.PersistentFlags().StringVar(&a.configPath, "config", a.configPath, "configuration file (default ~/.grepvine/config.yaml)")
+	root.PersistentFlags().StringVar(&a.configPath, "config", a.configPath, "configuration file (default $GREPVINE_CONFIG, then ~/.grepvine/config.yaml)")
 	root.AddCommand(
 		newLoginCommand(a),
 		newLogoutCommand(a),
