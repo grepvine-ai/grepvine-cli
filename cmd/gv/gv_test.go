@@ -1911,3 +1911,38 @@ func TestProgressDoesNotExtrapolateAStoppedRate(t *testing.T) {
 		t.Fatalf("overflowing ETA: %s", got)
 	}
 }
+
+func TestSearchAndListJSON(t *testing.T) {
+	const result = `{"key":"a.txt","revision":"r1","line_number":1,"last_line_number":1,"line_start_offset":0,"line_end_offset":5,"text_start_offset":0,"text_line_number":1,"text":"hello","matches":[],"text_truncated":false,"matches_truncated":false}`
+	const document = `{"key":"a.txt","revision":"r1","content_bytes":5,"metadata":{},"updated_at":"2026-03-04T05:06:07Z","searchable":true}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/query") {
+			io.WriteString(w, `{"results":[`+result+`],"pagination":{"next_page_id":"","has_next":false}}`)
+			return
+		}
+		io.WriteString(w, `{"results":[`+document+`],"common_prefixes":["dir/"],"pagination":{"next_page_id":"","has_next":false}}`)
+	}))
+	defer server.Close()
+	a, stdout, _ := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+	root := newRootCommand(a)
+	root.SetArgs([]string{"search", "acme/docs", "hello", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != result+"\n" {
+		t.Fatalf("search --json = %q", got)
+	}
+	stdout.Reset()
+	root = newRootCommand(a)
+	root.SetArgs([]string{"list", "acme/docs", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != `{"prefix":"dir/"}`+"\n"+document+"\n" {
+		t.Fatalf("list --json = %q", got)
+	}
+}

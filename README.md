@@ -82,7 +82,7 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to listing commands for machine-readable output. Run `gv <command> --help` for every flag.
+Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to `search`, `list`, `whoami` and the listing commands for machine-readable output, one JSON object per line. Run `gv <command> --help` for every flag.
 
 ## Shell completion
 

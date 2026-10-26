@@ -99,6 +99,14 @@ func TestWhoamiPrintsTheSignedInUser(t *testing.T) {
 	}
 }
 
+func TestWhoamiJSON(t *testing.T) {
+	_, _, execute := newAdminServer(t, map[string]adminResponse{"GET /auth/me": {200, alice}})
+	stdout, _, err := execute("", "whoami", "--json")
+	if err != nil || stdout != alice+"\n" {
+		t.Fatalf("whoami --json = %q, %v", stdout, err)
+	}
+}
+
 func TestOrgCommands(t *testing.T) {
 	s, _, execute := newAdminServer(t, map[string]adminResponse{
 		"GET /organizations":            {200, `{"results":[` + acme + `],"pagination":{"next_page_id":"p2","has_next":true}}`},
