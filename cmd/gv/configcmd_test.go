@@ -18,11 +18,19 @@ func TestConfigCommand(t *testing.T) {
 		command.SetArgs(args)
 		return command.Execute()
 	}
+	// listed is the output of gv config ls with each row's columns one space apart.
+	listed := func() string {
+		var rows strings.Builder
+		for line := range strings.Lines(stdout.String()) {
+			rows.WriteString(strings.Join(strings.Fields(line), " ") + "\n")
+		}
+		return rows.String()
+	}
 
 	if err := execute("", "config", "ls"); err != nil {
 		t.Fatal(err)
 	}
-	if got := stdout.String(); !strings.Contains(got, "endpoint  https://api.grepvine.ai  default") || !strings.Contains(got, "api_key   -                        -") {
+	if got := listed(); !strings.Contains(got, "endpoint https://api.grepvine.ai default\n") || !strings.Contains(got, "api_key - -\n") || !strings.Contains(got, "organization - -\n") {
 		t.Fatalf("empty list:\n%s", got)
 	}
 	if err := execute("", "config", "get", "api_key"); err == nil || !strings.Contains(err.Error(), "gv config set api_key") {
@@ -53,7 +61,7 @@ func TestConfigCommand(t *testing.T) {
 	if err := execute("", "config", "ls"); err != nil {
 		t.Fatal(err)
 	}
-	if got := stdout.String(); !strings.Contains(got, "https://environment.example  GREPVINE_API_ENDPOINT") || !strings.Contains(got, "gv_secre****                 config file") || strings.Contains(got, "0123456789") {
+	if got := listed(); !strings.Contains(got, "endpoint https://environment.example GREPVINE_API_ENDPOINT\n") || !strings.Contains(got, "api_key gv_secre**** config file\n") || strings.Contains(got, "0123456789") {
 		t.Fatalf("list:\n%s", got)
 	}
 	if err := execute("", "config", "set", "endpoint", "https://other.example"); err != nil {
@@ -63,10 +71,21 @@ func TestConfigCommand(t *testing.T) {
 		t.Fatalf("no override note: %q", stderr.String())
 	}
 
+	if err := execute("", "config", "set", "organization", "example"); err != nil {
+		t.Fatal(err)
+	}
+	env["GREPVINE_ORGANIZATION"] = "other"
+	if err := execute("", "config", "get", "organization"); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "other\n" || !strings.Contains(stderr.String(), "GREPVINE_ORGANIZATION") {
+		t.Fatalf("organization = %q, %q", stdout.String(), stderr.String())
+	}
+
 	if err := execute("", "config", "unset", "api_key"); err != nil {
 		t.Fatal(err)
 	}
-	if cfg, _, _ = a.loadConfig(); cfg.APIKey != "" || cfg.Endpoint != "https://other.example" {
+	if cfg, _, _ = a.loadConfig(); cfg.APIKey != "" || cfg.Endpoint != "https://other.example" || cfg.Organization != "example" {
 		t.Fatalf("after unset %+v", cfg)
 	}
 

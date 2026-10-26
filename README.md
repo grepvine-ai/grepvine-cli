@@ -96,7 +96,7 @@ Manage organizations, members and API keys with `gv org`, `gv member` and `gv ke
 
 ### Default organization
 
-Set `organization` in `~/.grepvine/config.yaml`, or `GREPVINE_ORGANIZATION`, to omit the organization: `docs` then means `example/docs`, and `gv index ls`, `gv org info` and `gv member ls` need no argument. An explicit `ORGANIZATION/INDEX` still wins, and `GREPVINE_ORGANIZATION` wins over the file.
+Set `organization` in `~/.grepvine/config.yaml`, or `GREPVINE_ORGANIZATION`, to omit the organization: `docs` then means `example/docs`, and `gv index ls`, `gv org info` and `gv member ls` need no argument. An explicit `ORGANIZATION/INDEX` still wins, and `GREPVINE_ORGANIZATION` wins over the file. `gv config set organization example` saves it for you.
 
 ```yaml
 organization: example

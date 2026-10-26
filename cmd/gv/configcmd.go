@@ -39,6 +39,11 @@ var configKeys = []configKey{
 		secret: true,
 		field:  func(cfg *config) *string { return &cfg.APIKey },
 	},
+	{
+		name:  "organization",
+		env:   []string{"GREPVINE_ORGANIZATION"},
+		field: func(cfg *config) *string { return &cfg.Organization },
+	},
 }
 
 func findConfigKey(name string) (configKey, error) {
