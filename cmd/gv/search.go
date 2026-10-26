@@ -109,14 +109,17 @@ func (a *app) search(ctx context.Context, organization, index, pattern string, o
 	if options.before < 0 || options.before > maxContextLines || options.after < 0 || options.after > maxContextLines {
 		return 0, fmt.Errorf("context lines must be between 0 and %d", maxContextLines)
 	}
-	printer, err := a.newSearchPrinter(options)
-	if err != nil {
-		return 0, err
+	var printer *searchPrinter
+	if !options.json {
+		var err error
+		if printer, err = a.newSearchPrinter(options); err != nil {
+			return 0, err
+		}
+		// The last result's trailing context is held until the next result or
+		// the end, whichever comes first, including an end forced by --max-results
+		// or an error.
+		defer printer.finish()
 	}
-	// The last result's trailing context is held until the next result or
-	// the end, whichever comes first, including an end forced by --max-results
-	// or an error.
-	defer printer.finish()
 	client, _, _, err := a.client(true)
 	if err != nil {
 		return 0, err

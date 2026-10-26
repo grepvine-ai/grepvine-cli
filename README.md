@@ -82,7 +82,7 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to `search`, `list`, `whoami` and the listing commands for machine-readable output, one JSON object per line. Run `gv <command> --help` for every flag.
+Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to `search`, `list`, `whoami` and the `org`, `member`, `key` and `index` commands to print one JSON object per line, with fields as in the API. With `list --delimiter`, each common prefix is printed as `{"prefix": ...}` before the documents. In a `search` result, `matches[].offset` counts bytes from the start of the document, so subtract `text_start_offset` to find the match within `text`. Run `gv <command> --help` for every flag.
 
 ## Shell completion
 

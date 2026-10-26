@@ -111,7 +111,7 @@ func newListDocumentsCommand(a *app) *cobra.Command {
 	command.Flags().StringVar(&options.prefix, "prefix", "", "only list keys with this prefix")
 	command.Flags().StringVar(&options.delimiter, "delimiter", "", "fold keys into common prefixes at this delimiter")
 	command.Flags().IntVar(&options.amount, "amount", 200, "entries requested per page")
-	command.Flags().BoolVar(&options.json, "json", false, `print one JSON object per entry: a document, or {"prefix": ...} for a common prefix`)
+	command.Flags().BoolVar(&options.json, "json", false, `print one JSON object per entry: each common prefix as {"prefix": ...}, then each document`)
 	return command
 }
 
