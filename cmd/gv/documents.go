@@ -223,9 +223,13 @@ func friendlyAPIError(err error) error {
 }
 
 func responseError(response httpapi.Error, requestID httpapi.OptString) error {
+	hint := ""
+	if response.Reason == "authentication" {
+		hint = "; run `gv login` to sign in again"
+	}
 	id, _ := requestID.Get()
 	if id != "" {
-		return fmt.Errorf("%s (%s; request %s)", response.Error, response.Code, id)
+		return fmt.Errorf("%s (%s; request %s)%s", response.Error, response.Code, id, hint)
 	}
-	return fmt.Errorf("%s (%s)", response.Error, response.Code)
+	return fmt.Errorf("%s (%s)%s", response.Error, response.Code, hint)
 }

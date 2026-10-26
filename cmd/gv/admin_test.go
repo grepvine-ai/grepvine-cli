@@ -99,6 +99,17 @@ func TestWhoamiPrintsTheSignedInUser(t *testing.T) {
 	}
 }
 
+func TestRejectedCredentialsSuggestSigningInAgain(t *testing.T) {
+	rejected := adminResponse{401, `{"code":"unauthenticated","reason":"authentication","error":"authentication is required"}`}
+	_, _, execute := newAdminServer(t, map[string]adminResponse{"GET /auth/me": rejected, "GET /organizations": rejected})
+	for _, args := range [][]string{{"whoami"}, {"org", "ls"}} {
+		_, _, err := execute("", args...)
+		if err == nil || !strings.Contains(err.Error(), "request req-1); run `gv login` to sign in again") {
+			t.Errorf("%v: err = %v", args, err)
+		}
+	}
+}
+
 func TestOrgCommands(t *testing.T) {
 	s, _, execute := newAdminServer(t, map[string]adminResponse{
 		"GET /organizations":            {200, `{"results":[` + acme + `],"pagination":{"next_page_id":"p2","has_next":true}}`},

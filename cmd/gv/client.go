@@ -49,9 +49,5 @@ func apiEndpoint(endpoint string) string {
 }
 
 func publicAPIError(response *httpapi.ErrorStatusCodeWithHeaders) error {
-	requestID, _ := response.XRequestID.Get()
-	if requestID != "" {
-		return fmt.Errorf("%s (%s; request %s)", response.Response.Error, response.Response.Code, requestID)
-	}
-	return fmt.Errorf("%s (%s)", response.Response.Error, response.Response.Code)
+	return responseError(response.Response, response.XRequestID)
 }
