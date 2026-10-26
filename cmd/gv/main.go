@@ -119,6 +119,7 @@ func newRootCommand(a *app) *cobra.Command {
 		newOrgCommand(a),
 		newMemberCommand(a),
 		newKeyCommand(a),
+		newConfigCommand(a),
 	)
 	return root
 }
