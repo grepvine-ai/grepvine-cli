@@ -13,6 +13,7 @@ import (
 
 type searchOptions struct {
 	fixed      bool
+	json       bool
 	ignoreCase bool
 	wholeWord  bool
 	multiline  bool
@@ -74,6 +75,7 @@ func newSearchCommand(a *app) *cobra.Command {
 	flags.IntVarP(&options.context, "context", "C", 0, "print this many lines before and after each match (at most 20)")
 	flags.IntVar(&options.pageSize, "amount", 200, "results requested per page")
 	flags.IntVar(&options.maxResults, "max-results", 0, "stop after this many results (zero means all)")
+	flags.BoolVar(&options.json, "json", false, "print one JSON object per result instead of text")
 	flags.StringVar(&options.color, "color", "auto", "colorize output: auto, always or never (auto colors a terminal unless NO_COLOR is set)")
 	return command
 }
@@ -107,14 +109,17 @@ func (a *app) search(ctx context.Context, organization, index, pattern string, o
 	if options.before < 0 || options.before > maxContextLines || options.after < 0 || options.after > maxContextLines {
 		return 0, fmt.Errorf("context lines must be between 0 and %d", maxContextLines)
 	}
-	printer, err := a.newSearchPrinter(options)
-	if err != nil {
-		return 0, err
+	var printer *searchPrinter
+	if !options.json {
+		var err error
+		if printer, err = a.newSearchPrinter(options); err != nil {
+			return 0, err
+		}
+		// The last result's trailing context is held until the next result or
+		// the end, whichever comes first, including an end forced by --max-results
+		// or an error.
+		defer printer.finish()
 	}
-	// The last result's trailing context is held until the next result or
-	// the end, whichever comes first, including an end forced by --max-results
-	// or an error.
-	defer printer.finish()
 	client, _, _, err := a.client(true)
 	if err != nil {
 		return 0, err
@@ -160,7 +165,13 @@ func (a *app) search(ctx context.Context, organization, index, pattern string, o
 			return total, fmt.Errorf("search: %w", friendlyAPIError(err))
 		}
 		for _, result := range page.Results {
-			printer.print(result)
+			if options.json {
+				if err := writeJSONLine(a.stdout, &result); err != nil {
+					return total, err
+				}
+			} else {
+				printer.print(result)
+			}
 			total++
 			if options.maxResults > 0 && total >= options.maxResults {
 				return total, nil

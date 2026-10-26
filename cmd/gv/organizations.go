@@ -11,7 +11,8 @@ import (
 )
 
 func newWhoamiCommand(a *app) *cobra.Command {
-	return &cobra.Command{
+	var asJSON bool
+	command := &cobra.Command{
 		Use:   "whoami",
 		Short: "Show the signed-in user",
 		Args:  cobra.NoArgs,
@@ -26,6 +27,9 @@ func newWhoamiCommand(a *app) *cobra.Command {
 			}
 			switch value := response.(type) {
 			case *httpapi.GetCurrentUserOKHeaders:
+				if asJSON {
+					return writeJSONLine(a.stdout, &value.Response)
+				}
 				fmt.Fprintf(a.stdout, "%s <%s>\n", value.Response.Name, value.Response.Email)
 				return nil
 			case *httpapi.UnauthorizedHeaders:
@@ -35,6 +39,8 @@ func newWhoamiCommand(a *app) *cobra.Command {
 			}
 		},
 	}
+	command.Flags().BoolVar(&asJSON, "json", false, "print the user as JSON")
+	return command
 }
 
 func newOrgCommand(a *app) *cobra.Command {

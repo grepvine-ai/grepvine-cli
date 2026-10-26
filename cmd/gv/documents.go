@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -90,6 +91,7 @@ type listDocumentsOptions struct {
 	prefix    string
 	delimiter string
 	amount    int
+	json      bool
 }
 
 func newListDocumentsCommand(a *app) *cobra.Command {
@@ -109,6 +111,7 @@ func newListDocumentsCommand(a *app) *cobra.Command {
 	command.Flags().StringVar(&options.prefix, "prefix", "", "only list keys with this prefix")
 	command.Flags().StringVar(&options.delimiter, "delimiter", "", "fold keys into common prefixes at this delimiter")
 	command.Flags().IntVar(&options.amount, "amount", 200, "entries requested per page")
+	command.Flags().BoolVar(&options.json, "json", false, `print one JSON object per entry: each common prefix as {"prefix": ...}, then each document`)
 	return command
 }
 
@@ -136,13 +139,26 @@ func (a *app) listDocuments(ctx context.Context, organization, index string, opt
 		if err != nil {
 			return fmt.Errorf("list documents: %w", friendlyAPIError(err))
 		}
-		entries := append([]string(nil), page.CommonPrefixes...)
-		for _, document := range page.Results {
-			entries = append(entries, document.Key)
-		}
-		sort.Strings(entries)
-		for _, entry := range entries {
-			fmt.Fprintln(a.stdout, entry)
+		if options.json {
+			for _, prefix := range page.CommonPrefixes {
+				if err := writeJSONLine(a.stdout, prefixLine(prefix)); err != nil {
+					return err
+				}
+			}
+			for i := range page.Results {
+				if err := writeJSONLine(a.stdout, &page.Results[i]); err != nil {
+					return err
+				}
+			}
+		} else {
+			entries := append([]string(nil), page.CommonPrefixes...)
+			for _, document := range page.Results {
+				entries = append(entries, document.Key)
+			}
+			sort.Strings(entries)
+			for _, entry := range entries {
+				fmt.Fprintln(a.stdout, entry)
+			}
 		}
 		if !page.Pagination.HasNext {
 			return nil
@@ -228,4 +244,11 @@ func responseError(response httpapi.Error, requestID httpapi.OptString) error {
 		return fmt.Errorf("%s (%s; request %s)", response.Error, response.Code, id)
 	}
 	return fmt.Errorf("%s (%s)", response.Error, response.Code)
+}
+
+// prefixLine is a common prefix in the JSON output of list.
+type prefixLine string
+
+func (p prefixLine) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string{"prefix": string(p)})
 }

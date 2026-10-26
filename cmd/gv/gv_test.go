@@ -1911,3 +1911,115 @@ func TestProgressDoesNotExtrapolateAStoppedRate(t *testing.T) {
 		t.Fatalf("overflowing ETA: %s", got)
 	}
 }
+
+func TestSearchAndListJSON(t *testing.T) {
+	const result = `{"key":"a.txt","revision":"r1","line_number":1,"last_line_number":1,"line_start_offset":0,"line_end_offset":5,"text_start_offset":0,"text_line_number":1,"text":"hello","matches":[],"text_truncated":false,"matches_truncated":false}`
+	const document = `{"key":"a.txt","revision":"r1","content_bytes":5,"metadata":{},"updated_at":"2026-03-04T05:06:07Z","searchable":true}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/query") {
+			io.WriteString(w, `{"results":[`+result+`],"pagination":{"next_page_id":"","has_next":false}}`)
+			return
+		}
+		io.WriteString(w, `{"results":[`+document+`],"common_prefixes":["dir/"],"pagination":{"next_page_id":"","has_next":false}}`)
+	}))
+	defer server.Close()
+	a, stdout, _ := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+	root := newRootCommand(a)
+	root.SetArgs([]string{"search", "acme/docs", "hello", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != result+"\n" {
+		t.Fatalf("search --json = %q", got)
+	}
+	stdout.Reset()
+	root = newRootCommand(a)
+	root.SetArgs([]string{"list", "acme/docs", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != `{"prefix":"dir/"}`+"\n"+document+"\n" {
+		t.Fatalf("list --json = %q", got)
+	}
+}
+
+func TestSearchJSONNoMatchContextAndMaxResults(t *testing.T) {
+	result := func(key string) string {
+		return `{"key":"` + key + `","revision":"r1","line_number":2,"last_line_number":2,"line_start_offset":4,"line_end_offset":9,"text_start_offset":4,"text_line_number":2,"text":"hello","matches":[],"text_truncated":false,"matches_truncated":false,"lines_before":[{"line_number":1,"text":"before","text_truncated":false}]}`
+	}
+	var requests []map[string]any
+	empty := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&request)
+		requests = append(requests, request)
+		w.Header().Set("Content-Type", "application/json")
+		if empty {
+			io.WriteString(w, `{"results":[],"pagination":{"next_page_id":"","has_next":false}}`)
+			return
+		}
+		io.WriteString(w, `{"results":[`+result("a.txt")+`,`+result("b.txt")+`],"pagination":{"next_page_id":"","has_next":false}}`)
+	}))
+	defer server.Close()
+	a, stdout, _ := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+
+	root := newRootCommand(a)
+	root.SetArgs([]string{"search", "acme/docs", "hello", "--json", "-B", "1", "--max-results", "1"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != result("a.txt")+"\n" {
+		t.Fatalf("search --json -B 1 --max-results 1 = %q", got)
+	}
+	if requests[0]["lines_before"] != float64(1) {
+		t.Fatalf("query request = %#v", requests[0])
+	}
+	if a.exitCode != 0 {
+		t.Fatalf("exit code = %d", a.exitCode)
+	}
+
+	empty = true
+	stdout.Reset()
+	root = newRootCommand(a)
+	root.SetArgs([]string{"search", "acme/docs", "nothing", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.Len() != 0 || a.exitCode != 1 {
+		t.Fatalf("no match: output %q, exit code %d", stdout.String(), a.exitCode)
+	}
+}
+
+func TestListJSONAcrossPages(t *testing.T) {
+	const first = `{"key":"a.txt","revision":"r1","content_bytes":1,"metadata":{},"updated_at":"2026-03-04T05:06:07Z","searchable":true}`
+	const second = `{"key":"z/b.txt","revision":"r2","content_bytes":2,"metadata":{},"updated_at":"2026-03-04T05:06:07Z","searchable":true}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("page") == "p2" {
+			io.WriteString(w, `{"results":[`+second+`],"common_prefixes":["y/"],"pagination":{"next_page_id":"","has_next":false}}`)
+			return
+		}
+		io.WriteString(w, `{"results":[`+first+`],"common_prefixes":["x/"],"pagination":{"next_page_id":"p2","has_next":true}}`)
+	}))
+	defer server.Close()
+	a, stdout, _ := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+	root := newRootCommand(a)
+	root.SetArgs([]string{"list", "acme/docs", "--delimiter", "/", "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := `{"prefix":"x/"}` + "\n" + first + "\n" + `{"prefix":"y/"}` + "\n" + second + "\n"
+	if got := stdout.String(); got != want {
+		t.Fatalf("list --json = %q, want %q", got, want)
+	}
+}
