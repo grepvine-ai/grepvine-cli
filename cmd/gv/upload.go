@@ -93,7 +93,7 @@ type uploadRecord struct {
 
 func newUploadCommand(a *app) *cobra.Command {
 	var target string
-	var recursive, records, archive bool
+	var recursive, records, archive, asJSON bool
 	var concurrency int
 	var compress string
 	command := &cobra.Command{
@@ -118,7 +118,9 @@ writing them to disk. REMOTE_PATH, when given, prefixes every key. With
 --zip and --records together, the archive's .ndjson and .jsonl files, with
 or without .gz, are imported as records.`,
 		Args: cobra.RangeArgs(1, 4),
-		RunE: func(command *cobra.Command, args []string) error {
+		RunE: func(command *cobra.Command, args []string) (err error) {
+			a.jsonOutput, a.totals = asJSON, transferSummary{}
+			defer func() { err = a.reportTotals(err) }()
 			organization, index, source, prefix, err := uploadArguments(args, target)
 			if err != nil {
 				return err
@@ -163,6 +165,7 @@ or without .gz, are imported as records.`,
 			return a.upload(command.Context(), organization, index, source, prefix)
 		},
 	}
+	command.Flags().BoolVar(&asJSON, "json", false, "print refused documents and the totals as JSON")
 	command.Flags().StringVar(&target, "index", "", "destination ORGANIZATION/INDEX")
 	command.Flags().BoolVarP(&recursive, "recursive", "r", false, "recursively upload a directory or an S3 prefix")
 	command.Flags().BoolVar(&records, "records", false, "read documents from NDJSON record files instead of uploading the files")
@@ -208,7 +211,7 @@ func (a *app) upload(ctx context.Context, organization, index, source, prefix st
 	}
 	recursive := sourceInfo.IsDir()
 
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	a.status.Store(status)
 	defer a.status.Store(nil)
 	status.start()
@@ -402,6 +405,7 @@ func batchFailures(results []httpapi.MutationResult) []httpapi.MutationResult {
 func reportRejected(status *progress, result httpapi.MutationResult, action string) {
 	reason := result.Error.Value
 	status.printf("gv: %s was not %s: %s (%s)\n", result.Key, action, reason.Error, reason.Code)
+	status.rejected(result)
 }
 
 func normalizeRemotePath(value string, allowEmpty bool) (string, error) {
@@ -715,7 +719,7 @@ func (b *chunkBudget) consumed() int {
 // interrupted attempt did not reach.
 func (a *app) sendUploadJob(ctx context.Context, client *httpapi.Client, organization, index string, job uploadJob) ([]httpapi.MutationResult, error) {
 	if job.data == nil {
-		return nil, a.sendLargeFile(ctx, client, organization, index, job.files[0], job.content)
+		return a.sendLargeFile(ctx, client, organization, index, job.files[0], job.content)
 	}
 	idempotency := uploadID(organization, index, job.data)
 	var throttledWait time.Duration
@@ -760,8 +764,9 @@ func (a *app) sendUploadJob(ctx context.Context, client *httpapi.Client, organiz
 }
 
 // sendLargeFile publishes one file on its own. content is the file when it was
-// already read; otherwise every attempt reads it again from its source.
-func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organization, index string, file uploadFile, content []byte) error {
+// already read; otherwise every attempt reads it again from its source. A file
+// the index refused is returned as a failed result, as a batch reports one.
+func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organization, index string, file uploadFile, content []byte) ([]httpapi.MutationResult, error) {
 	values := map[string]any{
 		"path":  map[string]any{"type": "string", "value": file.key},
 		"size":  map[string]any{"type": "integer", "value": file.size},
@@ -772,11 +777,11 @@ func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organiz
 	var throttledWait time.Duration
 	for attempt := 0; attempt < uploadRetryAttempts; attempt++ {
 		if err := a.awaitThrottle(ctx); err != nil {
-			return err
+			return nil, err
 		}
 		handle, err := openUploadFile(ctx, file, content)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		response, callErr := client.PutDocument(ctx, &httpapi.PutDocumentFormMultipart{
 			Key: file.key, Metadata: httpapi.NewOptString(string(metadata)),
@@ -788,34 +793,34 @@ func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organiz
 		if callErr == nil {
 			switch result := response.(type) {
 			case *httpapi.MutationResult:
-				return nil
+				return nil, nil
 			case *httpapi.ConflictHeaders:
-				return fmt.Errorf("upload conflict: %s", result.Response.Error)
+				return nil, fmt.Errorf("upload conflict: %s", result.Response.Error)
 			case *httpapi.PreconditionFailedHeaders:
-				return fmt.Errorf("upload precondition failed: %s", result.Response.Error)
+				return []httpapi.MutationResult{{Key: file.key, Error: httpapi.NewOptError(result.Response)}}, nil
 			default:
-				return fmt.Errorf("unexpected upload response %T", response)
+				return nil, fmt.Errorf("unexpected upload response %T", response)
 			}
 		}
 		if again, throttleErr := a.throttled(ctx, callErr, &throttledWait); throttleErr != nil {
-			return fmt.Errorf("upload %s: %w", file.key, throttleErr)
+			return nil, fmt.Errorf("upload %s: %w", file.key, throttleErr)
 		} else if again {
 			attempt--
 			continue
 		}
 		retry, public := classifyUploadError(callErr)
 		if !retry {
-			return public
+			return nil, public
 		}
 		callErr = public
 		if attempt == uploadRetryAttempts-1 {
-			return fmt.Errorf("upload %s: %w", file.key, callErr)
+			return nil, fmt.Errorf("upload %s: %w", file.key, callErr)
 		}
 		if err := a.sleep(ctx, min(time.Second<<attempt, 10*time.Second)); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // openUploadFile opens the content of a file published on its own.

@@ -31,7 +31,7 @@ func (a *app) uploadZip(ctx context.Context, organization, index, source, prefix
 	}
 	defer archive.Close()
 
-	status := newProgress(a.stderr, a.isTTY)
+	status := a.newStatus()
 	a.status.Store(status)
 	defer a.status.Store(nil)
 	status.start()

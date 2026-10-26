@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -111,7 +110,7 @@ func newListDocumentsCommand(a *app) *cobra.Command {
 	command.Flags().StringVar(&options.prefix, "prefix", "", "only list keys with this prefix")
 	command.Flags().StringVar(&options.delimiter, "delimiter", "", "fold keys into common prefixes at this delimiter")
 	command.Flags().IntVar(&options.amount, "amount", 200, "entries requested per page")
-	command.Flags().BoolVar(&options.json, "json", false, `print one JSON object per entry: each common prefix as {"prefix": ...}, then each document`)
+	command.Flags().BoolVar(&options.json, "json", false, "print one JSON object per prefix or document")
 	return command
 }
 
@@ -141,7 +140,7 @@ func (a *app) listDocuments(ctx context.Context, organization, index string, opt
 		}
 		if options.json {
 			for _, prefix := range page.CommonPrefixes {
-				if err := writeJSONLine(a.stdout, prefixLine(prefix)); err != nil {
+				if err := writeJSONLine(a.stdout, map[string]string{"prefix": prefix}); err != nil {
 					return err
 				}
 			}
@@ -244,11 +243,4 @@ func responseError(response httpapi.Error, requestID httpapi.OptString) error {
 		return fmt.Errorf("%s (%s; request %s)", response.Error, response.Code, id)
 	}
 	return fmt.Errorf("%s (%s)", response.Error, response.Code)
-}
-
-// prefixLine is a common prefix in the JSON output of list.
-type prefixLine string
-
-func (p prefixLine) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]string{"prefix": string(p)})
 }

@@ -452,13 +452,15 @@ func (a *app) printIndex(index *httpapi.Index, asJSON bool) error {
 	return nil
 }
 
-func writeJSONLine(w io.Writer, value json.Marshaler) error {
-	encoded, err := value.MarshalJSON()
-	if err != nil {
+// writeJSONLine writes value as one line of JSON. Like the generated
+// marshalers, it leaves <, > and & as they are.
+func writeJSONLine(w io.Writer, value any) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
 		return fmt.Errorf("encode JSON: %w", err)
 	}
-	_, err = fmt.Fprintf(w, "%s\n", encoded)
-	return err
+	return nil
 }
 
 // descriptionSummary is the first non-empty line of a description, with

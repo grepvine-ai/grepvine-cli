@@ -82,7 +82,17 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Add `--json` to `search`, `list`, `whoami` and the `org`, `member`, `key` and `index` commands to print one JSON object per line, with fields as in the API. With `list --delimiter`, each common prefix is printed as `{"prefix": ...}` before the documents. In a `search` result, `matches[].offset` counts bytes from the start of the document, so subtract `text_start_offset` to find the match within `text`. Run `gv <command> --help` for every flag.
+Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Run `gv <command> --help` for every flag.
+
+## JSON output
+
+Add `--json` to print one JSON object per line, with fields as in the API:
+
+- `search`: one result per line. `matches[].offset` counts bytes from the start of the document; subtract `text_start_offset` to find the match within `text`.
+- `list`: one document per line; with `--delimiter`, each common prefix comes first as `{"prefix": ...}`.
+- `whoami`, and the `org`, `member`, `key` and `index` commands: the objects they show.
+- `upload` and `sync`: each document the index refused, as the API reports it, then a last line of totals: `{"uploaded", "bytes", "deleted", "failed"}`. A refused upload stops `sync` before it deletes anything, so one run reports refused uploads or refused deletions, not both.
+- `sync --dry-run`: each planned change, as `{"action": "upload"|"delete"|"tag", "key", ...}`. A tag change carries its new `value`, or `null` when the tag is removed.
 
 ## Shell completion
 

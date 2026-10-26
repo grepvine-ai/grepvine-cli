@@ -103,3 +103,23 @@ func TestUploadReportsEveryDocumentNotStoredAndFails(t *testing.T) {
 		t.Fatalf("objects = %v", got)
 	}
 }
+
+// TestLargeFileRefusalIsReportedAsAFailedResult checks that a file sent on
+// its own and refused by the index comes back as a failed result, as a
+// batch reports one, rather than ending the upload.
+func TestLargeFileRefusalIsReportedAsAFailedResult(t *testing.T) {
+	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		_, _ = io.Copy(io.Discard, request.Body)
+		_ = request.Body.Close()
+		return &http.Response{StatusCode: http.StatusPreconditionFailed, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"code":"precondition_failed","reason":"precondition_failed","error":"the document's precondition failed"}`))}, nil
+	})
+	client, err := httpapi.NewClient("http://api.test/v1", credentials{key: "test-key"}, httpapi.WithClient(&http.Client{Transport: transport}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &app{}
+	failed, err := a.sendUploadJob(t.Context(), client, "acme", "index", uploadJob{files: []uploadFile{{key: "big.bin", size: 5}}, content: []byte("large"), bytes: 5})
+	if err != nil || len(failed) != 1 || failed[0].Key != "big.bin" || failed[0].Error.Value.Code != "precondition_failed" {
+		t.Fatalf("failed = %+v, err = %v", failed, err)
+	}
+}
