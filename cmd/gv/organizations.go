@@ -107,16 +107,20 @@ func newOrgListCommand(a *app) *cobra.Command {
 func newOrgInfoCommand(a *app) *cobra.Command {
 	var asJSON bool
 	command := &cobra.Command{
-		Use:     "info ORGANIZATION",
+		Use:     "info [ORGANIZATION]",
 		Aliases: []string{"show", "get"},
 		Short:   "Show an organization",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
+			organization, err := a.organizationArgument(args)
+			if err != nil {
+				return err
+			}
 			client, _, _, err := a.client(true)
 			if err != nil {
 				return err
 			}
-			response, err := client.GetOrganization(command.Context(), httpapi.GetOrganizationParams{Organization: httpapi.Name(args[0])})
+			response, err := client.GetOrganization(command.Context(), httpapi.GetOrganizationParams{Organization: httpapi.Name(organization)})
 			if err != nil {
 				return fmt.Errorf("get organization: %w", friendlyAPIError(err))
 			}

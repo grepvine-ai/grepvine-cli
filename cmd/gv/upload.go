@@ -121,7 +121,7 @@ or without .gz, are imported as records.`,
 		RunE: func(command *cobra.Command, args []string) (err error) {
 			a.jsonOutput, a.totals = asJSON, transferSummary{}
 			defer func() { err = a.reportTotals(err) }()
-			organization, index, source, prefix, err := uploadArguments(args, target)
+			organization, index, source, prefix, err := a.uploadArguments(args, target)
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ or without .gz, are imported as records.`,
 	return command
 }
 
-func uploadArguments(args []string, target string) (string, string, string, string, error) {
+func (a *app) uploadArguments(args []string, target string) (string, string, string, string, error) {
 	if target == "" {
 		if len(args) < 3 {
 			return "", "", "", "", errors.New("--index ORGANIZATION/INDEX is required")
@@ -189,9 +189,9 @@ func uploadArguments(args []string, target string) (string, string, string, stri
 	if len(args) > 2 {
 		return "", "", "", "", errors.New("upload accepts SOURCE and an optional REMOTE_PATH")
 	}
-	organization, index, ok := strings.Cut(target, "/")
-	if !ok || organization == "" || index == "" || strings.Contains(index, "/") {
-		return "", "", "", "", errors.New("index must be ORGANIZATION/INDEX")
+	organization, index, err := a.parseIndexReference(target)
+	if err != nil {
+		return "", "", "", "", err
 	}
 	prefix := ""
 	if len(args) == 2 {

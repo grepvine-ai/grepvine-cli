@@ -114,6 +114,74 @@ func TestConfigPrecedenceAndPermissions(t *testing.T) {
 	}
 }
 
+// TestDefaultOrganization omits ORGANIZATION from index references and from
+// commands that take only an organization, with the default from the
+// configuration file or GREPVINE_ORGANIZATION.
+func TestDefaultOrganization(t *testing.T) {
+	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}, indexes: map[string]*httpapi.Index{}}
+	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	a, stdout, _ := testApp(t, server.URL+"/v1")
+	execute := func(args ...string) error {
+		stdout.Reset()
+		command := newRootCommand(a)
+		command.SetArgs(args)
+		return command.Execute()
+	}
+
+	if err := saveConfig(a.configPath, config{APIKey: "test-key"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute("index", "info", "docs"); err == nil || !strings.Contains(err.Error(), "set a default organization") {
+		t.Fatalf("bare index without a default error = %v", err)
+	}
+	if err := execute("index", "ls"); err == nil || !strings.Contains(err.Error(), "pass ORGANIZATION") {
+		t.Fatalf("ls without a default error = %v", err)
+	}
+
+	if err := saveConfig(a.configPath, config{APIKey: "test-key", Organization: "acme"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute("index", "create", "docs"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "Index:     acme/docs\n") {
+		t.Fatalf("create output = %q", stdout.String())
+	}
+	if err := execute("index", "ls"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "acme/docs ") {
+		t.Fatalf("ls output = %q", stdout.String())
+	}
+
+	// An explicit ORGANIZATION/INDEX wins over the default, and
+	// GREPVINE_ORGANIZATION wins over the configuration file.
+	for _, test := range []struct{ environment, reference, organization string }{
+		{"", "docs", "acme"},
+		{"", "other/docs", "other"},
+		{"beta", "docs", "beta"},
+	} {
+		a.getenv = func(name string) string {
+			if name == "GREPVINE_ORGANIZATION" {
+				return test.environment
+			}
+			return ""
+		}
+		organization, index, err := a.parseIndexReference(test.reference)
+		if err != nil || organization != test.organization || index != "docs" {
+			t.Fatalf("%+v: got %q %q %v", test, organization, index, err)
+		}
+	}
+	if _, _, err := a.parseIndexReference("acme/docs/extra"); err == nil {
+		t.Fatal("parsed a reference with two slashes")
+	}
+}
+
 func TestCLIAgainstInProcessService(t *testing.T) {
 	stack := &fakeService{objects: map[string]string{}, revisions: map[string]string{}}
 	handler, err := httpapi.NewServer(stack, stack, httpapi.WithPathPrefix("/v1"))
@@ -442,6 +510,9 @@ func TestDeviceLoginCapturesEnvironmentEndpoint(t *testing.T) {
 	}))
 	defer server.Close()
 	a, stdout, _ := testApp(t, server.URL+"/v1")
+	if err := saveConfig(a.configPath, config{APIKey: "old-key", Organization: "acme"}); err != nil {
+		t.Fatal(err)
+	}
 	if err := a.login(t.Context(), "gv"); err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +520,8 @@ func TestDeviceLoginCapturesEnvironmentEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Endpoint != server.URL+"/v1" || cfg.APIKey != "secret-device-key" {
+	// Login replaces the key and keeps the default organization.
+	if cfg.Endpoint != server.URL+"/v1" || cfg.APIKey != "secret-device-key" || cfg.Organization != "acme" {
 		t.Fatalf("saved config = %+v", cfg)
 	}
 	if !strings.Contains(stdout.String(), "ABCD-EFGH") || polls != 2 {

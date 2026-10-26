@@ -38,11 +38,15 @@ func newMemberCommand(a *app) *cobra.Command {
 func newMemberListCommand(a *app) *cobra.Command {
 	var asJSON bool
 	command := &cobra.Command{
-		Use:     "ls ORGANIZATION",
+		Use:     "ls [ORGANIZATION]",
 		Aliases: []string{"list"},
 		Short:   "List the members of an organization and their roles",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
+			organization, err := a.organizationArgument(args)
+			if err != nil {
+				return err
+			}
 			client, _, _, err := a.client(true)
 			if err != nil {
 				return err
@@ -51,7 +55,7 @@ func newMemberListCommand(a *app) *cobra.Command {
 			if !asJSON {
 				fmt.Fprintln(table, "USER\tEMAIL\tROLE\tADDED")
 			}
-			params := httpapi.ListOrganizationMembersParams{Organization: httpapi.Name(args[0])}
+			params := httpapi.ListOrganizationMembersParams{Organization: httpapi.Name(organization)}
 			for {
 				page, err := client.ListOrganizationMembers(command.Context(), params)
 				if err != nil {
