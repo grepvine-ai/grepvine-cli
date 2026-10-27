@@ -10,11 +10,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// config is the configuration file. Each field is a setting: yaml names
+// it, env lists the environment variables that override it, first match
+// wins, and secret keeps gv config from printing it in full.
 type config struct {
-	Endpoint     string `yaml:"endpoint,omitempty"`
-	APIKey       string `yaml:"api_key,omitempty"`
-	Organization string `yaml:"organization,omitempty"`
+	// GREPVINE_ENDPOINT is the shorter pre-beta spelling, kept as an alias.
+	Endpoint     string `yaml:"endpoint,omitempty" env:"GREPVINE_API_ENDPOINT,GREPVINE_ENDPOINT"`
+	APIKey       string `yaml:"api_key,omitempty" env:"GREPVINE_API_KEY" secret:"true"`
+	Organization string `yaml:"organization,omitempty" env:"GREPVINE_ORGANIZATION"`
 }
+
+// configDefaults holds the values used when neither the environment nor the
+// file sets a setting.
+var configDefaults = config{Endpoint: defaultEndpoint}
 
 func (a *app) resolvedConfigPath() (string, error) {
 	if a.configPath != "" {
@@ -100,24 +108,11 @@ func (a *app) endpointAndKey() (config, string, error) {
 	if err != nil {
 		return config{}, path, err
 	}
-	endpoint := strings.TrimRight(a.getenv("GREPVINE_API_ENDPOINT"), "/")
-	if endpoint == "" {
-		// Keep the shorter pre-beta spelling as a compatibility alias.
-		endpoint = strings.TrimRight(a.getenv("GREPVINE_ENDPOINT"), "/")
+	var resolved config
+	for _, key := range configKeys {
+		value, _ := a.resolve(key, cfg)
+		key.field(&resolved).SetString(value)
 	}
-	if endpoint == "" {
-		endpoint = strings.TrimRight(cfg.Endpoint, "/")
-	}
-	if endpoint == "" {
-		endpoint = defaultEndpoint
-	}
-	key := a.getenv("GREPVINE_API_KEY")
-	if key == "" {
-		key = cfg.APIKey
-	}
-	organization := a.getenv("GREPVINE_ORGANIZATION")
-	if organization == "" {
-		organization = cfg.Organization
-	}
-	return config{Endpoint: endpoint, APIKey: key, Organization: organization}, path, nil
+	resolved.Endpoint = strings.TrimRight(resolved.Endpoint, "/")
+	return resolved, path, nil
 }

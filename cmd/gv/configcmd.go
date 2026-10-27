@@ -6,44 +6,45 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"reflect"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 )
 
-// configKey is one setting that gv config can show and change. Adding a
-// setting to the configuration file means adding an entry to configKeys.
+// configKey is one setting of the configuration file, as its config field
+// and tags describe it. Adding a setting means adding a field to config.
 type configKey struct {
-	name string
-	// env lists the environment variables that override the file, first
-	// match wins.
-	env          []string
-	defaultValue string
-	secret       bool
-	field        func(*config) *string
-	check        func(string) error
+	name   string
+	env    []string
+	secret bool
+	index  int
 }
 
-var configKeys = []configKey{
-	{
-		name:         "endpoint",
-		env:          []string{"GREPVINE_API_ENDPOINT", "GREPVINE_ENDPOINT"},
-		defaultValue: defaultEndpoint,
-		field:        func(cfg *config) *string { return &cfg.Endpoint },
-		check:        checkEndpoint,
-	},
-	{
-		name:   "api_key",
-		env:    []string{"GREPVINE_API_KEY"},
-		secret: true,
-		field:  func(cfg *config) *string { return &cfg.APIKey },
-	},
-	{
-		name:  "organization",
-		env:   []string{"GREPVINE_ORGANIZATION"},
-		field: func(cfg *config) *string { return &cfg.Organization },
-	},
+func (k configKey) field(cfg *config) reflect.Value {
+	return reflect.ValueOf(cfg).Elem().Field(k.index)
+}
+
+var configKeys = func() []configKey {
+	fields := reflect.TypeFor[config]()
+	keys := make([]configKey, fields.NumField())
+	for i := range keys {
+		field := fields.Field(i)
+		name, _, _ := strings.Cut(field.Tag.Get("yaml"), ",")
+		keys[i] = configKey{
+			name:   name,
+			env:    strings.Split(field.Tag.Get("env"), ","),
+			secret: field.Tag.Get("secret") == "true",
+			index:  i,
+		}
+	}
+	return keys
+}()
+
+// configChecks validates a value before gv config set saves it.
+var configChecks = map[string]func(string) error{
+	"endpoint": checkEndpoint,
 }
 
 func findConfigKey(name string) (configKey, error) {
@@ -73,11 +74,12 @@ func (a *app) resolve(key configKey, cfg config) (value, source string) {
 			return value, name
 		}
 	}
-	if value := *key.field(&cfg); value != "" {
+	if value := key.field(&cfg).String(); value != "" {
 		return value, "config file"
 	}
-	if key.defaultValue != "" {
-		return key.defaultValue, "default"
+	defaults := configDefaults
+	if value := key.field(&defaults).String(); value != "" {
+		return value, "default"
 	}
 	return "", ""
 }
@@ -201,8 +203,8 @@ value from standard input, which keeps an API key out of your shell history.`,
 			if value == "" {
 				return fmt.Errorf("%s needs a value; to remove it, run gv config unset %s", key.name, key.name)
 			}
-			if key.check != nil {
-				if err := key.check(value); err != nil {
+			if check := configChecks[key.name]; check != nil {
+				if err := check(value); err != nil {
 					return err
 				}
 			}
@@ -210,7 +212,7 @@ value from standard input, which keeps an API key out of your shell history.`,
 			if err != nil {
 				return err
 			}
-			*key.field(&cfg) = value
+			key.field(&cfg).SetString(value)
 			if err := saveConfig(path, cfg); err != nil {
 				return err
 			}
@@ -235,7 +237,7 @@ func newConfigUnsetCommand(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			*key.field(&cfg) = ""
+			key.field(&cfg).SetString("")
 			if err := saveConfig(path, cfg); err != nil {
 				return err
 			}
