@@ -109,7 +109,7 @@ func (a *app) endpointAndKey() (config, string, error) {
 	}
 	var resolved config
 	for _, key := range configKeys {
-		value, _ := a.resolve(key, cfg)
+		value, _ := a.configValue(key, cfg)
 		key.field(&resolved).SetString(value)
 	}
 	return resolved, path, nil

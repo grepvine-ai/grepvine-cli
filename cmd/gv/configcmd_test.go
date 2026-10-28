@@ -124,3 +124,21 @@ func TestEndpointOfOnlySlashesFallsThrough(t *testing.T) {
 		}
 	}
 }
+
+func TestSetDoesNotWarnAboutAnEndpointOfOnlySlashes(t *testing.T) {
+	a, _, stderr := testApp(t, "")
+	a.getenv = func(name string) string {
+		if name == "GREPVINE_API_ENDPOINT" {
+			return "/"
+		}
+		return ""
+	}
+	command := newRootCommand(a)
+	command.SetArgs([]string{"config", "set", "endpoint", "https://file.example"})
+	if err := command.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("unexpected note: %q", stderr.String())
+	}
+}

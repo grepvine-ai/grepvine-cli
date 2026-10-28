@@ -42,18 +42,44 @@ var configKeys = func() []configKey {
 	return keys
 }()
 
-// configChecks validates a value before gv config set saves it.
-var configChecks = map[string]func(string) error{
-	"endpoint": checkEndpoint,
+var configValidators = map[string]func(string) error{
+	"endpoint": validateEndpoint,
 }
 
-// configNormalizers clean a value from any source before gv decides whether
-// it is set, so an endpoint of "/" counts as unset.
 var configNormalizers = map[string]func(string) string{
 	"endpoint": func(value string) string { return strings.TrimRight(value, "/") },
 }
 
-func findConfigKey(name string) (configKey, error) {
+// validate reports whether value may be saved for k.
+func (k configKey) validate(value string) error {
+	if validate := configValidators[k.name]; validate != nil {
+		return validate(value)
+	}
+	return nil
+}
+
+// normalize cleans a value from any source before gv decides whether it is
+// set, so an endpoint of "/" counts as unset.
+func (k configKey) normalize(value string) string {
+	if normalize := configNormalizers[k.name]; normalize != nil {
+		return normalize(value)
+	}
+	return value
+}
+
+// display never shows a secret in full: only enough of its start to tell
+// keys apart.
+func (k configKey) display(value string) string {
+	if !k.secret || value == "" {
+		return value
+	}
+	if len(value) <= 16 {
+		return "****"
+	}
+	return value[:8] + "****"
+}
+
+func lookupConfigKey(name string) (configKey, error) {
 	names := make([]string, len(configKeys))
 	for i, key := range configKeys {
 		if key.name == name {
@@ -64,7 +90,7 @@ func findConfigKey(name string) (configKey, error) {
 	return configKey{}, fmt.Errorf("unknown configuration key %q; use one of: %s", name, strings.Join(names, ", "))
 }
 
-func checkEndpoint(value string) error {
+func validateEndpoint(value string) error {
 	parsed, err := url.Parse(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return fmt.Errorf("endpoint %q must be an http or https URL, such as %s", value, defaultEndpoint)
@@ -72,38 +98,22 @@ func checkEndpoint(value string) error {
 	return nil
 }
 
-// resolve returns the value gv uses for key and where it comes from: an
+// configValue returns the value gv uses for key and where it comes from: an
 // environment variable, the configuration file, or the default.
-func (a *app) resolve(key configKey, cfg config) (value, source string) {
-	normalize := configNormalizers[key.name]
-	if normalize == nil {
-		normalize = func(value string) string { return value }
-	}
+func (a *app) configValue(key configKey, cfg config) (value, source string) {
 	for _, name := range key.env {
-		if value := normalize(a.getenv(name)); value != "" {
+		if value := key.normalize(a.getenv(name)); value != "" {
 			return value, name
 		}
 	}
-	if value := normalize(key.field(&cfg).String()); value != "" {
+	if value := key.normalize(key.field(&cfg).String()); value != "" {
 		return value, "config file"
 	}
 	defaults := configDefaults
-	if value := normalize(key.field(&defaults).String()); value != "" {
+	if value := key.normalize(key.field(&defaults).String()); value != "" {
 		return value, "default"
 	}
 	return "", ""
-}
-
-// displayValue never shows a secret in full: only enough of its start to
-// tell keys apart.
-func displayValue(key configKey, value string) string {
-	if !key.secret || value == "" {
-		return value
-	}
-	if len(value) <= 16 {
-		return "****"
-	}
-	return value[:8] + "****"
 }
 
 func completeConfigKey(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
@@ -148,8 +158,8 @@ func newConfigListCommand(a *app) *cobra.Command {
 			table := tabwriter.NewWriter(a.stdout, 0, 8, 2, ' ', 0)
 			fmt.Fprintln(table, "KEY\tVALUE\tSOURCE")
 			for _, key := range configKeys {
-				value, source := a.resolve(key, cfg)
-				value = displayValue(key, value)
+				value, source := a.configValue(key, cfg)
+				value = key.display(value)
 				if value == "" {
 					value, source = "-", "-"
 				}
@@ -168,7 +178,7 @@ func newConfigGetCommand(a *app) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeConfigKey,
 		RunE: func(_ *cobra.Command, args []string) error {
-			key, err := findConfigKey(args[0])
+			key, err := lookupConfigKey(args[0])
 			if err != nil {
 				return err
 			}
@@ -176,14 +186,14 @@ func newConfigGetCommand(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			value, source := a.resolve(key, cfg)
+			value, source := a.configValue(key, cfg)
 			if value == "" {
 				return &exitError{code: 1, err: fmt.Errorf("%s is not set; set it with gv config set %s VALUE", key.name, key.name)}
 			}
 			if source != "config file" && source != "default" {
 				fmt.Fprintf(a.stderr, "From %s.\n", source)
 			}
-			fmt.Fprintln(a.stdout, displayValue(key, value))
+			fmt.Fprintln(a.stdout, key.display(value))
 			return nil
 		},
 	}
@@ -198,7 +208,7 @@ value from standard input, which keeps an API key out of your shell history.`,
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: completeConfigKey,
 		RunE: func(_ *cobra.Command, args []string) error {
-			key, err := findConfigKey(args[0])
+			key, err := lookupConfigKey(args[0])
 			if err != nil {
 				return err
 			}
@@ -213,10 +223,8 @@ value from standard input, which keeps an API key out of your shell history.`,
 			if value == "" {
 				return fmt.Errorf("%s needs a value; to remove it, run gv config unset %s", key.name, key.name)
 			}
-			if check := configChecks[key.name]; check != nil {
-				if err := check(value); err != nil {
-					return err
-				}
+			if err := key.validate(value); err != nil {
+				return err
 			}
 			cfg, path, err := a.loadConfig()
 			if err != nil {
@@ -226,7 +234,7 @@ value from standard input, which keeps an API key out of your shell history.`,
 			if err := saveConfig(path, cfg); err != nil {
 				return err
 			}
-			a.warnOverridden(key)
+			a.warnIfEnvironmentOverrides(key)
 			return nil
 		},
 	}
@@ -239,7 +247,7 @@ func newConfigUnsetCommand(a *app) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeConfigKey,
 		RunE: func(_ *cobra.Command, args []string) error {
-			key, err := findConfigKey(args[0])
+			key, err := lookupConfigKey(args[0])
 			if err != nil {
 				return err
 			}
@@ -251,17 +259,17 @@ func newConfigUnsetCommand(a *app) *cobra.Command {
 			if err := saveConfig(path, cfg); err != nil {
 				return err
 			}
-			a.warnOverridden(key)
+			a.warnIfEnvironmentOverrides(key)
 			return nil
 		},
 	}
 }
 
-// warnOverridden tells the user when a change to the file has no effect
-// because an environment variable takes precedence.
-func (a *app) warnOverridden(key configKey) {
+// warnIfEnvironmentOverrides tells the user when a change to the file has no
+// effect because an environment variable takes precedence.
+func (a *app) warnIfEnvironmentOverrides(key configKey) {
 	for _, name := range key.env {
-		if a.getenv(name) != "" {
+		if key.normalize(a.getenv(name)) != "" {
 			fmt.Fprintf(a.stderr, "Note: %s is set and takes precedence over %s in the configuration file.\n", name, key.name)
 			return
 		}
