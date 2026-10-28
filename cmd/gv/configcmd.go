@@ -47,6 +47,12 @@ var configChecks = map[string]func(string) error{
 	"endpoint": checkEndpoint,
 }
 
+// configNormalizers clean a value from any source before gv decides whether
+// it is set, so an endpoint of "/" counts as unset.
+var configNormalizers = map[string]func(string) string{
+	"endpoint": func(value string) string { return strings.TrimRight(value, "/") },
+}
+
 func findConfigKey(name string) (configKey, error) {
 	names := make([]string, len(configKeys))
 	for i, key := range configKeys {
@@ -69,16 +75,20 @@ func checkEndpoint(value string) error {
 // resolve returns the value gv uses for key and where it comes from: an
 // environment variable, the configuration file, or the default.
 func (a *app) resolve(key configKey, cfg config) (value, source string) {
+	normalize := configNormalizers[key.name]
+	if normalize == nil {
+		normalize = func(value string) string { return value }
+	}
 	for _, name := range key.env {
-		if value := a.getenv(name); value != "" {
+		if value := normalize(a.getenv(name)); value != "" {
 			return value, name
 		}
 	}
-	if value := key.field(&cfg).String(); value != "" {
+	if value := normalize(key.field(&cfg).String()); value != "" {
 		return value, "config file"
 	}
 	defaults := configDefaults
-	if value := key.field(&defaults).String(); value != "" {
+	if value := normalize(key.field(&defaults).String()); value != "" {
 		return value, "default"
 	}
 	return "", ""

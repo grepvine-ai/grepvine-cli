@@ -99,3 +99,28 @@ func TestConfigCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestEndpointOfOnlySlashesFallsThrough(t *testing.T) {
+	for _, test := range []struct {
+		env  map[string]string
+		file string
+		want string
+	}{
+		{map[string]string{"GREPVINE_API_ENDPOINT": "/", "GREPVINE_ENDPOINT": "https://alias.example/"}, "https://file.example", "https://alias.example"},
+		{map[string]string{"GREPVINE_API_ENDPOINT": "//"}, "https://file.example//", "https://file.example"},
+		{map[string]string{"GREPVINE_API_ENDPOINT": "/"}, "/", defaultEndpoint},
+	} {
+		a, _, _ := testApp(t, "")
+		a.getenv = func(name string) string { return test.env[name] }
+		if err := saveConfig(a.configPath, config{Endpoint: test.file}); err != nil {
+			t.Fatal(err)
+		}
+		resolved, _, err := a.endpointAndKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resolved.Endpoint != test.want {
+			t.Errorf("env %v, file %q: endpoint %q, want %q", test.env, test.file, resolved.Endpoint, test.want)
+		}
+	}
+}

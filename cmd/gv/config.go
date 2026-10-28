@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -113,6 +112,5 @@ func (a *app) endpointAndKey() (config, string, error) {
 		value, _ := a.resolve(key, cfg)
 		key.field(&resolved).SetString(value)
 	}
-	resolved.Endpoint = strings.TrimRight(resolved.Endpoint, "/")
 	return resolved, path, nil
 }
