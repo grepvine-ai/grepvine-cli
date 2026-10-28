@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v3"
 )
 
 // config is the configuration file. Each field is a setting: yaml names
@@ -57,7 +59,10 @@ func (a *app) loadConfig() (config, string, error) {
 		return config{}, path, fmt.Errorf("configuration %s must have mode 0600", path)
 	}
 	var cfg config
-	if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	// An empty file is a valid, empty configuration.
+	if err := decoder.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return config{}, path, fmt.Errorf("parse configuration: %w", err)
 	}
 	return cfg, path, nil
