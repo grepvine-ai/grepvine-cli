@@ -38,6 +38,16 @@ gv login
 
 `gv login` opens a browser so you can approve this device. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
 
+`gv config` shows and changes the configuration file. `gv config ls` lists each setting with the value `gv` uses and where it comes from: an environment variable, the file or the default. API keys are shown only in part.
+
+```sh
+gv config ls
+gv config get endpoint
+gv config set endpoint https://api.grepvine.ai
+gv config set api_key - < ci.key     # read the value from standard input
+gv config unset endpoint
+```
+
 ## Use
 
 The examples use an organization `example` with an index `docs`.
@@ -86,7 +96,7 @@ Manage organizations, members and API keys with `gv org`, `gv member` and `gv ke
 
 ### Default organization
 
-Set `organization` in `~/.grepvine/config.yaml`, or `GREPVINE_ORGANIZATION`, to omit the organization: `docs` then means `example/docs`, and `gv index ls`, `gv org info` and `gv member ls` need no argument. An explicit `ORGANIZATION/INDEX` still wins, and `GREPVINE_ORGANIZATION` wins over the file.
+Set `organization` in `~/.grepvine/config.yaml`, or `GREPVINE_ORGANIZATION`, to omit the organization: `docs` then means `example/docs`, and `gv index ls`, `gv org info` and `gv member ls` need no argument. An explicit `ORGANIZATION/INDEX` still wins, and `GREPVINE_ORGANIZATION` wins over the file. `gv config set organization example` saves it for you.
 
 ```yaml
 organization: example
