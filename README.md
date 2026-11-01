@@ -117,6 +117,30 @@ Add `--json` to print one JSON object per line, with fields as in the API:
 - `upload` and `sync`: each document the index refused, as the API reports it, then a last line of totals: `{"uploaded", "bytes", "deleted", "failed"}`. A refused upload stops `sync` before it deletes anything, so one run reports refused uploads or refused deletions, not both.
 - `sync --dry-run`: each planned change, as `{"action": "upload"|"delete"|"tag", "key", ...}`. A tag change carries its new `value`, or `null` when the tag is removed.
 
+## Agent skills
+
+`gv` ships a skill that teaches coding agents such as Claude Code and Codex to search, read and update Grepvine indexes with `gv`. Install it once:
+
+```sh
+gv skills install
+```
+
+This installs it for Claude Code in `~/.claude/skills` and for Codex in `~/.agents/skills`, so every project sees it. To install it in the current git repository instead, where you can commit it for everyone who works on the project:
+
+```sh
+gv skills install --scope project                   # .claude/skills and .agents/skills in the repository
+gv skills install --agent claude --scope project    # Claude Code only
+gv skills install --dir PATH                        # any other skills directory
+```
+
+The skill belongs to the `gv` release that installed it, so run `gv skills install` again after you upgrade `gv`. `gv skills ls` shows where it is installed and whether each copy is current. `gv` replaces or removes only a copy that it installed and nobody has changed since; pass `--force` to replace one that was changed. `gv skills uninstall` removes it, and `gv skills show` prints it, for an agent that has no skills directory.
+
+In Claude Code, you can also install the skill as a plugin from this repository:
+
+```text
+/plugin install grepvine-cli --marketplace grepvine-ai/grepvine-cli
+```
+
 ## Shell completion
 
 `gv` completes commands and flags in bash, zsh, fish and PowerShell. Load it in the current session:

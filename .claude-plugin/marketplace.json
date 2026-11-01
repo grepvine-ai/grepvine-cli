@@ -1,0 +1,17 @@
+{
+  "name": "grepvine",
+  "description": "Grepvine skills for Claude Code",
+  "owner": {
+    "name": "Grepvine",
+    "url": "https://grepvine.ai"
+  },
+  "plugins": [
+    {
+      "name": "grepvine-cli",
+      "source": "./",
+      "description": "Search, read, upload and sync documents in Grepvine indexes with the gv CLI.",
+      "homepage": "https://github.com/grepvine-ai/grepvine-cli",
+      "license": "Apache-2.0"
+    }
+  ]
+}

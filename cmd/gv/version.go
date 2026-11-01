@@ -18,11 +18,8 @@ var (
 // `go install ...@v0.1.0` carries its module version; a binary built from a
 // checkout carries its VCS revision.
 func versionString(info *debug.BuildInfo, ok bool) string {
-	v, c, t := version, commit, commitTime
+	v, c, t := releaseVersion(info, ok), commit, commitTime
 	if ok {
-		if v == "dev" && info.Main.Version != "" && info.Main.Version != "(devel)" {
-			v = info.Main.Version
-		}
 		var rev, modified, when string
 		for _, s := range info.Settings {
 			switch s.Key {
@@ -48,4 +45,13 @@ func versionString(info *debug.BuildInfo, ok bool) string {
 		}
 	}
 	return fmt.Sprintf("%s (commit %s, committed %s)", v, c, t)
+}
+
+// releaseVersion returns the release gv was built from: the stamped version,
+// else the module version `go install` recorded, else "dev".
+func releaseVersion(info *debug.BuildInfo, ok bool) string {
+	if version == "dev" && ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return version
 }

@@ -49,6 +49,11 @@ type app struct {
 	// openS3 returns the client an upload reads an S3 bucket through; nil
 	// means the default AWS configuration chain.
 	openS3 func(ctx context.Context, bucket string) (s3API, error)
+	// version is the gv release, stamped into the skill gv installs. homeDir
+	// and workDir locate the skills directories; nil means the process's own.
+	version string
+	homeDir func() (string, error)
+	workDir func() (string, error)
 }
 
 type exitError struct {
@@ -78,6 +83,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			}
 		},
 	}
+	a.version = releaseVersion(debug.ReadBuildInfo())
 	a.httpClient = newHTTPClient(&a.compression)
 	a.isTTY = isTerminal(stderr)
 	a.stdoutTTY = isTerminal(stdout)
@@ -120,6 +126,7 @@ func newRootCommand(a *app) *cobra.Command {
 		newMemberCommand(a),
 		newKeyCommand(a),
 		newConfigCommand(a),
+		newSkillsCommand(a),
 	)
 	return root
 }
