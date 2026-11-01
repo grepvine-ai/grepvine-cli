@@ -1,0 +1,12 @@
+{
+  "name": "grepvine-cli",
+  "description": "Search, read, upload and sync documents in Grepvine indexes with the gv CLI.",
+  "author": {
+    "name": "Grepvine",
+    "url": "https://grepvine.ai"
+  },
+  "homepage": "https://github.com/grepvine-ai/grepvine-cli",
+  "repository": "https://github.com/grepvine-ai/grepvine-cli",
+  "license": "Apache-2.0",
+  "skills": "./skills/"
+}

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 terms='\bWAL\b|ledger|postings?\b|indexer|microbatch|merger|maintenance|index node|trigram|shard|compaction|residency|partition|catalog|tier|control plane'
 allow=scripts/check-public.allow
 
-hits=$(grep -rniE "$terms" cmd README.md || true)
+hits=$(grep -rniE "$terms" cmd skills README.md || true)
 bad=$(printf '%s\n' "$hits" | awk -v allow="$allow" '
 	BEGIN {
 		while ((getline line < allow) > 0) {
