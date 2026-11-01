@@ -10,6 +10,6 @@
 
 ## Rules
 
-- Code, comments, commit messages, tests, help text and errors describe only the public API. Never describe how the service is built or stores data.
+- Code, comments, commit messages, tests, help text and errors describe only the public API. Never describe how the service is built or stores data. Name only what a user sees: commands, flags, API fields and errors, and their own resources (for example an S3 bucket's storage classes). Review wording in `cmd`, `skills` and `README.md` against this before you finish.
 - Errors say what the user can do: fix the input, sign in, slow down, retry.
 - Before you finish, run `make verify` and `make verify-generated`.
