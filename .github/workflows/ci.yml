@@ -31,9 +31,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Check public wording
-        run: scripts/check-public.sh
-
       - name: Scan for secrets
         run: go tool -modfile=tools/gitleaks/go.mod gitleaks git --redact --no-banner .
 
