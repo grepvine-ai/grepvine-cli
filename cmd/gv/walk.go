@@ -1,3 +1,6 @@
+// Copyright 2026 Treeverse, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (

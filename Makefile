@@ -1,12 +1,14 @@
 SHELL := /bin/sh
 
 GOLANGCI_LINT := go tool -modfile=tools/golangci-lint/go.mod golangci-lint
+ADDLICENSE := go tool -modfile=tools/addlicense/go.mod addlicense -f tools/addlicense/header.txt -c "Treeverse, Inc."
+LICENSE_FILES = $(shell find . -name '*.go' -not -path './internal/httpapi/*')
 VERSION ?= dev
 LDFLAGS ?= -X main.version=$(VERSION)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build generate lint test test-race verify verify-generated
+.PHONY: help build generate license lint test test-race verify verify-generated
 
 help: ## Print available targets and their descriptions
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -14,8 +16,12 @@ help: ## Print available targets and their descriptions
 generate: ## Regenerate the API client from spec/openapi.json
 	go tool ogen --target internal/httpapi --package httpapi --config ogen.yml --clean spec/openapi.json
 
-lint: ## Run golangci-lint
+license: ## Add the license header to Go files that lack one
+	$(ADDLICENSE) $(LICENSE_FILES)
+
+lint: ## Run golangci-lint and check license headers
 	$(GOLANGCI_LINT) run
+	$(ADDLICENSE) -check $(LICENSE_FILES)
 
 test: ## Run the tests
 	go test ./...
