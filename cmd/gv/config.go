@@ -18,8 +18,7 @@ import (
 // it, env lists the environment variables that override it, first match
 // wins, and secret keeps gv config from printing it in full.
 type config struct {
-	// GREPVINE_ENDPOINT is the shorter pre-beta spelling, kept as an alias.
-	Endpoint     string `yaml:"endpoint,omitempty" env:"GREPVINE_API_ENDPOINT,GREPVINE_ENDPOINT"`
+	Endpoint     string `yaml:"endpoint,omitempty" env:"GREPVINE_API_ENDPOINT"`
 	APIKey       string `yaml:"api_key,omitempty" env:"GREPVINE_API_KEY" secret:"true"`
 	Organization string `yaml:"organization,omitempty" env:"GREPVINE_ORGANIZATION"`
 }

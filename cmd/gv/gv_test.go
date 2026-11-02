@@ -70,7 +70,7 @@ func testApp(t *testing.T, endpoint string) (*app, *bytes.Buffer, *bytes.Buffer)
 		stderr: stderr,
 		stdin:  strings.NewReader(""),
 		getenv: func(name string) string {
-			if name == "GREPVINE_ENDPOINT" {
+			if name == "GREPVINE_API_ENDPOINT" {
 				return endpoint
 			}
 			return ""
