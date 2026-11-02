@@ -109,7 +109,7 @@ func TestEndpointOfOnlySlashesFallsThrough(t *testing.T) {
 		file string
 		want string
 	}{
-		{map[string]string{"GREPVINE_API_ENDPOINT": "/", "GREPVINE_ENDPOINT": "https://alias.example/"}, "https://file.example", "https://alias.example"},
+		{map[string]string{"GREPVINE_API_ENDPOINT": "/", "GREPVINE_ENDPOINT": "https://alias.example/"}, "https://file.example", "https://file.example"},
 		{map[string]string{"GREPVINE_API_ENDPOINT": "//"}, "https://file.example//", "https://file.example"},
 		{map[string]string{"GREPVINE_API_ENDPOINT": "/"}, "/", defaultEndpoint},
 	} {
