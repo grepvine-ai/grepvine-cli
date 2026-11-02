@@ -1,3 +1,6 @@
+// Copyright 2026 Treeverse, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 // Package skills holds the agent skills that `gv skills install` copies into
 // a coding agent's skills directory. Each skill is a directory with a
 // SKILL.md and the reference files it links to.
