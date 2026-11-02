@@ -2197,11 +2197,11 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if draft, _ := stack.metadata["c.txt"]["draft"].GetBooleanMetadataValue(); !draft.Value {
 		t.Fatalf("draft metadata = %+v", stack.metadata["c.txt"])
 	}
-	if err := execute(`{"team":{"type":"integer","value":"x"}}`, "put", "acme/docs", "d.txt", source, "--metadata-file", "-"); err == nil || !strings.Contains(err.Error(), "metadata file -") {
-		t.Fatalf("put with an invalid metadata file = %v", err)
+	if err := os.WriteFile(metadataFile, []byte(`{"team":{"type":"integer","value":"x"}}`), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if err := execute("", "put", "acme/docs", "d.txt", "-", "--metadata-file", "-"); err == nil || !strings.Contains(err.Error(), "standard input") {
-		t.Fatalf("put with both on standard input = %v", err)
+	if err := execute("", "put", "acme/docs", "d.txt", source, "--metadata-file", metadataFile); err == nil || !strings.Contains(err.Error(), "metadata file") {
+		t.Fatalf("put with an invalid metadata file = %v", err)
 	}
 	if err := execute("from stdin", "put", "acme/docs", "b.txt", "-", "--json"); err != nil {
 		t.Fatal(err)

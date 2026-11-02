@@ -192,9 +192,8 @@ NAME:TYPE=VALUE stores a value of TYPE, which is string, integer, number,
 boolean or timestamp (RFC 3339).
 
 --metadata-file reads a metadata JSON object, as the API takes it, from a
-file or from standard input with -, for example
-{"team": {"type": "string", "value": "search"}}. A --metadata flag adds a
-field to it or replaces one.`,
+file, for example {"team": {"type": "string", "value": "search"}}. A
+--metadata flag adds a field to it or replaces one.`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(command *cobra.Command, args []string) error {
 			organization, index, err := a.parseIndexReference(args[0])
@@ -205,7 +204,7 @@ field to it or replaces one.`,
 		},
 	}
 	command.Flags().StringArrayVarP(&options.metadata, "metadata", "m", nil, "metadata field NAME=VALUE or NAME:TYPE=VALUE; repeat for more")
-	command.Flags().StringVar(&options.metadataFile, "metadata-file", "", "read metadata from a JSON file, or from standard input with -")
+	command.Flags().StringVar(&options.metadataFile, "metadata-file", "", "read metadata from a JSON file")
 	command.Flags().StringVar(&options.ifMatch, "if-match", "", "store only if the current revision matches")
 	command.Flags().BoolVar(&options.ifAbsent, "if-absent", false, "store only if the key holds no document")
 	command.Flags().BoolVar(&options.json, "json", false, "print the result as JSON")
@@ -218,11 +217,8 @@ func (a *app) putDocument(ctx context.Context, organization, index, key, source 
 	}
 	var base httpapi.Metadata
 	if options.metadataFile != "" {
-		if options.metadataFile == "-" && source == "-" {
-			return errors.New("standard input can hold the document or the metadata file, not both")
-		}
 		var err error
-		if base, err = a.readMetadataFile(options.metadataFile); err != nil {
+		if base, err = readMetadataFile(options.metadataFile); err != nil {
 			return err
 		}
 	}
@@ -289,16 +285,9 @@ func (a *app) putDocument(ctx context.Context, organization, index, key, source 
 	}
 }
 
-// readMetadataFile reads a metadata JSON object from a file, or from standard
-// input when name is -.
-func (a *app) readMetadataFile(name string) (httpapi.Metadata, error) {
-	var data []byte
-	var err error
-	if name == "-" {
-		data, err = io.ReadAll(a.stdin)
-	} else {
-		data, err = os.ReadFile(name)
-	}
+// readMetadataFile reads a metadata JSON object from a file.
+func readMetadataFile(name string) (httpapi.Metadata, error) {
+	data, err := os.ReadFile(name)
 	if err != nil {
 		return nil, fmt.Errorf("read metadata file: %w", err)
 	}
