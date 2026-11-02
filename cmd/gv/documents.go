@@ -173,10 +173,11 @@ func (a *app) listDocuments(ctx context.Context, organization, index string, opt
 }
 
 type putDocumentOptions struct {
-	metadata []string
-	ifMatch  string
-	ifAbsent bool
-	json     bool
+	metadata     []string
+	metadataFile string
+	ifMatch      string
+	ifAbsent     bool
+	json         bool
 }
 
 func newPutDocumentCommand(a *app) *cobra.Command {
@@ -188,7 +189,12 @@ func newPutDocumentCommand(a *app) *cobra.Command {
 
 Each --metadata flag sets one field: NAME=VALUE stores a string, and
 NAME:TYPE=VALUE stores a value of TYPE, which is string, integer, number,
-boolean or timestamp (RFC 3339).`,
+boolean or timestamp (RFC 3339).
+
+--metadata-file reads a metadata JSON object, as the API takes it, from a
+file or from standard input with -, for example
+{"team": {"type": "string", "value": "search"}}. A --metadata flag adds a
+field to it or replaces one.`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(command *cobra.Command, args []string) error {
 			organization, index, err := a.parseIndexReference(args[0])
@@ -199,6 +205,7 @@ boolean or timestamp (RFC 3339).`,
 		},
 	}
 	command.Flags().StringArrayVarP(&options.metadata, "metadata", "m", nil, "metadata field NAME=VALUE or NAME:TYPE=VALUE; repeat for more")
+	command.Flags().StringVar(&options.metadataFile, "metadata-file", "", "read metadata from a JSON file, or from standard input with -")
 	command.Flags().StringVar(&options.ifMatch, "if-match", "", "store only if the current revision matches")
 	command.Flags().BoolVar(&options.ifAbsent, "if-absent", false, "store only if the key holds no document")
 	command.Flags().BoolVar(&options.json, "json", false, "print the result as JSON")
@@ -209,7 +216,17 @@ func (a *app) putDocument(ctx context.Context, organization, index, key, source 
 	if options.ifMatch != "" && options.ifAbsent {
 		return errors.New("use --if-match or --if-absent, not both")
 	}
-	metadata, err := parseMetadata(options.metadata)
+	var base httpapi.Metadata
+	if options.metadataFile != "" {
+		if options.metadataFile == "-" && source == "-" {
+			return errors.New("standard input can hold the document or the metadata file, not both")
+		}
+		var err error
+		if base, err = a.readMetadataFile(options.metadataFile); err != nil {
+			return err
+		}
+	}
+	metadata, err := parseMetadata(base, options.metadata)
 	if err != nil {
 		return err
 	}
@@ -272,13 +289,36 @@ func (a *app) putDocument(ctx context.Context, organization, index, key, source 
 	}
 }
 
-// parseMetadata turns NAME=VALUE and NAME:TYPE=VALUE flags into the JSON
-// metadata object a stored document carries, or "" when there are none.
-func parseMetadata(fields []string) (string, error) {
-	if len(fields) == 0 {
-		return "", nil
+// readMetadataFile reads a metadata JSON object from a file, or from standard
+// input when name is -.
+func (a *app) readMetadataFile(name string) (httpapi.Metadata, error) {
+	var data []byte
+	var err error
+	if name == "-" {
+		data, err = io.ReadAll(a.stdin)
+	} else {
+		data, err = os.ReadFile(name)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("read metadata file: %w", err)
+	}
+	var metadata httpapi.Metadata
+	if err := metadata.UnmarshalJSON(data); err != nil {
+		return nil, fmt.Errorf("metadata file %s must hold a metadata JSON object: %w", name, err)
+	}
+	if err := metadata.Validate(); err != nil {
+		return nil, fmt.Errorf("metadata file %s: %w", name, err)
+	}
+	return metadata, nil
+}
+
+// parseMetadata adds NAME=VALUE and NAME:TYPE=VALUE flags to base and returns
+// the JSON metadata object a stored document carries, or "" when there is none.
+func parseMetadata(base httpapi.Metadata, fields []string) (string, error) {
 	metadata := map[string]any{}
+	for name, value := range base {
+		metadata[name] = value
+	}
 	for _, field := range fields {
 		name, text, ok := strings.Cut(field, "=")
 		if !ok || name == "" {
@@ -314,6 +354,9 @@ func parseMetadata(fields []string) (string, error) {
 			return "", fmt.Errorf("metadata %s: %q is not a valid %s", name, text, kind)
 		}
 		metadata[name] = map[string]any{"type": kind, "value": value}
+	}
+	if len(metadata) == 0 {
+		return "", nil
 	}
 	encoded, err := json.Marshal(metadata)
 	if err != nil {

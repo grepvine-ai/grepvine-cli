@@ -1027,6 +1027,9 @@ func metadataFromRecord(fields map[string]any) httpapi.Metadata {
 			metadata[name] = httpapi.NewIntegerMetadataValueMetadataValue(httpapi.IntegerMetadataValue{Type: "integer", Value: int64(number)})
 		case "string":
 			metadata[name] = httpapi.NewStringMetadataValueMetadataValue(httpapi.StringMetadataValue{Type: "string", Value: fmt.Sprint(field["value"])})
+		case "boolean":
+			value, _ := field["value"].(bool)
+			metadata[name] = httpapi.NewBooleanMetadataValueMetadataValue(httpapi.BooleanMetadataValue{Type: "boolean", Value: value})
 		}
 	}
 	return metadata
@@ -2181,6 +2184,25 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if pages, _ := stack.metadata["a.txt"]["pages"].GetIntegerMetadataValue(); pages.Value != 3 {
 		t.Fatalf("pages metadata = %+v", stack.metadata["a.txt"])
 	}
+	metadataFile := filepath.Join(t.TempDir(), "metadata.json")
+	if err := os.WriteFile(metadataFile, []byte(`{"team":{"type":"string","value":"docs"},"draft":{"type":"boolean","value":true}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := execute("", "put", "acme/docs", "c.txt", source, "--metadata-file", metadataFile, "-m", "team=search"); err != nil {
+		t.Fatal(err)
+	}
+	if team, _ := stack.metadata["c.txt"]["team"].GetStringMetadataValue(); team.Value != "search" {
+		t.Fatalf("a --metadata flag should replace the file's field: %+v", stack.metadata["c.txt"])
+	}
+	if draft, _ := stack.metadata["c.txt"]["draft"].GetBooleanMetadataValue(); !draft.Value {
+		t.Fatalf("draft metadata = %+v", stack.metadata["c.txt"])
+	}
+	if err := execute(`{"team":{"type":"integer","value":"x"}}`, "put", "acme/docs", "d.txt", source, "--metadata-file", "-"); err == nil || !strings.Contains(err.Error(), "metadata file -") {
+		t.Fatalf("put with an invalid metadata file = %v", err)
+	}
+	if err := execute("", "put", "acme/docs", "d.txt", "-", "--metadata-file", "-"); err == nil || !strings.Contains(err.Error(), "standard input") {
+		t.Fatalf("put with both on standard input = %v", err)
+	}
 	if err := execute("from stdin", "put", "acme/docs", "b.txt", "-", "--json"); err != nil {
 		t.Fatal(err)
 	}
@@ -2199,11 +2221,11 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if err := execute("", "delete", "acme/docs", "a.txt", "b.txt", "--if-match", "r1"); err == nil || !strings.Contains(err.Error(), "--if-match") {
 		t.Fatalf("delete --if-match with two keys = %v", err)
 	}
-	err = execute("", "delete", "acme/docs", "a.txt", "missing.txt", "b.txt")
+	err = execute("", "delete", "acme/docs", "a.txt", "missing.txt", "b.txt", "c.txt")
 	if _, ok := errors.AsType[*rejectedError](err); !ok || err.Error() != "1 document was not deleted" {
 		t.Fatalf("delete with a missing key = %v", err)
 	}
-	if stdout.String() != "a.txt\tr-delete\nb.txt\tr-delete\n" || !strings.Contains(stderr.String(), "missing.txt was not deleted") {
+	if stdout.String() != "a.txt\tr-delete\nb.txt\tr-delete\nc.txt\tr-delete\n" || !strings.Contains(stderr.String(), "missing.txt was not deleted") {
 		t.Fatalf("delete stdout = %q stderr = %q", stdout.String(), stderr.String())
 	}
 	if len(stack.objects) != 0 || len(stack.batchSizes) != 1 {

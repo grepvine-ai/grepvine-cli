@@ -72,6 +72,13 @@ gv put example/docs notes/today.md today.md --metadata team=search --metadata pa
 echo "hello" | gv put example/docs hello.txt -
 ```
 
+`--metadata-file` reads the metadata as a JSON object, in the API's form, so several calls can share it. A `--metadata` flag adds a field to it or replaces one:
+
+```sh
+echo '{"team": {"type": "string", "value": "search"}}' > team.json
+gv put example/docs a.md a.md --metadata-file team.json --metadata pages:integer=3
+```
+
 Search, list, download and delete documents. `delete` takes one or more keys:
 
 ```sh
