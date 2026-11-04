@@ -301,30 +301,19 @@ type ApproveDeviceAuthorizationNoContent struct{}
 
 func (*ApproveDeviceAuthorizationNoContent) approveDeviceAuthorizationRes() {}
 
-// Ref: #/components/schemas/BooleanMetadataValue
-type BooleanMetadataValue struct {
-	Type  string `json:"type"`
-	Value bool   `json:"value"`
+// Ref: #/components/schemas/AuthOptions
+type AuthOptions struct {
+	Signup SignupMode `json:"signup"`
 }
 
-// GetType returns the value of Type.
-func (s *BooleanMetadataValue) GetType() string {
-	return s.Type
+// GetSignup returns the value of Signup.
+func (s *AuthOptions) GetSignup() SignupMode {
+	return s.Signup
 }
 
-// GetValue returns the value of Value.
-func (s *BooleanMetadataValue) GetValue() bool {
-	return s.Value
-}
-
-// SetType sets the value of Type.
-func (s *BooleanMetadataValue) SetType(val string) {
-	s.Type = val
-}
-
-// SetValue sets the value of Value.
-func (s *BooleanMetadataValue) SetValue(val bool) {
-	s.Value = val
+// SetSignup sets the value of Signup.
+func (s *AuthOptions) SetSignup(val SignupMode) {
+	s.Signup = val
 }
 
 // ChangePasswordNoContent is response for ChangePassword operation.
@@ -928,6 +917,34 @@ func (s *ErrorStatusCodeWithHeaders) SetResponse(val Error) {
 
 func (*ErrorStatusCodeWithHeaders) pollDeviceTokenRes() {}
 
+// ForbiddenHeaders wraps Error with response headers.
+type ForbiddenHeaders struct {
+	XRequestID OptString
+	Response   Error
+}
+
+// GetXRequestID returns the value of XRequestID.
+func (s *ForbiddenHeaders) GetXRequestID() OptString {
+	return s.XRequestID
+}
+
+// GetResponse returns the value of Response.
+func (s *ForbiddenHeaders) GetResponse() Error {
+	return s.Response
+}
+
+// SetXRequestID sets the value of XRequestID.
+func (s *ForbiddenHeaders) SetXRequestID(val OptString) {
+	s.XRequestID = val
+}
+
+// SetResponse sets the value of Response.
+func (s *ForbiddenHeaders) SetResponse(val Error) {
+	s.Response = val
+}
+
+func (*ForbiddenHeaders) registerUserRes() {}
+
 // GetCurrentUserOKHeaders wraps User with response headers.
 type GetCurrentUserOKHeaders struct {
 	XCsrfToken OptString
@@ -1500,30 +1517,119 @@ func (s *IndexTags) init() IndexTags {
 	return m
 }
 
-// Ref: #/components/schemas/IntegerMetadataValue
-type IntegerMetadataValue struct {
-	Type  string `json:"type"`
-	Value int64  `json:"value"`
+// Ref: #/components/schemas/InvitationCheckRequest
+type InvitationCheckRequest struct {
+	Token string `json:"token"`
 }
 
-// GetType returns the value of Type.
-func (s *IntegerMetadataValue) GetType() string {
-	return s.Type
+// GetToken returns the value of Token.
+func (s *InvitationCheckRequest) GetToken() string {
+	return s.Token
 }
 
-// GetValue returns the value of Value.
-func (s *IntegerMetadataValue) GetValue() int64 {
-	return s.Value
+// SetToken sets the value of Token.
+func (s *InvitationCheckRequest) SetToken(val string) {
+	s.Token = val
 }
 
-// SetType sets the value of Type.
-func (s *IntegerMetadataValue) SetType(val string) {
-	s.Type = val
+// Ref: #/components/schemas/InvitationPreview
+type InvitationPreview struct {
+	// The address the invitation was sent to, to prefill the registration form.
+	Email        string            `json:"email"`
+	Organization OptName           `json:"organization"`
+	Role         OptInvitationRole `json:"role"`
+	ExpiresAt    time.Time         `json:"expires_at"`
 }
 
-// SetValue sets the value of Value.
-func (s *IntegerMetadataValue) SetValue(val int64) {
-	s.Value = val
+// GetEmail returns the value of Email.
+func (s *InvitationPreview) GetEmail() string {
+	return s.Email
+}
+
+// GetOrganization returns the value of Organization.
+func (s *InvitationPreview) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetRole returns the value of Role.
+func (s *InvitationPreview) GetRole() OptInvitationRole {
+	return s.Role
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *InvitationPreview) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// SetEmail sets the value of Email.
+func (s *InvitationPreview) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *InvitationPreview) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetRole sets the value of Role.
+func (s *InvitationPreview) SetRole(val OptInvitationRole) {
+	s.Role = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *InvitationPreview) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+func (*InvitationPreview) checkInvitationRes() {}
+
+// Ref: #/components/schemas/InvitationRole
+type InvitationRole string
+
+const (
+	InvitationRoleAdmin     InvitationRole = "admin"
+	InvitationRoleDeveloper InvitationRole = "developer"
+	InvitationRoleReader    InvitationRole = "reader"
+)
+
+// AllValues returns all InvitationRole values.
+func (InvitationRole) AllValues() []InvitationRole {
+	return []InvitationRole{
+		InvitationRoleAdmin,
+		InvitationRoleDeveloper,
+		InvitationRoleReader,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s InvitationRole) MarshalText() ([]byte, error) {
+	switch s {
+	case InvitationRoleAdmin:
+		return []byte(s), nil
+	case InvitationRoleDeveloper:
+		return []byte(s), nil
+	case InvitationRoleReader:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *InvitationRole) UnmarshalText(data []byte) error {
+	switch InvitationRole(data) {
+	case InvitationRoleAdmin:
+		*s = InvitationRoleAdmin
+		return nil
+	case InvitationRoleDeveloper:
+		*s = InvitationRoleDeveloper
+		return nil
+	case InvitationRoleReader:
+		*s = InvitationRoleReader
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Ref: #/components/schemas/LoginRequest
@@ -1599,6 +1705,9 @@ type Member struct {
 	User      User      `json:"user"`
 	Role      Role      `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
+	// When the membership ends, for time-limited access granted by Grepvine support. Omitted for an
+	// ordinary membership.
+	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
 // GetUser returns the value of User.
@@ -1616,6 +1725,11 @@ func (s *Member) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
 
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *Member) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
 // SetUser sets the value of User.
 func (s *Member) SetUser(val User) {
 	s.User = val
@@ -1629,6 +1743,11 @@ func (s *Member) SetRole(val Role) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *Member) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *Member) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // Ref: #/components/schemas/MemberPage
@@ -1669,16 +1788,18 @@ func (s *Metadata) init() Metadata {
 	return m
 }
 
+// A metadata value: a plain JSON string, boolean or integer, or a tagged value. A number that is not
+// an integer, and a timestamp, are always tagged. Any value may be tagged. Responses always use the
+// tagged form.
 // Ref: #/components/schemas/MetadataValue
 // MetadataValue represents sum type.
 type MetadataValue struct {
 	// Type selects the active sum variant, switch on this field.
-	Type                   MetadataValueType
-	StringMetadataValue    StringMetadataValue
-	IntegerMetadataValue   IntegerMetadataValue
-	NumberMetadataValue    NumberMetadataValue
-	BooleanMetadataValue   BooleanMetadataValue
-	TimestampMetadataValue TimestampMetadataValue
+	Type                MetadataValueType
+	String              string
+	Bool                bool
+	Int64               int64
+	TaggedMetadataValue TaggedMetadataValue
 }
 
 // MetadataValueType is oneOf type of MetadataValue.
@@ -1686,140 +1807,107 @@ type MetadataValueType string
 
 // Possible values for MetadataValueType.
 const (
-	StringMetadataValueMetadataValue    MetadataValueType = "string"
-	IntegerMetadataValueMetadataValue   MetadataValueType = "integer"
-	NumberMetadataValueMetadataValue    MetadataValueType = "number"
-	BooleanMetadataValueMetadataValue   MetadataValueType = "boolean"
-	TimestampMetadataValueMetadataValue MetadataValueType = "timestamp"
+	StringMetadataValue              MetadataValueType = "string"
+	BoolMetadataValue                MetadataValueType = "bool"
+	Int64MetadataValue               MetadataValueType = "int64"
+	TaggedMetadataValueMetadataValue MetadataValueType = "TaggedMetadataValue"
 )
 
-// IsStringMetadataValue reports whether MetadataValue is StringMetadataValue.
-func (s MetadataValue) IsStringMetadataValue() bool {
-	return s.Type == StringMetadataValueMetadataValue
+// IsString reports whether MetadataValue is string.
+func (s MetadataValue) IsString() bool { return s.Type == StringMetadataValue }
+
+// IsBool reports whether MetadataValue is bool.
+func (s MetadataValue) IsBool() bool { return s.Type == BoolMetadataValue }
+
+// IsInt64 reports whether MetadataValue is int64.
+func (s MetadataValue) IsInt64() bool { return s.Type == Int64MetadataValue }
+
+// IsTaggedMetadataValue reports whether MetadataValue is TaggedMetadataValue.
+func (s MetadataValue) IsTaggedMetadataValue() bool {
+	return s.Type == TaggedMetadataValueMetadataValue
 }
 
-// IsIntegerMetadataValue reports whether MetadataValue is IntegerMetadataValue.
-func (s MetadataValue) IsIntegerMetadataValue() bool {
-	return s.Type == IntegerMetadataValueMetadataValue
+// SetString sets MetadataValue to string.
+func (s *MetadataValue) SetString(v string) {
+	s.Type = StringMetadataValue
+	s.String = v
 }
 
-// IsNumberMetadataValue reports whether MetadataValue is NumberMetadataValue.
-func (s MetadataValue) IsNumberMetadataValue() bool {
-	return s.Type == NumberMetadataValueMetadataValue
-}
-
-// IsBooleanMetadataValue reports whether MetadataValue is BooleanMetadataValue.
-func (s MetadataValue) IsBooleanMetadataValue() bool {
-	return s.Type == BooleanMetadataValueMetadataValue
-}
-
-// IsTimestampMetadataValue reports whether MetadataValue is TimestampMetadataValue.
-func (s MetadataValue) IsTimestampMetadataValue() bool {
-	return s.Type == TimestampMetadataValueMetadataValue
-}
-
-// SetStringMetadataValue sets MetadataValue to StringMetadataValue.
-func (s *MetadataValue) SetStringMetadataValue(v StringMetadataValue) {
-	s.Type = StringMetadataValueMetadataValue
-	s.StringMetadataValue = v
-}
-
-// GetStringMetadataValue returns StringMetadataValue and true boolean if MetadataValue is StringMetadataValue.
-func (s MetadataValue) GetStringMetadataValue() (v StringMetadataValue, ok bool) {
-	if !s.IsStringMetadataValue() {
+// GetString returns string and true boolean if MetadataValue is string.
+func (s MetadataValue) GetString() (v string, ok bool) {
+	if !s.IsString() {
 		return v, false
 	}
-	return s.StringMetadataValue, true
+	return s.String, true
 }
 
-// NewStringMetadataValueMetadataValue returns new MetadataValue from StringMetadataValue.
-func NewStringMetadataValueMetadataValue(v StringMetadataValue) MetadataValue {
+// NewStringMetadataValue returns new MetadataValue from string.
+func NewStringMetadataValue(v string) MetadataValue {
 	var s MetadataValue
-	s.SetStringMetadataValue(v)
+	s.SetString(v)
 	return s
 }
 
-// SetIntegerMetadataValue sets MetadataValue to IntegerMetadataValue.
-func (s *MetadataValue) SetIntegerMetadataValue(v IntegerMetadataValue) {
-	s.Type = IntegerMetadataValueMetadataValue
-	s.IntegerMetadataValue = v
+// SetBool sets MetadataValue to bool.
+func (s *MetadataValue) SetBool(v bool) {
+	s.Type = BoolMetadataValue
+	s.Bool = v
 }
 
-// GetIntegerMetadataValue returns IntegerMetadataValue and true boolean if MetadataValue is IntegerMetadataValue.
-func (s MetadataValue) GetIntegerMetadataValue() (v IntegerMetadataValue, ok bool) {
-	if !s.IsIntegerMetadataValue() {
+// GetBool returns bool and true boolean if MetadataValue is bool.
+func (s MetadataValue) GetBool() (v bool, ok bool) {
+	if !s.IsBool() {
 		return v, false
 	}
-	return s.IntegerMetadataValue, true
+	return s.Bool, true
 }
 
-// NewIntegerMetadataValueMetadataValue returns new MetadataValue from IntegerMetadataValue.
-func NewIntegerMetadataValueMetadataValue(v IntegerMetadataValue) MetadataValue {
+// NewBoolMetadataValue returns new MetadataValue from bool.
+func NewBoolMetadataValue(v bool) MetadataValue {
 	var s MetadataValue
-	s.SetIntegerMetadataValue(v)
+	s.SetBool(v)
 	return s
 }
 
-// SetNumberMetadataValue sets MetadataValue to NumberMetadataValue.
-func (s *MetadataValue) SetNumberMetadataValue(v NumberMetadataValue) {
-	s.Type = NumberMetadataValueMetadataValue
-	s.NumberMetadataValue = v
+// SetInt64 sets MetadataValue to int64.
+func (s *MetadataValue) SetInt64(v int64) {
+	s.Type = Int64MetadataValue
+	s.Int64 = v
 }
 
-// GetNumberMetadataValue returns NumberMetadataValue and true boolean if MetadataValue is NumberMetadataValue.
-func (s MetadataValue) GetNumberMetadataValue() (v NumberMetadataValue, ok bool) {
-	if !s.IsNumberMetadataValue() {
+// GetInt64 returns int64 and true boolean if MetadataValue is int64.
+func (s MetadataValue) GetInt64() (v int64, ok bool) {
+	if !s.IsInt64() {
 		return v, false
 	}
-	return s.NumberMetadataValue, true
+	return s.Int64, true
 }
 
-// NewNumberMetadataValueMetadataValue returns new MetadataValue from NumberMetadataValue.
-func NewNumberMetadataValueMetadataValue(v NumberMetadataValue) MetadataValue {
+// NewInt64MetadataValue returns new MetadataValue from int64.
+func NewInt64MetadataValue(v int64) MetadataValue {
 	var s MetadataValue
-	s.SetNumberMetadataValue(v)
+	s.SetInt64(v)
 	return s
 }
 
-// SetBooleanMetadataValue sets MetadataValue to BooleanMetadataValue.
-func (s *MetadataValue) SetBooleanMetadataValue(v BooleanMetadataValue) {
-	s.Type = BooleanMetadataValueMetadataValue
-	s.BooleanMetadataValue = v
+// SetTaggedMetadataValue sets MetadataValue to TaggedMetadataValue.
+func (s *MetadataValue) SetTaggedMetadataValue(v TaggedMetadataValue) {
+	s.Type = TaggedMetadataValueMetadataValue
+	s.TaggedMetadataValue = v
 }
 
-// GetBooleanMetadataValue returns BooleanMetadataValue and true boolean if MetadataValue is BooleanMetadataValue.
-func (s MetadataValue) GetBooleanMetadataValue() (v BooleanMetadataValue, ok bool) {
-	if !s.IsBooleanMetadataValue() {
+// GetTaggedMetadataValue returns TaggedMetadataValue and true boolean if MetadataValue is TaggedMetadataValue.
+func (s MetadataValue) GetTaggedMetadataValue() (v TaggedMetadataValue, ok bool) {
+	if !s.IsTaggedMetadataValue() {
 		return v, false
 	}
-	return s.BooleanMetadataValue, true
+	return s.TaggedMetadataValue, true
 }
 
-// NewBooleanMetadataValueMetadataValue returns new MetadataValue from BooleanMetadataValue.
-func NewBooleanMetadataValueMetadataValue(v BooleanMetadataValue) MetadataValue {
+// NewTaggedMetadataValueMetadataValue returns new MetadataValue from TaggedMetadataValue.
+func NewTaggedMetadataValueMetadataValue(v TaggedMetadataValue) MetadataValue {
 	var s MetadataValue
-	s.SetBooleanMetadataValue(v)
-	return s
-}
-
-// SetTimestampMetadataValue sets MetadataValue to TimestampMetadataValue.
-func (s *MetadataValue) SetTimestampMetadataValue(v TimestampMetadataValue) {
-	s.Type = TimestampMetadataValueMetadataValue
-	s.TimestampMetadataValue = v
-}
-
-// GetTimestampMetadataValue returns TimestampMetadataValue and true boolean if MetadataValue is TimestampMetadataValue.
-func (s MetadataValue) GetTimestampMetadataValue() (v TimestampMetadataValue, ok bool) {
-	if !s.IsTimestampMetadataValue() {
-		return v, false
-	}
-	return s.TimestampMetadataValue, true
-}
-
-// NewTimestampMetadataValueMetadataValue returns new MetadataValue from TimestampMetadataValue.
-func NewTimestampMetadataValueMetadataValue(v TimestampMetadataValue) MetadataValue {
-	var s MetadataValue
-	s.SetTimestampMetadataValue(v)
+	s.SetTaggedMetadataValue(v)
 	return s
 }
 
@@ -1956,6 +2044,7 @@ func (s *NotFoundHeaders) SetResponse(val Error) {
 }
 
 func (*NotFoundHeaders) approveDeviceAuthorizationRes() {}
+func (*NotFoundHeaders) checkInvitationRes()            {}
 func (*NotFoundHeaders) deleteDocumentRes()             {}
 func (*NotFoundHeaders) deleteIndexRes()                {}
 func (*NotFoundHeaders) deleteOrganizationRes()         {}
@@ -1965,32 +2054,6 @@ func (*NotFoundHeaders) getIndexRes()                   {}
 func (*NotFoundHeaders) getOrganizationRes()            {}
 func (*NotFoundHeaders) revokeAPIKeyRes()               {}
 func (*NotFoundHeaders) updateIndexRes()                {}
-
-// Ref: #/components/schemas/NumberMetadataValue
-type NumberMetadataValue struct {
-	Type  string  `json:"type"`
-	Value float64 `json:"value"`
-}
-
-// GetType returns the value of Type.
-func (s *NumberMetadataValue) GetType() string {
-	return s.Type
-}
-
-// GetValue returns the value of Value.
-func (s *NumberMetadataValue) GetValue() float64 {
-	return s.Value
-}
-
-// SetType sets the value of Type.
-func (s *NumberMetadataValue) SetType(val string) {
-	s.Type = val
-}
-
-// SetValue sets the value of Value.
-func (s *NumberMetadataValue) SetValue(val float64) {
-	s.Value = val
-}
 
 // NewOptBool returns new OptBool with value set to v.
 func NewOptBool(v bool) OptBool {
@@ -2314,6 +2377,144 @@ func (o OptInt) Or(d int) int {
 	return d
 }
 
+// NewOptInvitationRole returns new OptInvitationRole with value set to v.
+func NewOptInvitationRole(v InvitationRole) OptInvitationRole {
+	return OptInvitationRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInvitationRole is optional InvitationRole.
+type OptInvitationRole struct {
+	Value InvitationRole
+	Set   bool
+}
+
+// IsSet returns true if OptInvitationRole was set.
+func (o OptInvitationRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInvitationRole) Reset() {
+	var v InvitationRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInvitationRole) SetTo(v InvitationRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInvitationRole) Get() (v InvitationRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInvitationRole) Or(d InvitationRole) InvitationRole {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptMetadata returns new OptMetadata with value set to v.
+func NewOptMetadata(v Metadata) OptMetadata {
+	return OptMetadata{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptMetadata is optional Metadata.
+type OptMetadata struct {
+	Value Metadata
+	Set   bool
+}
+
+// IsSet returns true if OptMetadata was set.
+func (o OptMetadata) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptMetadata) Reset() {
+	var v Metadata
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptMetadata) SetTo(v Metadata) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptMetadata) Get() (v Metadata, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptMetadata) Or(d Metadata) Metadata {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptName returns new OptName with value set to v.
+func NewOptName(v Name) OptName {
+	return OptName{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptName is optional Name.
+type OptName struct {
+	Value Name
+	Set   bool
+}
+
+// IsSet returns true if OptName was set.
+func (o OptName) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptName) Reset() {
+	var v Name
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptName) SetTo(v Name) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptName) Get() (v Name, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptName) Or(d Name) Name {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptQueryRequestMode returns new OptQueryRequestMode with value set to v.
 func NewOptQueryRequestMode(v QueryRequestMode) OptQueryRequestMode {
 	return OptQueryRequestMode{
@@ -2354,6 +2555,52 @@ func (o OptQueryRequestMode) Get() (v QueryRequestMode, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptQueryRequestMode) Or(d QueryRequestMode) QueryRequestMode {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptStaffRole returns new OptStaffRole with value set to v.
+func NewOptStaffRole(v StaffRole) OptStaffRole {
+	return OptStaffRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStaffRole is optional StaffRole.
+type OptStaffRole struct {
+	Value StaffRole
+	Set   bool
+}
+
+// IsSet returns true if OptStaffRole was set.
+func (o OptStaffRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStaffRole) Reset() {
+	var v StaffRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStaffRole) SetTo(v StaffRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStaffRole) Get() (v StaffRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStaffRole) Or(d StaffRole) StaffRole {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2408,9 +2655,12 @@ func (o OptString) Or(d string) string {
 
 // Ref: #/components/schemas/Organization
 type Organization struct {
-	ID        uuid.UUID `json:"id"`
-	Name      Name      `json:"name"`
-	Role      Role      `json:"role"`
+	ID   uuid.UUID `json:"id"`
+	Name Name      `json:"name"`
+	Role Role      `json:"role"`
+	// A suspended organization keeps its data, but refuses every operation on its members, indexes,
+	// documents and searches until it is resumed. Contact support.
+	Suspended bool      `json:"suspended"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -2427,6 +2677,11 @@ func (s *Organization) GetName() Name {
 // GetRole returns the value of Role.
 func (s *Organization) GetRole() Role {
 	return s.Role
+}
+
+// GetSuspended returns the value of Suspended.
+func (s *Organization) GetSuspended() bool {
+	return s.Suspended
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -2447,6 +2702,11 @@ func (s *Organization) SetName(val Name) {
 // SetRole sets the value of Role.
 func (s *Organization) SetRole(val Role) {
 	s.Role = val
+}
+
+// SetSuspended sets the value of Suspended.
+func (s *Organization) SetSuspended(val bool) {
+	s.Suspended = val
 }
 
 // SetCreatedAt sets the value of CreatedAt.
@@ -2543,9 +2803,8 @@ func (*PreconditionFailedHeaders) putDocumentRes()    {}
 
 // Ref: #/components/schemas/PutDocumentForm
 type PutDocumentFormMultipart struct {
-	Key string `json:"key"`
-	// A Metadata JSON object.
-	Metadata OptString `json:"metadata"`
+	Key      string      `json:"key"`
+	Metadata OptMetadata `json:"metadata"`
 	// The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is
 	// stored without being searchable.
 	Content ht.MultipartFile `json:"content"`
@@ -2557,7 +2816,7 @@ func (s *PutDocumentFormMultipart) GetKey() string {
 }
 
 // GetMetadata returns the value of Metadata.
-func (s *PutDocumentFormMultipart) GetMetadata() OptString {
+func (s *PutDocumentFormMultipart) GetMetadata() OptMetadata {
 	return s.Metadata
 }
 
@@ -2572,7 +2831,7 @@ func (s *PutDocumentFormMultipart) SetKey(val string) {
 }
 
 // SetMetadata sets the value of Metadata.
-func (s *PutDocumentFormMultipart) SetMetadata(val OptString) {
+func (s *PutDocumentFormMultipart) SetMetadata(val OptMetadata) {
 	s.Metadata = val
 }
 
@@ -2945,6 +3204,9 @@ type RegisterRequest struct {
 	Name     Name   `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	// The token of the invitation link the account was invited with. Required when registration is by
+	// invitation.
+	Invitation OptString `json:"invitation"`
 }
 
 // GetName returns the value of Name.
@@ -2962,6 +3224,11 @@ func (s *RegisterRequest) GetPassword() string {
 	return s.Password
 }
 
+// GetInvitation returns the value of Invitation.
+func (s *RegisterRequest) GetInvitation() OptString {
+	return s.Invitation
+}
+
 // SetName sets the value of Name.
 func (s *RegisterRequest) SetName(val Name) {
 	s.Name = val
@@ -2975,6 +3242,11 @@ func (s *RegisterRequest) SetEmail(val string) {
 // SetPassword sets the value of Password.
 func (s *RegisterRequest) SetPassword(val string) {
 	s.Password = val
+}
+
+// SetInvitation sets the value of Invitation.
+func (s *RegisterRequest) SetInvitation(val OptString) {
+	s.Invitation = val
 }
 
 // RemoveOrganizationMemberNoContent is response for RemoveOrganizationMember operation.
@@ -3041,55 +3313,374 @@ func (s *Role) UnmarshalText(data []byte) error {
 	}
 }
 
-// Ref: #/components/schemas/StringMetadataValue
-type StringMetadataValue struct {
+// How accounts are created. `open` lets anyone register; `invite` registers only with an invitation.
+// Ref: #/components/schemas/SignupMode
+type SignupMode string
+
+const (
+	SignupModeOpen   SignupMode = "open"
+	SignupModeInvite SignupMode = "invite"
+)
+
+// AllValues returns all SignupMode values.
+func (SignupMode) AllValues() []SignupMode {
+	return []SignupMode{
+		SignupModeOpen,
+		SignupModeInvite,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SignupMode) MarshalText() ([]byte, error) {
+	switch s {
+	case SignupModeOpen:
+		return []byte(s), nil
+	case SignupModeInvite:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SignupMode) UnmarshalText(data []byte) error {
+	switch SignupMode(data) {
+	case SignupModeOpen:
+		*s = SignupModeOpen
+		return nil
+	case SignupModeInvite:
+		*s = SignupModeInvite
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// The account's role on the Grepvine team, when it has one. Omitted for every other account.
+// Ref: #/components/schemas/StaffRole
+type StaffRole string
+
+const (
+	StaffRoleRoot    StaffRole = "root"
+	StaffRoleSupport StaffRole = "support"
+)
+
+// AllValues returns all StaffRole values.
+func (StaffRole) AllValues() []StaffRole {
+	return []StaffRole{
+		StaffRoleRoot,
+		StaffRoleSupport,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s StaffRole) MarshalText() ([]byte, error) {
+	switch s {
+	case StaffRoleRoot:
+		return []byte(s), nil
+	case StaffRoleSupport:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *StaffRole) UnmarshalText(data []byte) error {
+	switch StaffRole(data) {
+	case StaffRoleRoot:
+		*s = StaffRoleRoot
+		return nil
+	case StaffRoleSupport:
+		*s = StaffRoleSupport
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/TaggedBooleanMetadataValue
+type TaggedBooleanMetadataValue struct {
+	Type  string `json:"type"`
+	Value bool   `json:"value"`
+}
+
+// GetType returns the value of Type.
+func (s *TaggedBooleanMetadataValue) GetType() string {
+	return s.Type
+}
+
+// GetValue returns the value of Value.
+func (s *TaggedBooleanMetadataValue) GetValue() bool {
+	return s.Value
+}
+
+// SetType sets the value of Type.
+func (s *TaggedBooleanMetadataValue) SetType(val string) {
+	s.Type = val
+}
+
+// SetValue sets the value of Value.
+func (s *TaggedBooleanMetadataValue) SetValue(val bool) {
+	s.Value = val
+}
+
+// Ref: #/components/schemas/TaggedIntegerMetadataValue
+type TaggedIntegerMetadataValue struct {
+	Type  string `json:"type"`
+	Value int64  `json:"value"`
+}
+
+// GetType returns the value of Type.
+func (s *TaggedIntegerMetadataValue) GetType() string {
+	return s.Type
+}
+
+// GetValue returns the value of Value.
+func (s *TaggedIntegerMetadataValue) GetValue() int64 {
+	return s.Value
+}
+
+// SetType sets the value of Type.
+func (s *TaggedIntegerMetadataValue) SetType(val string) {
+	s.Type = val
+}
+
+// SetValue sets the value of Value.
+func (s *TaggedIntegerMetadataValue) SetValue(val int64) {
+	s.Value = val
+}
+
+// A metadata value with its type named explicitly.
+// Ref: #/components/schemas/TaggedMetadataValue
+// TaggedMetadataValue represents sum type.
+type TaggedMetadataValue struct {
+	// Type selects the active sum variant, switch on this field.
+	Type                         TaggedMetadataValueType
+	TaggedStringMetadataValue    TaggedStringMetadataValue
+	TaggedIntegerMetadataValue   TaggedIntegerMetadataValue
+	TaggedNumberMetadataValue    TaggedNumberMetadataValue
+	TaggedBooleanMetadataValue   TaggedBooleanMetadataValue
+	TaggedTimestampMetadataValue TaggedTimestampMetadataValue
+}
+
+// TaggedMetadataValueType is oneOf type of TaggedMetadataValue.
+type TaggedMetadataValueType string
+
+// Possible values for TaggedMetadataValueType.
+const (
+	TaggedStringMetadataValueTaggedMetadataValue    TaggedMetadataValueType = "string"
+	TaggedIntegerMetadataValueTaggedMetadataValue   TaggedMetadataValueType = "integer"
+	TaggedNumberMetadataValueTaggedMetadataValue    TaggedMetadataValueType = "number"
+	TaggedBooleanMetadataValueTaggedMetadataValue   TaggedMetadataValueType = "boolean"
+	TaggedTimestampMetadataValueTaggedMetadataValue TaggedMetadataValueType = "timestamp"
+)
+
+// IsTaggedStringMetadataValue reports whether TaggedMetadataValue is TaggedStringMetadataValue.
+func (s TaggedMetadataValue) IsTaggedStringMetadataValue() bool {
+	return s.Type == TaggedStringMetadataValueTaggedMetadataValue
+}
+
+// IsTaggedIntegerMetadataValue reports whether TaggedMetadataValue is TaggedIntegerMetadataValue.
+func (s TaggedMetadataValue) IsTaggedIntegerMetadataValue() bool {
+	return s.Type == TaggedIntegerMetadataValueTaggedMetadataValue
+}
+
+// IsTaggedNumberMetadataValue reports whether TaggedMetadataValue is TaggedNumberMetadataValue.
+func (s TaggedMetadataValue) IsTaggedNumberMetadataValue() bool {
+	return s.Type == TaggedNumberMetadataValueTaggedMetadataValue
+}
+
+// IsTaggedBooleanMetadataValue reports whether TaggedMetadataValue is TaggedBooleanMetadataValue.
+func (s TaggedMetadataValue) IsTaggedBooleanMetadataValue() bool {
+	return s.Type == TaggedBooleanMetadataValueTaggedMetadataValue
+}
+
+// IsTaggedTimestampMetadataValue reports whether TaggedMetadataValue is TaggedTimestampMetadataValue.
+func (s TaggedMetadataValue) IsTaggedTimestampMetadataValue() bool {
+	return s.Type == TaggedTimestampMetadataValueTaggedMetadataValue
+}
+
+// SetTaggedStringMetadataValue sets TaggedMetadataValue to TaggedStringMetadataValue.
+func (s *TaggedMetadataValue) SetTaggedStringMetadataValue(v TaggedStringMetadataValue) {
+	s.Type = TaggedStringMetadataValueTaggedMetadataValue
+	s.TaggedStringMetadataValue = v
+}
+
+// GetTaggedStringMetadataValue returns TaggedStringMetadataValue and true boolean if TaggedMetadataValue is TaggedStringMetadataValue.
+func (s TaggedMetadataValue) GetTaggedStringMetadataValue() (v TaggedStringMetadataValue, ok bool) {
+	if !s.IsTaggedStringMetadataValue() {
+		return v, false
+	}
+	return s.TaggedStringMetadataValue, true
+}
+
+// NewTaggedStringMetadataValueTaggedMetadataValue returns new TaggedMetadataValue from TaggedStringMetadataValue.
+func NewTaggedStringMetadataValueTaggedMetadataValue(v TaggedStringMetadataValue) TaggedMetadataValue {
+	var s TaggedMetadataValue
+	s.SetTaggedStringMetadataValue(v)
+	return s
+}
+
+// SetTaggedIntegerMetadataValue sets TaggedMetadataValue to TaggedIntegerMetadataValue.
+func (s *TaggedMetadataValue) SetTaggedIntegerMetadataValue(v TaggedIntegerMetadataValue) {
+	s.Type = TaggedIntegerMetadataValueTaggedMetadataValue
+	s.TaggedIntegerMetadataValue = v
+}
+
+// GetTaggedIntegerMetadataValue returns TaggedIntegerMetadataValue and true boolean if TaggedMetadataValue is TaggedIntegerMetadataValue.
+func (s TaggedMetadataValue) GetTaggedIntegerMetadataValue() (v TaggedIntegerMetadataValue, ok bool) {
+	if !s.IsTaggedIntegerMetadataValue() {
+		return v, false
+	}
+	return s.TaggedIntegerMetadataValue, true
+}
+
+// NewTaggedIntegerMetadataValueTaggedMetadataValue returns new TaggedMetadataValue from TaggedIntegerMetadataValue.
+func NewTaggedIntegerMetadataValueTaggedMetadataValue(v TaggedIntegerMetadataValue) TaggedMetadataValue {
+	var s TaggedMetadataValue
+	s.SetTaggedIntegerMetadataValue(v)
+	return s
+}
+
+// SetTaggedNumberMetadataValue sets TaggedMetadataValue to TaggedNumberMetadataValue.
+func (s *TaggedMetadataValue) SetTaggedNumberMetadataValue(v TaggedNumberMetadataValue) {
+	s.Type = TaggedNumberMetadataValueTaggedMetadataValue
+	s.TaggedNumberMetadataValue = v
+}
+
+// GetTaggedNumberMetadataValue returns TaggedNumberMetadataValue and true boolean if TaggedMetadataValue is TaggedNumberMetadataValue.
+func (s TaggedMetadataValue) GetTaggedNumberMetadataValue() (v TaggedNumberMetadataValue, ok bool) {
+	if !s.IsTaggedNumberMetadataValue() {
+		return v, false
+	}
+	return s.TaggedNumberMetadataValue, true
+}
+
+// NewTaggedNumberMetadataValueTaggedMetadataValue returns new TaggedMetadataValue from TaggedNumberMetadataValue.
+func NewTaggedNumberMetadataValueTaggedMetadataValue(v TaggedNumberMetadataValue) TaggedMetadataValue {
+	var s TaggedMetadataValue
+	s.SetTaggedNumberMetadataValue(v)
+	return s
+}
+
+// SetTaggedBooleanMetadataValue sets TaggedMetadataValue to TaggedBooleanMetadataValue.
+func (s *TaggedMetadataValue) SetTaggedBooleanMetadataValue(v TaggedBooleanMetadataValue) {
+	s.Type = TaggedBooleanMetadataValueTaggedMetadataValue
+	s.TaggedBooleanMetadataValue = v
+}
+
+// GetTaggedBooleanMetadataValue returns TaggedBooleanMetadataValue and true boolean if TaggedMetadataValue is TaggedBooleanMetadataValue.
+func (s TaggedMetadataValue) GetTaggedBooleanMetadataValue() (v TaggedBooleanMetadataValue, ok bool) {
+	if !s.IsTaggedBooleanMetadataValue() {
+		return v, false
+	}
+	return s.TaggedBooleanMetadataValue, true
+}
+
+// NewTaggedBooleanMetadataValueTaggedMetadataValue returns new TaggedMetadataValue from TaggedBooleanMetadataValue.
+func NewTaggedBooleanMetadataValueTaggedMetadataValue(v TaggedBooleanMetadataValue) TaggedMetadataValue {
+	var s TaggedMetadataValue
+	s.SetTaggedBooleanMetadataValue(v)
+	return s
+}
+
+// SetTaggedTimestampMetadataValue sets TaggedMetadataValue to TaggedTimestampMetadataValue.
+func (s *TaggedMetadataValue) SetTaggedTimestampMetadataValue(v TaggedTimestampMetadataValue) {
+	s.Type = TaggedTimestampMetadataValueTaggedMetadataValue
+	s.TaggedTimestampMetadataValue = v
+}
+
+// GetTaggedTimestampMetadataValue returns TaggedTimestampMetadataValue and true boolean if TaggedMetadataValue is TaggedTimestampMetadataValue.
+func (s TaggedMetadataValue) GetTaggedTimestampMetadataValue() (v TaggedTimestampMetadataValue, ok bool) {
+	if !s.IsTaggedTimestampMetadataValue() {
+		return v, false
+	}
+	return s.TaggedTimestampMetadataValue, true
+}
+
+// NewTaggedTimestampMetadataValueTaggedMetadataValue returns new TaggedMetadataValue from TaggedTimestampMetadataValue.
+func NewTaggedTimestampMetadataValueTaggedMetadataValue(v TaggedTimestampMetadataValue) TaggedMetadataValue {
+	var s TaggedMetadataValue
+	s.SetTaggedTimestampMetadataValue(v)
+	return s
+}
+
+// Ref: #/components/schemas/TaggedNumberMetadataValue
+type TaggedNumberMetadataValue struct {
+	Type  string  `json:"type"`
+	Value float64 `json:"value"`
+}
+
+// GetType returns the value of Type.
+func (s *TaggedNumberMetadataValue) GetType() string {
+	return s.Type
+}
+
+// GetValue returns the value of Value.
+func (s *TaggedNumberMetadataValue) GetValue() float64 {
+	return s.Value
+}
+
+// SetType sets the value of Type.
+func (s *TaggedNumberMetadataValue) SetType(val string) {
+	s.Type = val
+}
+
+// SetValue sets the value of Value.
+func (s *TaggedNumberMetadataValue) SetValue(val float64) {
+	s.Value = val
+}
+
+// Ref: #/components/schemas/TaggedStringMetadataValue
+type TaggedStringMetadataValue struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
 }
 
 // GetType returns the value of Type.
-func (s *StringMetadataValue) GetType() string {
+func (s *TaggedStringMetadataValue) GetType() string {
 	return s.Type
 }
 
 // GetValue returns the value of Value.
-func (s *StringMetadataValue) GetValue() string {
+func (s *TaggedStringMetadataValue) GetValue() string {
 	return s.Value
 }
 
 // SetType sets the value of Type.
-func (s *StringMetadataValue) SetType(val string) {
+func (s *TaggedStringMetadataValue) SetType(val string) {
 	s.Type = val
 }
 
 // SetValue sets the value of Value.
-func (s *StringMetadataValue) SetValue(val string) {
+func (s *TaggedStringMetadataValue) SetValue(val string) {
 	s.Value = val
 }
 
-// Ref: #/components/schemas/TimestampMetadataValue
-type TimestampMetadataValue struct {
+// Ref: #/components/schemas/TaggedTimestampMetadataValue
+type TaggedTimestampMetadataValue struct {
 	Type  string    `json:"type"`
 	Value time.Time `json:"value"`
 }
 
 // GetType returns the value of Type.
-func (s *TimestampMetadataValue) GetType() string {
+func (s *TaggedTimestampMetadataValue) GetType() string {
 	return s.Type
 }
 
 // GetValue returns the value of Value.
-func (s *TimestampMetadataValue) GetValue() time.Time {
+func (s *TaggedTimestampMetadataValue) GetValue() time.Time {
 	return s.Value
 }
 
 // SetType sets the value of Type.
-func (s *TimestampMetadataValue) SetType(val string) {
+func (s *TaggedTimestampMetadataValue) SetType(val string) {
 	s.Type = val
 }
 
 // SetValue sets the value of Value.
-func (s *TimestampMetadataValue) SetValue(val time.Time) {
+func (s *TaggedTimestampMetadataValue) SetValue(val time.Time) {
 	s.Value = val
 }
 
@@ -3233,10 +3824,11 @@ func (s *UpdateMemberRequestRole) UnmarshalText(data []byte) error {
 
 // Ref: #/components/schemas/User
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Name      Name      `json:"name"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID    `json:"id"`
+	Name      Name         `json:"name"`
+	Email     string       `json:"email"`
+	CreatedAt time.Time    `json:"created_at"`
+	StaffRole OptStaffRole `json:"staff_role"`
 }
 
 // GetID returns the value of ID.
@@ -3259,6 +3851,11 @@ func (s *User) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
 
+// GetStaffRole returns the value of StaffRole.
+func (s *User) GetStaffRole() OptStaffRole {
+	return s.StaffRole
+}
+
 // SetID sets the value of ID.
 func (s *User) SetID(val uuid.UUID) {
 	s.ID = val
@@ -3277,6 +3874,11 @@ func (s *User) SetEmail(val string) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *User) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetStaffRole sets the value of StaffRole.
+func (s *User) SetStaffRole(val OptStaffRole) {
+	s.StaffRole = val
 }
 
 // UserHeaders wraps User with response headers.

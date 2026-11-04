@@ -75,7 +75,7 @@ echo "hello" | gv put example/docs hello.txt -
 `--metadata-file` reads the metadata as a JSON object, in the API's form, so several calls can share it. A `--metadata` flag adds a field to it or replaces one:
 
 ```sh
-echo '{"team": {"type": "string", "value": "search"}}' > team.json
+echo '{"team": "search", "due": {"type": "timestamp", "value": "2026-03-04T05:06:07Z"}}' > team.json
 gv put example/docs a.md a.md --metadata-file team.json --metadata pages:integer=3
 ```
 

@@ -86,9 +86,9 @@ func TestUploadZipPublishesTheArchivedTree(t *testing.T) {
 	if readme.Content != "# last copy\n" {
 		t.Fatalf("readme = %q", readme.Content)
 	}
-	size, _ := readme.Metadata["size"].(map[string]any)
-	mtime, _ := readme.Metadata["mtime"].(map[string]any)
-	if size["value"] != float64(12) || mtime["value"] != "2026-03-04T05:06:07Z" {
+	size, _ := readme.Metadata["size"].GetInt64()
+	mtime, _ := readme.Metadata["mtime"].GetTaggedMetadataValue()
+	if size != 12 || !mtime.TaggedTimestampMetadataValue.Value.Equal(time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)) {
 		t.Fatalf("readme metadata = %#v", readme.Metadata)
 	}
 	if got := recorder.batched["release/docs/stored.txt"].Content; got != "stored <&> as is" {

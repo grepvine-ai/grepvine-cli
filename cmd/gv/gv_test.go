@@ -618,7 +618,10 @@ func TestRecursiveUploadPreservesNamesMetadataEmptyFilesAndRetries(t *testing.T)
 	if _, present := keys["archive/ignored-link"]; present {
 		t.Fatal("symbolic link was followed")
 	}
-	if unicodeRecord.Metadata["path"] == nil || unicodeRecord.Metadata["size"] == nil || unicodeRecord.Metadata["mtime"] == nil {
+	if path, _ := unicodeRecord.Metadata["path"].GetString(); path != "archive/nested/café.txt" {
+		t.Fatalf("metadata not preserved: %#v", unicodeRecord.Metadata)
+	}
+	if _, ok := unicodeRecord.Metadata["mtime"].GetTaggedMetadataValue(); !ok {
 		t.Fatalf("metadata not preserved: %#v", unicodeRecord.Metadata)
 	}
 	if stderr.Len() != 0 {
@@ -1014,26 +1017,20 @@ func (s *fakeService) DeleteObjects(_ context.Context, request *httpapi.DeleteOb
 	return &httpapi.MutationBatchResult{Results: results}, nil
 }
 
-// metadataFromRecord rebuilds the typed metadata a batch record carried, so a
-// listing reports the size and modification time the uploader wrote.
-func metadataFromRecord(fields map[string]any) httpapi.Metadata {
+// taggedMetadata returns metadata as a response reports it, every value
+// tagged, so a listing reports the size and modification time the uploader
+// wrote.
+func taggedMetadata(fields httpapi.Metadata) httpapi.Metadata {
 	metadata := httpapi.Metadata{}
-	for name, raw := range fields {
-		field, _ := raw.(map[string]any)
-		switch field["type"] {
-		case "timestamp":
-			if stamp, err := time.Parse(time.RFC3339Nano, fmt.Sprint(field["value"])); err == nil {
-				metadata[name] = httpapi.NewTimestampMetadataValueMetadataValue(httpapi.TimestampMetadataValue{Type: "timestamp", Value: stamp})
-			}
-		case "integer":
-			number, _ := field["value"].(float64)
-			metadata[name] = httpapi.NewIntegerMetadataValueMetadataValue(httpapi.IntegerMetadataValue{Type: "integer", Value: int64(number)})
-		case "string":
-			metadata[name] = httpapi.NewStringMetadataValueMetadataValue(httpapi.StringMetadataValue{Type: "string", Value: fmt.Sprint(field["value"])})
-		case "boolean":
-			value, _ := field["value"].(bool)
-			metadata[name] = httpapi.NewBooleanMetadataValueMetadataValue(httpapi.BooleanMetadataValue{Type: "boolean", Value: value})
+	for name, value := range fields {
+		if text, ok := value.GetString(); ok {
+			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedStringMetadataValueTaggedMetadataValue(httpapi.TaggedStringMetadataValue{Type: "string", Value: text}))
+		} else if number, ok := value.GetInt64(); ok {
+			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedIntegerMetadataValueTaggedMetadataValue(httpapi.TaggedIntegerMetadataValue{Type: "integer", Value: number}))
+		} else if flag, ok := value.GetBool(); ok {
+			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedBooleanMetadataValueTaggedMetadataValue(httpapi.TaggedBooleanMetadataValue{Type: "boolean", Value: flag}))
 		}
+		metadata[name] = value
 	}
 	return metadata
 }
@@ -1164,7 +1161,7 @@ func (s *fakeService) PutObjects(_ context.Context, request httpapi.PutObjectsRe
 			if s.metadata == nil {
 				s.metadata = map[string]httpapi.Metadata{}
 			}
-			s.metadata[record.Key] = metadataFromRecord(record.Metadata)
+			s.metadata[record.Key] = taggedMetadata(record.Metadata)
 			s.putKeys = append(s.putKeys, record.Key)
 			s.writes++
 		}
@@ -1277,14 +1274,10 @@ func (s *fakeService) PutDocument(_ context.Context, request *httpapi.PutDocumen
 	}
 	s.objects[request.Key] = string(content)
 	if fields, ok := request.Metadata.Get(); ok {
-		var decoded map[string]any
-		if err := json.Unmarshal([]byte(fields), &decoded); err != nil {
-			return nil, err
-		}
 		if s.metadata == nil {
 			s.metadata = map[string]httpapi.Metadata{}
 		}
-		s.metadata[request.Key] = metadataFromRecord(decoded)
+		s.metadata[request.Key] = taggedMetadata(fields)
 	}
 	s.writes++
 	return &httpapi.MutationResult{Key: request.Key, Revision: httpapi.NewOptString("r-put")}, nil
@@ -1929,9 +1922,8 @@ func TestUploadStoresBinaryAndLargeFilesThroughTheDocumentEndpoint(t *testing.T)
 	}
 	for key, content := range single {
 		metadata := singleMetadata[key]
-		path, _ := metadata["path"].(map[string]any)
-		size, _ := metadata["size"].(map[string]any)
-		if path["value"] != key || size["value"] != float64(len(content)) || metadata["mtime"] == nil {
+		mtime, _ := metadata["mtime"].(map[string]any)
+		if metadata["path"] != key || metadata["size"] != float64(len(content)) || mtime["type"] != "timestamp" {
 			t.Fatalf("metadata of %s = %#v", key, metadata)
 		}
 	}
@@ -2181,10 +2173,10 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if stdout.String() != "a.txt\tr-put\n" || stack.objects["a.txt"] != "from a file\n" {
 		t.Fatalf("put output = %q, stored %q", stdout.String(), stack.objects["a.txt"])
 	}
-	if team, _ := stack.metadata["a.txt"]["team"].GetStringMetadataValue(); team.Value != "search" {
+	if team, _ := stack.metadata["a.txt"]["team"].GetTaggedMetadataValue(); team.TaggedStringMetadataValue.Value != "search" {
 		t.Fatalf("team metadata = %+v", stack.metadata["a.txt"])
 	}
-	if pages, _ := stack.metadata["a.txt"]["pages"].GetIntegerMetadataValue(); pages.Value != 3 {
+	if pages, _ := stack.metadata["a.txt"]["pages"].GetTaggedMetadataValue(); pages.TaggedIntegerMetadataValue.Value != 3 {
 		t.Fatalf("pages metadata = %+v", stack.metadata["a.txt"])
 	}
 	metadataFile := filepath.Join(t.TempDir(), "metadata.json")
@@ -2194,10 +2186,10 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if err := execute("", "put", "acme/docs", "c.txt", source, "--metadata-file", metadataFile, "-m", "team=search"); err != nil {
 		t.Fatal(err)
 	}
-	if team, _ := stack.metadata["c.txt"]["team"].GetStringMetadataValue(); team.Value != "search" {
+	if team, _ := stack.metadata["c.txt"]["team"].GetTaggedMetadataValue(); team.TaggedStringMetadataValue.Value != "search" {
 		t.Fatalf("a --metadata flag should replace the file's field: %+v", stack.metadata["c.txt"])
 	}
-	if draft, _ := stack.metadata["c.txt"]["draft"].GetBooleanMetadataValue(); !draft.Value {
+	if draft, _ := stack.metadata["c.txt"]["draft"].GetTaggedMetadataValue(); !draft.TaggedBooleanMetadataValue.Value {
 		t.Fatalf("draft metadata = %+v", stack.metadata["c.txt"])
 	}
 	if err := os.WriteFile(metadataFile, []byte(`{"team":{"type":"integer","value":"x"}}`), 0o600); err != nil {

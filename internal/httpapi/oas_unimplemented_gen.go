@@ -40,6 +40,16 @@ func (UnimplementedHandler) ChangePassword(ctx context.Context, req *ChangePassw
 	return r, ht.ErrNotImplemented
 }
 
+// CheckInvitation implements checkInvitation operation.
+//
+// Reports what a pending invitation offers, so the registration form can show it. The token travels in
+// the body, never in the URL. An invitation that was used, withdrawn or has expired is not found.
+//
+// POST /auth/invitations:check
+func (UnimplementedHandler) CheckInvitation(ctx context.Context, req *InvitationCheckRequest) (r CheckInvitationRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // CreateAPIKey implements createAPIKey operation.
 //
 // Create an API key.
@@ -111,6 +121,16 @@ func (UnimplementedHandler) DeleteOrganization(ctx context.Context, params Delet
 //
 // POST /device/authorizations/deny
 func (UnimplementedHandler) DenyDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params DenyDeviceAuthorizationParams) (r DenyDeviceAuthorizationRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetAuthOptions implements getAuthOptions operation.
+//
+// How accounts are created on this service. The console reads it to decide whether to offer
+// registration without an invitation.
+//
+// GET /auth/options
+func (UnimplementedHandler) GetAuthOptions(ctx context.Context) (r *AuthOptions, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -270,7 +290,11 @@ func (UnimplementedHandler) QueryIndex(ctx context.Context, req *QueryRequest, p
 // RegisterUser implements registerUser operation.
 //
 // A 409 has code `username_taken` when an account or an organization already holds the username, and
-// code `email_taken` when an account already uses the email address.
+// code `email_taken` when an account already uses the email address. A 403 has code
+// `invitation_required` when registration is by invitation and the request carries none, and code
+// `invitation_invalid` when the invitation it carries was already used, was withdrawn or has expired.
+// A valid invitation is accepted with the registration, and the account joins the organization it
+// names, if any.
 //
 // POST /auth/register
 func (UnimplementedHandler) RegisterUser(ctx context.Context, req *RegisterRequest) (r RegisterUserRes, _ error) {

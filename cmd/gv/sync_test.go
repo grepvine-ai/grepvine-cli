@@ -389,9 +389,9 @@ func seedTwoWayStack(t *testing.T, dir string) *fakeService {
 	stack := newSyncStack()
 	stack.objects["stale.txt"] = "stale\n"
 	stack.objects["same.txt"] = "same\n"
-	stack.metadata["same.txt"] = httpapi.Metadata{"mtime": httpapi.NewTimestampMetadataValueMetadataValue(httpapi.TimestampMetadataValue{Type: "timestamp", Value: info.ModTime().UTC()})}
+	stack.metadata["same.txt"] = httpapi.Metadata{"mtime": timestampMetadataValue(info.ModTime().UTC())}
 	stack.objects["changed.txt"] = "changed\n"
-	stack.metadata["changed.txt"] = httpapi.Metadata{"mtime": httpapi.NewTimestampMetadataValueMetadataValue(httpapi.TimestampMetadataValue{Type: "timestamp", Value: info.ModTime().UTC()})}
+	stack.metadata["changed.txt"] = httpapi.Metadata{"mtime": timestampMetadataValue(info.ModTime().UTC())}
 	stack.indexes["docs"].Tags = httpapi.IndexTags{gitCommitTag: strings.Repeat("a", 40), gitBranchTag: "main", "team": "search"}
 	return stack
 }

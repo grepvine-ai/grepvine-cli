@@ -51,7 +51,7 @@ gv upload records.ndjson --records --index ORGANIZATION/INDEX --json
 - A document's key is the file's path relative to the directory uploaded, after the optional prefix. Uploading a key that exists replaces that document.
 - `gv upload` never deletes documents. Use it when the index collects documents from several places, and `gv sync` when it should mirror one directory.
 - An `s3://` source is read with the user's AWS credentials.
-- `--records` reads NDJSON files of `{"key", "content", "metadata"}` objects, one per line, optionally gzip-compressed. Metadata values are typed, for example `{"team": {"type": "string", "value": "payments"}}`; the types are `string`, `integer`, `number`, `boolean` and `timestamp`.
+- `--records` reads NDJSON files of `{"key", "content", "metadata"}` objects, one per line, optionally gzip-compressed. A metadata value is a plain string, boolean or integer, or a tagged `{"type", "value"}` object; numbers that are not integers and timestamps are always tagged, for example `{"team": "payments", "due": {"type": "timestamp", "value": "2026-03-04T05:06:07Z"}}`. The types are `string`, `integer`, `number`, `boolean` and `timestamp`.
 - Directory uploads skip what `.gitignore` excludes. Content must be UTF-8 text to be searchable; other files are stored but never match a search.
 
 ## Reading the JSON report
