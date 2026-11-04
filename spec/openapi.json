@@ -58,7 +58,7 @@
     "/auth/register": {
       "post": {
         "summary": "Register a local user",
-        "description": "A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address.",
+        "description": "A 409 has code `username_taken` when an account or an organization already holds the username, and code `email_taken` when an account already uses the email address. A 403 has code `invitation_required` when registration is by invitation and the request carries none, and code `invitation_invalid` when the invitation it carries was already used, was withdrawn or has expired. A valid invitation is accepted with the registration, and the account joins the organization it names, if any.",
         "operationId": "registerUser",
         "tags": [
           "Authentication"
@@ -93,8 +93,76 @@
               }
             }
           },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
           "409": {
             "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/options": {
+      "get": {
+        "summary": "Get the sign-in options",
+        "description": "How accounts are created on this service. The console reads it to decide whether to offer registration without an invitation.",
+        "operationId": "getAuthOptions",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The sign-in options.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/auth/invitations:check": {
+      "post": {
+        "summary": "Check an invitation",
+        "description": "Reports what a pending invitation offers, so the registration form can show it. The token travels in the body, never in the URL. An invitation that was used, withdrawn or has expired is not found.",
+        "operationId": "checkInvitation",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The pending invitation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "default": {
             "$ref": "#/components/responses/Error"
@@ -1096,6 +1164,11 @@
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/PutDocumentForm"
+              },
+              "encoding": {
+                "metadata": {
+                  "contentType": "application/json"
+                }
               }
             }
           }
@@ -1633,7 +1706,7 @@
     },
     "responses": {
       "Error": {
-        "description": "The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval.",
+        "description": "The request failed. A 429 carries Retry-After; the index is busy absorbing recent writes or is out of request capacity, and clients must slow down and retry after the interval. A 403 with code `organization_suspended` refuses every operation on a suspended organization's members, indexes, documents and searches; reading the organization itself still answers and reports `suspended`, and the client should contact support.",
         "headers": {
           "X-Request-Id": {
             "$ref": "#/components/headers/RequestID"
@@ -1652,6 +1725,21 @@
       },
       "Unauthorized": {
         "description": "Authentication is required or failed.",
+        "headers": {
+          "X-Request-Id": {
+            "$ref": "#/components/headers/RequestID"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The request is not permitted.",
         "headers": {
           "X-Request-Id": {
             "$ref": "#/components/headers/RequestID"
@@ -1783,8 +1871,19 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "staff_role": {
+            "$ref": "#/components/schemas/StaffRole"
           }
         }
+      },
+      "StaffRole": {
+        "type": "string",
+        "enum": [
+          "root",
+          "support"
+        ],
+        "description": "The account's role on the Grepvine team, when it has one. Omitted for every other account."
       },
       "RegisterRequest": {
         "type": "object",
@@ -1807,6 +1906,78 @@
             "type": "string",
             "minLength": 12,
             "maxLength": 1024
+          },
+          "invitation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "The token of the invitation link the account was invited with. Required when registration is by invitation."
+          }
+        }
+      },
+      "SignupMode": {
+        "type": "string",
+        "enum": [
+          "open",
+          "invite"
+        ],
+        "description": "How accounts are created. `open` lets anyone register; `invite` registers only with an invitation."
+      },
+      "AuthOptions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signup"
+        ],
+        "properties": {
+          "signup": {
+            "$ref": "#/components/schemas/SignupMode"
+          }
+        }
+      },
+      "InvitationCheckRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "InvitationRole": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "developer",
+          "reader"
+        ]
+      },
+      "InvitationPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "expires_at"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The address the invitation was sent to, to prefill the registration form."
+          },
+          "organization": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/InvitationRole"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -2032,6 +2203,7 @@
           "id",
           "name",
           "role",
+          "suspended",
           "created_at"
         ],
         "properties": {
@@ -2044,6 +2216,10 @@
           },
           "role": {
             "$ref": "#/components/schemas/Role"
+          },
+          "suspended": {
+            "type": "boolean",
+            "description": "A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support."
           },
           "created_at": {
             "type": "string",
@@ -2109,6 +2285,11 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the membership ends, for time-limited access granted by Grepvine support. Omitted for an ordinary membership."
           }
         }
       },
@@ -2343,7 +2524,7 @@
           "maxLength": 1024
         }
       },
-      "StringMetadataValue": {
+      "TaggedStringMetadataValue": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2361,7 +2542,7 @@
           }
         }
       },
-      "IntegerMetadataValue": {
+      "TaggedIntegerMetadataValue": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2379,7 +2560,7 @@
           }
         }
       },
-      "NumberMetadataValue": {
+      "TaggedNumberMetadataValue": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2397,7 +2578,7 @@
           }
         }
       },
-      "BooleanMetadataValue": {
+      "TaggedBooleanMetadataValue": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2414,7 +2595,7 @@
           }
         }
       },
-      "TimestampMetadataValue": {
+      "TaggedTimestampMetadataValue": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2433,31 +2614,51 @@
         }
       },
       "MetadataValue": {
+        "description": "A metadata value: a plain JSON string, boolean or integer, or a tagged value. A number that is not an\ninteger, and a timestamp, are always tagged. Any value may be tagged. Responses always use the tagged form.\n",
         "oneOf": [
           {
-            "$ref": "#/components/schemas/StringMetadataValue"
+            "type": "string",
+            "maxLength": 8192
           },
           {
-            "$ref": "#/components/schemas/IntegerMetadataValue"
+            "type": "boolean"
           },
           {
-            "$ref": "#/components/schemas/NumberMetadataValue"
+            "type": "integer",
+            "format": "int64"
           },
           {
-            "$ref": "#/components/schemas/BooleanMetadataValue"
+            "$ref": "#/components/schemas/TaggedMetadataValue"
+          }
+        ]
+      },
+      "TaggedMetadataValue": {
+        "description": "A metadata value with its type named explicitly.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TaggedStringMetadataValue"
           },
           {
-            "$ref": "#/components/schemas/TimestampMetadataValue"
+            "$ref": "#/components/schemas/TaggedIntegerMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/TaggedNumberMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/TaggedBooleanMetadataValue"
+          },
+          {
+            "$ref": "#/components/schemas/TaggedTimestampMetadataValue"
           }
         ],
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "string": "#/components/schemas/StringMetadataValue",
-            "integer": "#/components/schemas/IntegerMetadataValue",
-            "number": "#/components/schemas/NumberMetadataValue",
-            "boolean": "#/components/schemas/BooleanMetadataValue",
-            "timestamp": "#/components/schemas/TimestampMetadataValue"
+            "string": "#/components/schemas/TaggedStringMetadataValue",
+            "integer": "#/components/schemas/TaggedIntegerMetadataValue",
+            "number": "#/components/schemas/TaggedNumberMetadataValue",
+            "boolean": "#/components/schemas/TaggedBooleanMetadataValue",
+            "timestamp": "#/components/schemas/TaggedTimestampMetadataValue"
           }
         }
       },
@@ -2481,8 +2682,7 @@
             "maxLength": 1024
           },
           "metadata": {
-            "type": "string",
-            "description": "A Metadata JSON object."
+            "$ref": "#/components/schemas/Metadata"
           },
           "content": {
             "type": "string",
