@@ -75,8 +75,8 @@ func TestUploadRecordsFromDirectory(t *testing.T) {
 		t.Fatalf("stored %d documents, want 3020", len(recorder.batched))
 	}
 	first := recorder.batched["doc/000007"]
-	score, _ := first.Metadata["score"].(map[string]any)
-	if first.Content != "000007 <&> xxxxxxxxxx" || score["value"] != float64(7) {
+	score, _ := first.Metadata["score"].GetTaggedMetadataValue()
+	if first.Content != "000007 <&> xxxxxxxxxx" || score.TaggedIntegerMetadataValue.Value != 7 {
 		t.Fatalf("doc/000007 = %#v", first)
 	}
 	if large := recorder.batched["doc/003019"]; len(large.Content) != 1<<20+11 {
@@ -129,7 +129,7 @@ func TestUploadRecordsKeysAndLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, ok := recorder.batched["imported/doc/000001"]
-	if !ok || len(recorder.batched) != 2 || record.Metadata["score"] == nil {
+	if !ok || len(recorder.batched) != 2 || !record.Metadata["score"].IsTaggedMetadataValue() {
 		t.Fatalf("stored %#v", recorder.batched)
 	}
 	if !strings.Contains(stderr.String(), "docs.ndjson line 3: huge exceeds the 16 MiB a batch holds") {

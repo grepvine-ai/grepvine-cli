@@ -86,8 +86,8 @@ func expectRequests(t *testing.T, s *adminServer, want ...string) {
 }
 
 const (
-	acme    = `{"id":"7a1c0a52-1d43-4b6e-9d38-0c2b7b0e9f10","name":"acme","role":"owner","created_at":"2026-01-02T03:04:05Z"}`
-	globex  = `{"id":"2f0e4a8b-5c61-4d7a-8e93-1b2c3d4e5f60","name":"globex","role":"reader","created_at":"2026-02-03T04:05:06Z"}`
+	acme    = `{"id":"7a1c0a52-1d43-4b6e-9d38-0c2b7b0e9f10","name":"acme","role":"owner","suspended":false,"created_at":"2026-01-02T03:04:05Z"}`
+	globex  = `{"id":"2f0e4a8b-5c61-4d7a-8e93-1b2c3d4e5f60","name":"globex","role":"reader","suspended":false,"created_at":"2026-02-03T04:05:06Z"}`
 	alice   = `{"id":"0b6f3a3e-8c4d-4f0e-a1b2-c3d4e5f60718","name":"alice","email":"alice@example.com","created_at":"2026-01-01T00:00:00Z"}`
 	keyID   = "5d9e8f7a-6b5c-4d3e-8f1a-2b3c4d5e6f70"
 	apiKey  = `{"id":"` + keyID + `","name":"ci","prefix":"gv_ab12","created_at":"2026-03-04T05:06:07Z"}`

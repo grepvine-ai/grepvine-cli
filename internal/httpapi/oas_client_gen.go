@@ -47,6 +47,13 @@ type Invoker interface {
 	//
 	// PUT /auth/password
 	ChangePassword(ctx context.Context, request *ChangePasswordRequest, params ChangePasswordParams) (ChangePasswordRes, error)
+	// CheckInvitation invokes checkInvitation operation.
+	//
+	// Reports what a pending invitation offers, so the registration form can show it. The token travels in
+	// the body, never in the URL. An invitation that was used, withdrawn or has expired is not found.
+	//
+	// POST /auth/invitations:check
+	CheckInvitation(ctx context.Context, request *InvitationCheckRequest) (CheckInvitationRes, error)
 	// CreateAPIKey invokes createAPIKey operation.
 	//
 	// Create an API key.
@@ -97,6 +104,13 @@ type Invoker interface {
 	//
 	// POST /device/authorizations/deny
 	DenyDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params DenyDeviceAuthorizationParams) (DenyDeviceAuthorizationRes, error)
+	// GetAuthOptions invokes getAuthOptions operation.
+	//
+	// How accounts are created on this service. The console reads it to decide whether to offer
+	// registration without an invitation.
+	//
+	// GET /auth/options
+	GetAuthOptions(ctx context.Context) (*AuthOptions, error)
 	// GetCurrentUser invokes getCurrentUser operation.
 	//
 	// Get the current user.
@@ -205,7 +219,11 @@ type Invoker interface {
 	// RegisterUser invokes registerUser operation.
 	//
 	// A 409 has code `username_taken` when an account or an organization already holds the username, and
-	// code `email_taken` when an account already uses the email address.
+	// code `email_taken` when an account already uses the email address. A 403 has code
+	// `invitation_required` when registration is by invitation and the request carries none, and code
+	// `invitation_invalid` when the invitation it carries was already used, was withdrawn or has expired.
+	// A valid invitation is accepted with the registration, and the account joins the organization it
+	// names, if any.
 	//
 	// POST /auth/register
 	RegisterUser(ctx context.Context, request *RegisterRequest) (RegisterUserRes, error)
@@ -739,6 +757,90 @@ func (c *Client) sendChangePassword(ctx context.Context, request *ChangePassword
 
 	stage = "DecodeResponse"
 	result, err := decodeChangePasswordResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CheckInvitation invokes checkInvitation operation.
+//
+// Reports what a pending invitation offers, so the registration form can show it. The token travels in
+// the body, never in the URL. An invitation that was used, withdrawn or has expired is not found.
+//
+// POST /auth/invitations:check
+func (c *Client) CheckInvitation(ctx context.Context, request *InvitationCheckRequest) (CheckInvitationRes, error) {
+	res, err := c.sendCheckInvitation(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendCheckInvitation(ctx context.Context, request *InvitationCheckRequest) (res CheckInvitationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("checkInvitation"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/auth/invitations:check"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CheckInvitationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/auth/invitations:check"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCheckInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCheckInvitationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2120,6 +2222,87 @@ func (c *Client) sendDenyDeviceAuthorization(ctx context.Context, request *Devic
 
 	stage = "DecodeResponse"
 	result, err := decodeDenyDeviceAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetAuthOptions invokes getAuthOptions operation.
+//
+// How accounts are created on this service. The console reads it to decide whether to offer
+// registration without an invitation.
+//
+// GET /auth/options
+func (c *Client) GetAuthOptions(ctx context.Context) (*AuthOptions, error) {
+	res, err := c.sendGetAuthOptions(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetAuthOptions(ctx context.Context) (res *AuthOptions, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getAuthOptions"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/auth/options"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetAuthOptionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/auth/options"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetAuthOptionsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -4783,7 +4966,11 @@ func (c *Client) sendQueryIndex(ctx context.Context, request *QueryRequest, para
 // RegisterUser invokes registerUser operation.
 //
 // A 409 has code `username_taken` when an account or an organization already holds the username, and
-// code `email_taken` when an account already uses the email address.
+// code `email_taken` when an account already uses the email address. A 403 has code
+// `invitation_required` when registration is by invitation and the request carries none, and code
+// `invitation_invalid` when the invitation it carries was already used, was withdrawn or has expired.
+// A valid invitation is accepted with the registration, and the account joins the organization it
+// names, if any.
 //
 // POST /auth/register
 func (c *Client) RegisterUser(ctx context.Context, request *RegisterRequest) (RegisterUserRes, error) {

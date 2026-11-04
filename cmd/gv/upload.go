@@ -88,10 +88,10 @@ type uploadJob struct {
 }
 
 type uploadRecord struct {
-	Key         string         `json:"key"`
-	Content     string         `json:"content"`
-	Metadata    map[string]any `json:"metadata"`
-	IfNoneMatch string         `json:"if_none_match,omitempty"`
+	Key         string                           `json:"key"`
+	Content     string                           `json:"content"`
+	Metadata    map[string]httpapi.MetadataValue `json:"metadata"`
+	IfNoneMatch string                           `json:"if_none_match,omitempty"`
 }
 
 func newUploadCommand(a *app) *cobra.Command {
@@ -543,11 +543,7 @@ func encodeChunk(results []readResult, recursive bool, warn func(string), consum
 		}
 		record := uploadRecord{
 			Key: result.file.key, Content: string(result.content),
-			Metadata: map[string]any{
-				"path":  map[string]any{"type": "string", "value": result.file.key},
-				"size":  map[string]any{"type": "integer", "value": result.file.size},
-				"mtime": map[string]any{"type": "timestamp", "value": result.file.mtime.UTC().Format(time.RFC3339Nano)},
-			},
+			Metadata: fileMetadata(result.file),
 		}
 		if err := encoder.Encode(record); err != nil {
 			return err
@@ -766,16 +762,20 @@ func (a *app) sendUploadJob(ctx context.Context, client *httpapi.Client, organiz
 	return nil, nil
 }
 
+// fileMetadata is the metadata an upload stores with a file: its path, its size
+// and its modification time.
+func fileMetadata(file uploadFile) httpapi.Metadata {
+	return httpapi.Metadata{
+		"path":  httpapi.NewStringMetadataValue(file.key),
+		"size":  httpapi.NewInt64MetadataValue(file.size),
+		"mtime": timestampMetadataValue(file.mtime.UTC()),
+	}
+}
+
 // sendLargeFile publishes one file on its own. content is the file when it was
 // already read; otherwise every attempt reads it again from its source. A file
 // the index refused is returned as a failed result, as a batch reports one.
 func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organization, index string, file uploadFile, content []byte) ([]httpapi.MutationResult, error) {
-	values := map[string]any{
-		"path":  map[string]any{"type": "string", "value": file.key},
-		"size":  map[string]any{"type": "integer", "value": file.size},
-		"mtime": map[string]any{"type": "timestamp", "value": file.mtime.UTC().Format(time.RFC3339Nano)},
-	}
-	metadata, _ := json.Marshal(values)
 	idempotency := uploadID(organization, index, []byte(file.key+fmt.Sprint(file.size, file.mtime.UnixNano())))
 	var throttledWait time.Duration
 	for attempt := 0; attempt < uploadRetryAttempts; attempt++ {
@@ -787,7 +787,7 @@ func (a *app) sendLargeFile(ctx context.Context, client *httpapi.Client, organiz
 			return nil, err
 		}
 		response, callErr := client.PutDocument(ctx, &httpapi.PutDocumentFormMultipart{
-			Key: file.key, Metadata: httpapi.NewOptString(string(metadata)),
+			Key: file.key, Metadata: httpapi.NewOptMetadata(fileMetadata(file)),
 			Content: ogenhttp.MultipartFile{Name: path.Base(file.key), File: handle, Size: file.size},
 		}, httpapi.PutDocumentParams{
 			Organization: httpapi.Name(organization), Index: httpapi.IndexName(index), IdempotencyKey: idempotency,

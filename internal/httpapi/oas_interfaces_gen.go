@@ -9,6 +9,10 @@ type ChangePasswordRes interface {
 	changePasswordRes()
 }
 
+type CheckInvitationRes interface {
+	checkInvitationRes()
+}
+
 type CreateIndexRes interface {
 	createIndexRes()
 }

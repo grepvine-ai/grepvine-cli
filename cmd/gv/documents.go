@@ -5,10 +5,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path"
@@ -192,11 +192,12 @@ func newPutDocumentCommand(a *app) *cobra.Command {
 
 Each --metadata flag sets one field: NAME=VALUE stores a string, and
 NAME:TYPE=VALUE stores a value of TYPE, which is string, integer, number,
-boolean or timestamp (RFC 3339).
+boolean or timestamp (RFC 3339, sent to the second).
 
 --metadata-file reads a metadata JSON object, as the API takes it, from a
-file, for example {"team": {"type": "string", "value": "search"}}. A
---metadata flag adds a field to it or replaces one.`,
+file, for example {"team": "search", "due": {"type": "timestamp", "value":
+"2026-03-04T05:06:07Z"}}. A --metadata flag adds a field to it or replaces
+one.`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(command *cobra.Command, args []string) error {
 			organization, index, err := a.parseIndexReference(args[0])
@@ -252,10 +253,9 @@ func (a *app) putDocument(ctx context.Context, organization, index, key, source 
 	if err != nil {
 		return err
 	}
-	form := &httpapi.PutDocumentFormMultipart{Key: key, Content: content}
-	if metadata != "" {
-		form.Metadata = httpapi.NewOptString(metadata)
-	}
+	// The metadata part is always sent, {} when there is none: an empty part
+	// is not a JSON object.
+	form := &httpapi.PutDocumentFormMultipart{Key: key, Content: content, Metadata: httpapi.NewOptMetadata(metadata)}
 	params := httpapi.PutDocumentParams{
 		Organization:   httpapi.Name(organization),
 		Index:          httpapi.IndexName(index),
@@ -305,56 +305,61 @@ func readMetadataFile(name string) (httpapi.Metadata, error) {
 }
 
 // parseMetadata adds NAME=VALUE and NAME:TYPE=VALUE flags to base and returns
-// the JSON metadata object a stored document carries, or "" when there is none.
-func parseMetadata(base httpapi.Metadata, fields []string) (string, error) {
-	metadata := map[string]any{}
-	for name, value := range base {
-		metadata[name] = value
+// the metadata a stored document carries.
+func parseMetadata(base httpapi.Metadata, fields []string) (httpapi.Metadata, error) {
+	metadata := maps.Clone(base)
+	if metadata == nil {
+		metadata = httpapi.Metadata{}
 	}
 	for _, field := range fields {
 		name, text, ok := strings.Cut(field, "=")
 		if !ok || name == "" {
-			return "", fmt.Errorf("metadata %q must be NAME=VALUE or NAME:TYPE=VALUE", field)
+			return nil, fmt.Errorf("metadata %q must be NAME=VALUE or NAME:TYPE=VALUE", field)
 		}
 		kind := "string"
 		if before, after, typed := strings.Cut(name, ":"); typed {
 			name, kind = before, after
 		}
-		var value any
+		var value httpapi.MetadataValue
 		var err error
 		switch kind {
 		case "string":
-			value = text
+			value = httpapi.NewStringMetadataValue(text)
 		case "integer":
-			value, err = strconv.ParseInt(text, 10, 64)
+			var number int64
+			number, err = strconv.ParseInt(text, 10, 64)
+			value = httpapi.NewInt64MetadataValue(number)
 		case "number":
 			var number float64
 			number, err = strconv.ParseFloat(text, 64)
 			if err == nil && (math.IsNaN(number) || math.IsInf(number, 0)) {
 				err = errors.New("not finite")
 			}
-			value = number
+			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedNumberMetadataValueTaggedMetadataValue(
+				httpapi.TaggedNumberMetadataValue{Type: "number", Value: number}))
 		case "boolean":
-			value, err = strconv.ParseBool(text)
+			var flag bool
+			flag, err = strconv.ParseBool(text)
+			value = httpapi.NewBoolMetadataValue(flag)
 		case "timestamp":
-			_, err = time.Parse(time.RFC3339Nano, text)
-			value = text
+			var stamp time.Time
+			stamp, err = time.Parse(time.RFC3339Nano, text)
+			value = timestampMetadataValue(stamp)
 		default:
-			return "", fmt.Errorf("metadata type %q must be string, integer, number, boolean or timestamp", kind)
+			return nil, fmt.Errorf("metadata type %q must be string, integer, number, boolean or timestamp", kind)
 		}
 		if err != nil {
-			return "", fmt.Errorf("metadata %s: %q is not a valid %s", name, text, kind)
+			return nil, fmt.Errorf("metadata %s: %q is not a valid %s", name, text, kind)
 		}
-		metadata[name] = map[string]any{"type": kind, "value": value}
+		metadata[name] = value
 	}
-	if len(metadata) == 0 {
-		return "", nil
-	}
-	encoded, err := json.Marshal(metadata)
-	if err != nil {
-		return "", fmt.Errorf("encode metadata: %w", err)
-	}
-	return string(encoded), nil
+	return metadata, nil
+}
+
+// timestampMetadataValue is a timestamp metadata value, which is always tagged.
+func timestampMetadataValue(stamp time.Time) httpapi.MetadataValue {
+	return httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedTimestampMetadataValueTaggedMetadataValue(
+		httpapi.TaggedTimestampMetadataValue{Type: "timestamp", Value: stamp}))
 }
 
 type deleteDocumentOptions struct {

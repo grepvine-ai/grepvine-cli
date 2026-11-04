@@ -57,6 +57,20 @@ func encodeChangePasswordRequest(
 	return nil
 }
 
+func encodeCheckInvitationRequest(
+	req *InvitationCheckRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCreateAPIKeyRequest(
 	req *CreateAPIKeyRequest,
 	r *http.Request,
@@ -162,7 +176,9 @@ func encodePutDocumentRequest(
 	const contentType = "multipart/form-data"
 	request := req
 
-	q := uri.NewFormEncoder(map[string]string{})
+	q := uri.NewFormEncoder(map[string]string{
+		"metadata": "application/json; charset=utf-8",
+	})
 	{
 		// Encode "key" form field.
 		cfg := uri.QueryParameterEncodingConfig{
@@ -184,10 +200,13 @@ func encodePutDocumentRequest(
 			Explode: true,
 		}
 		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			if val, ok := request.Metadata.Get(); ok {
-				return e.EncodeValue(conv.StringToString(val))
-			}
-			return nil
+			var enc jx.Encoder
+			func(e *jx.Encoder) {
+				if request.Metadata.Set {
+					request.Metadata.Encode(e)
+				}
+			}(&enc)
+			return e.EncodeValue(string(enc.Bytes()))
 		}); err != nil {
 			return errors.Wrap(err, "encode query")
 		}

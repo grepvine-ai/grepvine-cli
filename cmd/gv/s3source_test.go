@@ -407,9 +407,9 @@ func TestUploadFromS3Prefix(t *testing.T) {
 		if record.Content != content {
 			t.Errorf("%s content = %q, want %q", key, record.Content, content)
 		}
-		size, _ := record.Metadata["size"].(map[string]any)
-		mtime, _ := record.Metadata["mtime"].(map[string]any)
-		if size["value"] != float64(len(content)) || mtime["value"] != object.mtime.Format(time.RFC3339Nano) {
+		size, _ := record.Metadata["size"].GetInt64()
+		mtime, _ := record.Metadata["mtime"].GetTaggedMetadataValue()
+		if size != int64(len(content)) || !mtime.TaggedTimestampMetadataValue.Value.Equal(object.mtime.Truncate(time.Second)) {
 			t.Errorf("%s metadata = %#v", key, record.Metadata)
 		}
 	}
