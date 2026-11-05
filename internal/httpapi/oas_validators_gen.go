@@ -1001,6 +1001,8 @@ func (s IndexState) Validate() error {
 		return nil
 	case "ready":
 		return nil
+	case "recreate_required":
+		return nil
 	case "deleting":
 		return nil
 	case "delete_failed":

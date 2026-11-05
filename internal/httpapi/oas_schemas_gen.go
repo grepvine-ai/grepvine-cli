@@ -1311,10 +1311,11 @@ func (s *IndexPage) SetPagination(val Pagination) {
 type IndexState string
 
 const (
-	IndexStateCreating     IndexState = "creating"
-	IndexStateReady        IndexState = "ready"
-	IndexStateDeleting     IndexState = "deleting"
-	IndexStateDeleteFailed IndexState = "delete_failed"
+	IndexStateCreating         IndexState = "creating"
+	IndexStateReady            IndexState = "ready"
+	IndexStateRecreateRequired IndexState = "recreate_required"
+	IndexStateDeleting         IndexState = "deleting"
+	IndexStateDeleteFailed     IndexState = "delete_failed"
 )
 
 // AllValues returns all IndexState values.
@@ -1322,6 +1323,7 @@ func (IndexState) AllValues() []IndexState {
 	return []IndexState{
 		IndexStateCreating,
 		IndexStateReady,
+		IndexStateRecreateRequired,
 		IndexStateDeleting,
 		IndexStateDeleteFailed,
 	}
@@ -1333,6 +1335,8 @@ func (s IndexState) MarshalText() ([]byte, error) {
 	case IndexStateCreating:
 		return []byte(s), nil
 	case IndexStateReady:
+		return []byte(s), nil
+	case IndexStateRecreateRequired:
 		return []byte(s), nil
 	case IndexStateDeleting:
 		return []byte(s), nil
@@ -1351,6 +1355,9 @@ func (s *IndexState) UnmarshalText(data []byte) error {
 		return nil
 	case IndexStateReady:
 		*s = IndexStateReady
+		return nil
+	case IndexStateRecreateRequired:
+		*s = IndexStateRecreateRequired
 		return nil
 	case IndexStateDeleting:
 		*s = IndexStateDeleting

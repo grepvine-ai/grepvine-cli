@@ -2961,6 +2961,8 @@ func (s *IndexState) Decode(d *jx.Decoder) error {
 		*s = IndexStateCreating
 	case IndexStateReady:
 		*s = IndexStateReady
+	case IndexStateRecreateRequired:
+		*s = IndexStateRecreateRequired
 	case IndexStateDeleting:
 		*s = IndexStateDeleting
 	case IndexStateDeleteFailed:
