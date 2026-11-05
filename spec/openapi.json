@@ -2367,6 +2367,7 @@
         "enum": [
           "creating",
           "ready",
+          "recreate_required",
           "deleting",
           "delete_failed"
         ]
@@ -2666,6 +2667,11 @@
         "description": "Document metadata as a request sends it. Values are plain or tagged.",
         "type": "object",
         "maxProperties": 64,
+        "propertyNames": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
         "additionalProperties": {
           "$ref": "#/components/schemas/MetadataValue"
         }
