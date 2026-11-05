@@ -1526,7 +1526,7 @@
         }
       },
       "DocumentMetadata": {
-        "description": "The document Metadata object encoded as JSON.",
+        "description": "The document TaggedMetadata object encoded as JSON.",
         "schema": {
           "type": "string"
         }
@@ -2663,10 +2663,19 @@
         }
       },
       "Metadata": {
+        "description": "Document metadata as a request sends it. Values are plain or tagged.",
         "type": "object",
         "maxProperties": 64,
         "additionalProperties": {
           "$ref": "#/components/schemas/MetadataValue"
+        }
+      },
+      "TaggedMetadata": {
+        "description": "Document metadata as a response returns it. Every value is tagged with its type.",
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "$ref": "#/components/schemas/TaggedMetadataValue"
         }
       },
       "PutDocumentForm": {
@@ -2809,7 +2818,7 @@
             "minimum": 0
           },
           "metadata": {
-            "$ref": "#/components/schemas/Metadata"
+            "$ref": "#/components/schemas/TaggedMetadata"
           },
           "updated_at": {
             "type": "string",
