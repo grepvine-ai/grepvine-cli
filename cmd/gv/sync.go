@@ -611,10 +611,8 @@ func (a *app) planTwoWay(ctx context.Context, client *httpapi.Client, organizati
 func remoteFromSummary(document httpapi.DocumentSummary) remoteDocument {
 	remote := remoteDocument{size: int64(document.ContentBytes)}
 	if value, ok := document.Metadata["mtime"]; ok {
-		if tagged, ok := value.GetTaggedMetadataValue(); ok {
-			if stamp, ok := tagged.GetTaggedTimestampMetadataValue(); ok {
-				remote.mtime, remote.hasMtime = stamp.Value, true
-			}
+		if stamp, ok := value.GetTaggedTimestampMetadataValue(); ok {
+			remote.mtime, remote.hasMtime = stamp.Value, true
 		}
 	}
 	return remote

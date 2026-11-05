@@ -720,10 +720,10 @@ func (s *DocumentPage) SetPagination(val Pagination) {
 
 // Ref: #/components/schemas/DocumentSummary
 type DocumentSummary struct {
-	Key          string   `json:"key"`
-	Revision     string   `json:"revision"`
-	ContentBytes int      `json:"content_bytes"`
-	Metadata     Metadata `json:"metadata"`
+	Key          string         `json:"key"`
+	Revision     string         `json:"revision"`
+	ContentBytes int            `json:"content_bytes"`
+	Metadata     TaggedMetadata `json:"metadata"`
 	// When the document's current revision was stored.
 	UpdatedAt time.Time `json:"updated_at"`
 	// Whether a search can match this document. False for content that is not valid UTF-8 or is over 100
@@ -747,7 +747,7 @@ func (s *DocumentSummary) GetContentBytes() int {
 }
 
 // GetMetadata returns the value of Metadata.
-func (s *DocumentSummary) GetMetadata() Metadata {
+func (s *DocumentSummary) GetMetadata() TaggedMetadata {
 	return s.Metadata
 }
 
@@ -777,7 +777,7 @@ func (s *DocumentSummary) SetContentBytes(val int) {
 }
 
 // SetMetadata sets the value of Metadata.
-func (s *DocumentSummary) SetMetadata(val Metadata) {
+func (s *DocumentSummary) SetMetadata(val TaggedMetadata) {
 	s.Metadata = val
 }
 
@@ -1776,6 +1776,7 @@ func (s *MemberPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// Document metadata as a request sends it. Values are plain or tagged.
 // Ref: #/components/schemas/Metadata
 type Metadata map[string]MetadataValue
 
@@ -3449,6 +3450,19 @@ func (s *TaggedIntegerMetadataValue) SetType(val string) {
 // SetValue sets the value of Value.
 func (s *TaggedIntegerMetadataValue) SetValue(val int64) {
 	s.Value = val
+}
+
+// Document metadata as a response returns it. Every value is tagged with its type.
+// Ref: #/components/schemas/TaggedMetadata
+type TaggedMetadata map[string]TaggedMetadataValue
+
+func (s *TaggedMetadata) init() TaggedMetadata {
+	m := *s
+	if m == nil {
+		m = map[string]TaggedMetadataValue{}
+		*s = m
+	}
+	return m
 }
 
 // A metadata value with its type named explicitly.

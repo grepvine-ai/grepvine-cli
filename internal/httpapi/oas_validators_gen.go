@@ -2266,6 +2266,28 @@ func (s StaffRole) Validate() error {
 	}
 }
 
+func (s TaggedMetadata) Validate() error {
+	var failures []validate.FieldError
+	for key, elem := range s {
+		if err := func() error {
+			if err := elem.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			failures = append(failures, validate.FieldError{
+				Name:  key,
+				Error: err,
+			})
+		}
+	}
+
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s TaggedMetadataValue) Validate() error {
 	switch s.Type {
 	case TaggedStringMetadataValueTaggedMetadataValue:
