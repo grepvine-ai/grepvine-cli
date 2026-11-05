@@ -958,7 +958,7 @@ type fakeService struct {
 	indexes map[string]*httpapi.Index
 	// metadata holds what each stored document was described with, so a
 	// listing reports it the way the service does.
-	metadata map[string]httpapi.Metadata
+	metadata map[string]httpapi.TaggedMetadata
 	// refuse names the keys whose writes the stack reports as not applied, as
 	// the service does for a document whose precondition failed; a batch
 	// applies every other document it holds.
@@ -1020,17 +1020,18 @@ func (s *fakeService) DeleteObjects(_ context.Context, request *httpapi.DeleteOb
 // taggedMetadata returns metadata as a response reports it, every value
 // tagged, so a listing reports the size and modification time the uploader
 // wrote.
-func taggedMetadata(fields httpapi.Metadata) httpapi.Metadata {
-	metadata := httpapi.Metadata{}
+func taggedMetadata(fields httpapi.Metadata) httpapi.TaggedMetadata {
+	metadata := httpapi.TaggedMetadata{}
 	for name, value := range fields {
 		if text, ok := value.GetString(); ok {
-			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedStringMetadataValueTaggedMetadataValue(httpapi.TaggedStringMetadataValue{Type: "string", Value: text}))
+			metadata[name] = httpapi.NewTaggedStringMetadataValueTaggedMetadataValue(httpapi.TaggedStringMetadataValue{Type: "string", Value: text})
 		} else if number, ok := value.GetInt64(); ok {
-			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedIntegerMetadataValueTaggedMetadataValue(httpapi.TaggedIntegerMetadataValue{Type: "integer", Value: number}))
+			metadata[name] = httpapi.NewTaggedIntegerMetadataValueTaggedMetadataValue(httpapi.TaggedIntegerMetadataValue{Type: "integer", Value: number})
 		} else if flag, ok := value.GetBool(); ok {
-			value = httpapi.NewTaggedMetadataValueMetadataValue(httpapi.NewTaggedBooleanMetadataValueTaggedMetadataValue(httpapi.TaggedBooleanMetadataValue{Type: "boolean", Value: flag}))
+			metadata[name] = httpapi.NewTaggedBooleanMetadataValueTaggedMetadataValue(httpapi.TaggedBooleanMetadataValue{Type: "boolean", Value: flag})
+		} else {
+			metadata[name] = value.TaggedMetadataValue
 		}
-		metadata[name] = value
 	}
 	return metadata
 }
@@ -1159,7 +1160,7 @@ func (s *fakeService) PutObjects(_ context.Context, request httpapi.PutObjectsRe
 			s.revisions[params.IdempotencyKey+record.Key] = revision
 			s.objects[record.Key] = record.Content
 			if s.metadata == nil {
-				s.metadata = map[string]httpapi.Metadata{}
+				s.metadata = map[string]httpapi.TaggedMetadata{}
 			}
 			s.metadata[record.Key] = taggedMetadata(record.Metadata)
 			s.putKeys = append(s.putKeys, record.Key)
@@ -1238,7 +1239,7 @@ func (s *fakeService) ListDocuments(_ context.Context, params httpapi.ListDocume
 		}
 		metadata := s.metadata[key]
 		if metadata == nil {
-			metadata = httpapi.Metadata{}
+			metadata = httpapi.TaggedMetadata{}
 		}
 		documents = append(documents, httpapi.DocumentSummary{
 			Key: key, Revision: "r1", ContentBytes: len(content), Metadata: metadata, UpdatedAt: time.Unix(0, 0).UTC(), Searchable: true,
@@ -1275,7 +1276,7 @@ func (s *fakeService) PutDocument(_ context.Context, request *httpapi.PutDocumen
 	s.objects[request.Key] = string(content)
 	if fields, ok := request.Metadata.Get(); ok {
 		if s.metadata == nil {
-			s.metadata = map[string]httpapi.Metadata{}
+			s.metadata = map[string]httpapi.TaggedMetadata{}
 		}
 		s.metadata[request.Key] = taggedMetadata(fields)
 	}
@@ -2173,10 +2174,10 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if stdout.String() != "a.txt\tr-put\n" || stack.objects["a.txt"] != "from a file\n" {
 		t.Fatalf("put output = %q, stored %q", stdout.String(), stack.objects["a.txt"])
 	}
-	if team, _ := stack.metadata["a.txt"]["team"].GetTaggedMetadataValue(); team.TaggedStringMetadataValue.Value != "search" {
+	if team := stack.metadata["a.txt"]["team"]; team.TaggedStringMetadataValue.Value != "search" {
 		t.Fatalf("team metadata = %+v", stack.metadata["a.txt"])
 	}
-	if pages, _ := stack.metadata["a.txt"]["pages"].GetTaggedMetadataValue(); pages.TaggedIntegerMetadataValue.Value != 3 {
+	if pages := stack.metadata["a.txt"]["pages"]; pages.TaggedIntegerMetadataValue.Value != 3 {
 		t.Fatalf("pages metadata = %+v", stack.metadata["a.txt"])
 	}
 	metadataFile := filepath.Join(t.TempDir(), "metadata.json")
@@ -2186,10 +2187,10 @@ func TestPutAndDeleteSeveralDocuments(t *testing.T) {
 	if err := execute("", "put", "acme/docs", "c.txt", source, "--metadata-file", metadataFile, "-m", "team=search"); err != nil {
 		t.Fatal(err)
 	}
-	if team, _ := stack.metadata["c.txt"]["team"].GetTaggedMetadataValue(); team.TaggedStringMetadataValue.Value != "search" {
+	if team := stack.metadata["c.txt"]["team"]; team.TaggedStringMetadataValue.Value != "search" {
 		t.Fatalf("a --metadata flag should replace the file's field: %+v", stack.metadata["c.txt"])
 	}
-	if draft, _ := stack.metadata["c.txt"]["draft"].GetTaggedMetadataValue(); !draft.TaggedBooleanMetadataValue.Value {
+	if draft := stack.metadata["c.txt"]["draft"]; !draft.TaggedBooleanMetadataValue.Value {
 		t.Fatalf("draft metadata = %+v", stack.metadata["c.txt"])
 	}
 	if err := os.WriteFile(metadataFile, []byte(`{"team":{"type":"integer","value":"x"}}`), 0o600); err != nil {

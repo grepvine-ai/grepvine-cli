@@ -29,7 +29,7 @@ import (
 // newSyncStack is an in-process stack with one ready index, acme/docs.
 func newSyncStack() *fakeService {
 	return &fakeService{
-		objects: map[string]string{}, revisions: map[string]string{}, metadata: map[string]httpapi.Metadata{},
+		objects: map[string]string{}, revisions: map[string]string{}, metadata: map[string]httpapi.TaggedMetadata{},
 		indexes: map[string]*httpapi.Index{"docs": {
 			ID: uuid.New(), Organization: "acme", Name: "docs", CanonicalID: "canonical", Tags: httpapi.IndexTags{},
 			State: httpapi.IndexStateReady, CreatedAt: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
@@ -389,9 +389,9 @@ func seedTwoWayStack(t *testing.T, dir string) *fakeService {
 	stack := newSyncStack()
 	stack.objects["stale.txt"] = "stale\n"
 	stack.objects["same.txt"] = "same\n"
-	stack.metadata["same.txt"] = httpapi.Metadata{"mtime": timestampMetadataValue(info.ModTime().UTC())}
+	stack.metadata["same.txt"] = httpapi.TaggedMetadata{"mtime": timestampMetadataValue(info.ModTime().UTC()).TaggedMetadataValue}
 	stack.objects["changed.txt"] = "changed\n"
-	stack.metadata["changed.txt"] = httpapi.Metadata{"mtime": timestampMetadataValue(info.ModTime().UTC())}
+	stack.metadata["changed.txt"] = httpapi.TaggedMetadata{"mtime": timestampMetadataValue(info.ModTime().UTC()).TaggedMetadataValue}
 	stack.indexes["docs"].Tags = httpapi.IndexTags{gitCommitTag: strings.Repeat("a", 40), gitBranchTag: "main", "team": "search"}
 	return stack
 }
