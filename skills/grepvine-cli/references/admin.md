@@ -7,14 +7,14 @@ Every command in this file changes who can do what, or prints secrets. Run the r
 ```sh
 gv org ls --json
 gv org info ORGANIZATION --json
-gv org create ORGANIZATION                 # you become its owner
-gv org transfer ORGANIZATION USER          # make another member the owner
-gv org rm ORGANIZATION                     # deletes every index and document in it; cannot be undone
+gv org rm ORGANIZATION   # deletes every index and document in it; cannot be undone
 ```
+
+Create an organization and transfer its ownership in the console; `gv` cannot.
 
 ## Members
 
-Roles, from most to least access: `owner`, `admin`, `developer`, `reader`. An organization has one owner; `gv org transfer` changes it.
+Roles, from most to least access: `owner`, `admin`, `developer`, `reader`. An organization has one owner; change it in the console.
 
 ```sh
 gv member ls ORGANIZATION --json

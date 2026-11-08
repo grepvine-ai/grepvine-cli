@@ -112,13 +112,11 @@ func TestWhoamiJSON(t *testing.T) {
 
 func TestOrgCommands(t *testing.T) {
 	s, _, execute := newAdminServer(t, map[string]adminResponse{
-		"GET /organizations":            {200, `{"results":[` + acme + `],"pagination":{"next_page_id":"p2","has_next":true}}`},
-		"GET /organizations?page=p2":    {200, `{"results":[` + globex + `],"pagination":{"next_page_id":"","has_next":false}}`},
-		"GET /organizations/acme":       {200, acme},
-		"POST /organizations":           {201, acme},
-		"DELETE /organizations/acme":    {202, ""},
-		"PUT /organizations/acme/owner": {204, ""},
-		"GET /organizations/missing":    {404, `{"code":"not_found","reason":"not_found","error":"organization not found"}`},
+		"GET /organizations":         {200, `{"results":[` + acme + `],"pagination":{"next_page_id":"p2","has_next":true}}`},
+		"GET /organizations?page=p2": {200, `{"results":[` + globex + `],"pagination":{"next_page_id":"","has_next":false}}`},
+		"GET /organizations/acme":    {200, acme},
+		"DELETE /organizations/acme": {202, ""},
+		"GET /organizations/missing": {404, `{"code":"not_found","reason":"not_found","error":"organization not found"}`},
 	})
 
 	stdout, _, err := execute("", "org", "ls")
@@ -145,12 +143,6 @@ func TestOrgCommands(t *testing.T) {
 		t.Fatalf("org info missing error = %v", err)
 	}
 
-	stdout, _, err = execute("", "org", "create", "acme")
-	if err != nil || stdout != "Created organization acme\n" {
-		t.Fatalf("org create = %q, %v", stdout, err)
-	}
-	expectRequests(t, s, `POST /organizations {"name":"acme"}`)
-
 	for _, answer := range []string{"", "globex\n"} {
 		_, stderr, err := execute(answer, "org", "rm", "acme")
 		if err == nil || !strings.HasPrefix(err.Error(), "not deleted") || !strings.Contains(stderr, "Type the organization name to confirm") {
@@ -164,15 +156,6 @@ func TestOrgCommands(t *testing.T) {
 	}
 	expectRequests(t, s, "DELETE /organizations/acme")
 
-	if _, _, err = execute("", "org", "transfer", "acme", "alice"); err == nil || !strings.HasPrefix(err.Error(), "not transferred") {
-		t.Fatalf("org transfer without confirmation error = %v", err)
-	}
-	expectRequests(t, s)
-	stdout, _, err = execute("", "org", "transfer", "-f", "acme", "alice")
-	if err != nil || stdout != "alice now owns acme\n" {
-		t.Fatalf("org transfer = %q, %v", stdout, err)
-	}
-	expectRequests(t, s, `PUT /organizations/acme/owner {"user":"alice"}`)
 }
 
 func TestMemberCommands(t *testing.T) {

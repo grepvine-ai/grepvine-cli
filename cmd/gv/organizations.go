@@ -46,17 +46,20 @@ func newWhoamiCommand(a *app) *cobra.Command {
 	return command
 }
 
+// An API key cannot create an organization or transfer its ownership: only a
+// person signed in to the console can, so gv leaves both to the console.
 func newOrgCommand(a *app) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "org",
-		Short: "List, inspect, create, delete and transfer organizations",
+		Short: "List, inspect and delete organizations; create and transfer them in the console",
+		Long: `List, inspect and delete organizations.
+
+Create an organization and transfer its ownership in the console.`,
 	}
 	command.AddCommand(
 		newOrgListCommand(a),
 		newOrgInfoCommand(a),
-		newOrgCreateCommand(a),
 		newOrgRemoveCommand(a),
-		newOrgTransferCommand(a),
 	)
 	return command
 }
@@ -153,33 +156,6 @@ func (a *app) printOrganization(organization *httpapi.Organization, asJSON bool)
 	return table.Flush()
 }
 
-func newOrgCreateCommand(a *app) *cobra.Command {
-	return &cobra.Command{
-		Use:   "create ORGANIZATION",
-		Short: "Create an organization that you own",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(command *cobra.Command, args []string) error {
-			client, _, _, err := a.client(true)
-			if err != nil {
-				return err
-			}
-			response, err := client.CreateOrganization(command.Context(), &httpapi.CreateOrganizationRequest{Name: httpapi.Name(args[0])}, httpapi.CreateOrganizationParams{})
-			if err != nil {
-				return fmt.Errorf("create organization: %w", friendlyAPIError(err))
-			}
-			switch value := response.(type) {
-			case *httpapi.Organization:
-				fmt.Fprintf(a.stdout, "Created organization %s\n", value.Name)
-				return nil
-			case *httpapi.ConflictHeaders:
-				return responseError(value.Response, value.XRequestID)
-			default:
-				return fmt.Errorf("create organization: unexpected response %T", response)
-			}
-		},
-	}
-}
-
 func newOrgRemoveCommand(a *app) *cobra.Command {
 	var force bool
 	command := &cobra.Command{
@@ -218,39 +194,6 @@ Without --force, gv asks you to type the organization name to confirm.`,
 		},
 	}
 	command.Flags().BoolVarP(&force, "force", "f", false, "delete without asking for confirmation")
-	return command
-}
-
-func newOrgTransferCommand(a *app) *cobra.Command {
-	var force bool
-	command := &cobra.Command{
-		Use:   "transfer ORGANIZATION USER",
-		Short: "Make another member the owner of an organization",
-		Long: `Make another member the owner of an organization. You stay a member as an admin.
-
-Without --force, gv asks you to type the organization name to confirm.`,
-		Args: cobra.ExactArgs(2),
-		RunE: func(command *cobra.Command, args []string) error {
-			organization, user := args[0], args[1]
-			if !force {
-				prompt := fmt.Sprintf("This makes %s the owner of %s. Only the new owner can undo it.\nType the organization name to confirm: ", user, organization)
-				if err := a.confirm(prompt, organization, "not transferred"); err != nil {
-					return err
-				}
-			}
-			client, _, _, err := a.client(true)
-			if err != nil {
-				return err
-			}
-			request := &httpapi.TransferOwnershipRequest{User: httpapi.Name(user)}
-			if err := client.TransferOrganizationOwnership(command.Context(), request, httpapi.TransferOrganizationOwnershipParams{Organization: httpapi.Name(organization)}); err != nil {
-				return fmt.Errorf("transfer organization: %w", friendlyAPIError(err))
-			}
-			fmt.Fprintf(a.stdout, "%s now owns %s\n", user, organization)
-			return nil
-		},
-	}
-	command.Flags().BoolVarP(&force, "force", "f", false, "transfer without asking for confirmation")
 	return command
 }
 

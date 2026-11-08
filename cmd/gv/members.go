@@ -14,7 +14,7 @@ import (
 )
 
 // memberRoles are the roles a member can be given. An organization has one
-// owner, which only `gv org transfer` changes.
+// owner, whom only the console can change.
 var memberRoles = []string{"admin", "developer", "reader"}
 
 func checkMemberRole(role string) error {
