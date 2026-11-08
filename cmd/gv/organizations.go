@@ -51,7 +51,7 @@ func newWhoamiCommand(a *app) *cobra.Command {
 func newOrgCommand(a *app) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "org",
-		Short: "List, inspect and delete organizations; create and transfer them in the console",
+		Short: "List, inspect and delete organizations",
 		Long: `List, inspect and delete organizations.
 
 Create an organization and transfer its ownership in the console.`,
