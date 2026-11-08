@@ -106,7 +106,7 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`. Run `gv <command> --help` for every flag.
+Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`; create an organization and transfer its ownership in the console. Run `gv <command> --help` for every flag.
 
 ### Default organization
 
