@@ -173,6 +173,7 @@
     "/auth/usernames/{name}": {
       "get": {
         "summary": "Check whether a username is available",
+        "description": "Reports whether an account can register this username now. Accounts and organizations share one namespace, so a name either one holds, in any case, is taken. The answer can change before the name is registered.",
         "operationId": "getUsernameAvailability",
         "tags": [
           "Authentication"
@@ -182,6 +183,7 @@
           {
             "name": "name",
             "in": "path",
+            "description": "The username to check.",
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/Name"
@@ -208,6 +210,7 @@
     "/auth/login": {
       "post": {
         "summary": "Create a user session",
+        "description": "Signs in with a username or email address and a password, and starts a browser session: the response sets the session cookie and returns, in X-Csrf-Token, the token every state change made with that cookie must send. A 401 means the credentials were not accepted. Programs authenticate with an API key instead.",
         "operationId": "login",
         "tags": [
           "Authentication"
@@ -254,6 +257,7 @@
     "/auth/logout": {
       "post": {
         "summary": "Revoke the current session",
+        "description": "Ends the session that made the request and clears its cookie. Other sessions and API keys are unaffected.",
         "operationId": "logout",
         "tags": [
           "Authentication"
@@ -281,6 +285,7 @@
     "/auth/me": {
       "get": {
         "summary": "Get the current user",
+        "description": "Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token.",
         "operationId": "getCurrentUser",
         "tags": [
           "Authentication"
@@ -313,6 +318,7 @@
     "/auth/password": {
       "put": {
         "summary": "Change the current password",
+        "description": "Changes the signed-in account's password after checking the current one. Every other session of the account is signed out; the session that made the request stays signed in, and API keys keep working. A 401 means the current password was wrong.",
         "operationId": "changePassword",
         "tags": [
           "Authentication"
@@ -348,6 +354,7 @@
     "/device/authorizations": {
       "post": {
         "summary": "Start device authorization",
+        "description": "Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds.",
         "operationId": "startDeviceAuthorization",
         "tags": [
           "Device login"
@@ -383,6 +390,7 @@
     "/device/authorizations/approve": {
       "post": {
         "summary": "Approve device authorization",
+        "description": "Approves a pending device authorization for the signed-in account, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. A code that is unknown, already decided or expired is not found.",
         "operationId": "approveDeviceAuthorization",
         "tags": [
           "Device login"
@@ -418,6 +426,7 @@
     "/device/authorizations/deny": {
       "post": {
         "summary": "Deny device authorization",
+        "description": "Denies a pending device authorization, identified by the code the device shows. The device's next poll fails with code `access_denied`. A code that is unknown, already decided or expired is not found.",
         "operationId": "denyDeviceAuthorization",
         "tags": [
           "Device login"
@@ -453,6 +462,7 @@
     "/device/token": {
       "post": {
         "summary": "Poll for a device API key",
+        "description": "Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, and an unknown, expired or already used code with `expired_token`.",
         "operationId": "pollDeviceToken",
         "tags": [
           "Device login"
@@ -491,6 +501,7 @@
     "/api-keys": {
       "get": {
         "summary": "List API keys",
+        "description": "Lists the authenticated account's API keys, oldest first, including revoked ones. The secret key itself is never returned again; `prefix` tells keys apart.",
         "operationId": "listAPIKeys",
         "tags": [
           "API keys"
@@ -521,6 +532,7 @@
       },
       "post": {
         "summary": "Create an API key",
+        "description": "Creates an API key for the authenticated account. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.",
         "operationId": "createAPIKey",
         "tags": [
           "API keys"
@@ -560,6 +572,7 @@
     "/api-keys/{api_key_id}": {
       "delete": {
         "summary": "Revoke an API key",
+        "description": "Revokes one of the authenticated account's API keys. Requests authenticated with it are refused from then on. A key that doesn't exist or belongs to another account is not found.",
         "operationId": "revokeAPIKey",
         "tags": [
           "API keys"
@@ -588,6 +601,7 @@
     "/organizations": {
       "get": {
         "summary": "List organizations",
+        "description": "Lists the organizations the authenticated account belongs to, with its role in each, ordered by name.",
         "operationId": "listOrganizations",
         "tags": [
           "Organizations"
@@ -618,6 +632,7 @@
       },
       "post": {
         "summary": "Create an organization",
+        "description": "Creates an organization owned by the authenticated account. Accounts and organizations share one namespace, so a 409 means an account or organization already holds the name, in any case.",
         "operationId": "createOrganization",
         "tags": [
           "Organizations"
@@ -660,6 +675,7 @@
     "/organizations/{organization}": {
       "get": {
         "summary": "Get an organization",
+        "description": "Returns an organization the authenticated account belongs to, with its role there. It answers for a suspended organization too, and reports `suspended`.",
         "operationId": "getOrganization",
         "tags": [
           "Organizations"
@@ -690,6 +706,7 @@
       },
       "delete": {
         "summary": "Delete an organization",
+        "description": "Starts deleting an organization with all its indexes and documents. Only the owner can delete it. The deletion finishes in the background and can't be undone.",
         "operationId": "deleteOrganization",
         "tags": [
           "Organizations"
@@ -718,6 +735,7 @@
     "/organizations/{organization}/members": {
       "get": {
         "summary": "List organization members",
+        "description": "Lists an organization's members and their roles, ordered by name. Requires the owner or admin role.",
         "operationId": "listOrganizationMembers",
         "tags": [
           "Organizations"
@@ -751,6 +769,7 @@
       },
       "post": {
         "summary": "Add an organization member",
+        "description": "Adds an existing account to the organization with the admin, developer or reader role. Requires the owner or admin role. An organization has one owner, changed only by transferring ownership.",
         "operationId": "addOrganizationMember",
         "tags": [
           "Organizations"
@@ -793,6 +812,7 @@
     "/organizations/{organization}/members/{user}": {
       "put": {
         "summary": "Change an organization member role",
+        "description": "Changes a member's role to admin, developer or reader. Requires the owner or admin role. The owner's role changes only by transferring ownership.",
         "operationId": "updateOrganizationMember",
         "tags": [
           "Organizations"
@@ -836,6 +856,7 @@
       },
       "delete": {
         "summary": "Remove an organization member",
+        "description": "Removes a member from the organization. Requires the owner or admin role. The owner can't be removed; transfer ownership first.",
         "operationId": "removeOrganizationMember",
         "tags": [
           "Organizations"
@@ -864,6 +885,7 @@
     "/organizations/{organization}/owner": {
       "put": {
         "summary": "Transfer organization ownership",
+        "description": "Makes another member the owner. Only the owner can transfer ownership, and the previous owner stays a member with the admin role. The new owner must already be a member, and not one with time-limited access.",
         "operationId": "transferOrganizationOwnership",
         "tags": [
           "Organizations"
@@ -899,6 +921,7 @@
     "/organizations/{organization}/indexes": {
       "get": {
         "summary": "List indexes",
+        "description": "Lists the organization's indexes, ordered by name. Any member can list them.",
         "operationId": "listIndexes",
         "tags": [
           "Indexes"
@@ -935,6 +958,7 @@
       },
       "post": {
         "summary": "Create an index",
+        "description": "Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the response; if it is still `creating`, read it until it is `ready`. A 409 means the organization already has an index with that name, in any case.",
         "operationId": "createIndex",
         "tags": [
           "Indexes"
@@ -980,6 +1004,7 @@
     "/organizations/{organization}/indexes/{index}": {
       "get": {
         "summary": "Get an index",
+        "description": "Returns one index with its current state, document count and size, and the progress of its background optimization while one runs. Any member can read it.",
         "operationId": "getIndex",
         "tags": [
           "Indexes"
@@ -1060,6 +1085,7 @@
       },
       "delete": {
         "summary": "Delete an index",
+        "description": "Starts deleting an index and all its documents. Requires the owner or admin role. The index is `deleting` until the deletion finishes in the background, and it can't be undone.",
         "operationId": "deleteIndex",
         "tags": [
           "Indexes"
@@ -1091,6 +1117,7 @@
     "/organizations/{organization}/indexes/{index}/objects": {
       "get": {
         "summary": "List documents",
+        "description": "Lists documents in key byte order, with each one's revision, size, metadata and whether a search can match it. Narrow the listing with `prefix`, and add `delimiter` to browse keys like a directory tree: keys that share the part up to the next delimiter are returned once, in `common_prefixes`.",
         "operationId": "listDocuments",
         "tags": [
           "Objects"
@@ -1199,6 +1226,7 @@
     "/organizations/{organization}/indexes/{index}/objects/{key}": {
       "get": {
         "summary": "Get a document",
+        "description": "Returns a document's content exactly as it was stored, its revision in the ETag header and its metadata in the X-Grepvine-Metadata header. Send a Range header to read one byte range; the response is then 206, or 416 when the range lies outside the document.",
         "operationId": "getDocument",
         "tags": [
           "Objects"
@@ -1299,6 +1327,7 @@
       },
       "delete": {
         "summary": "Delete one document",
+        "description": "Deletes one document. Send If-Match with a revision to delete it only if it still has that revision. Retrying with the same Idempotency-Key returns the original result. Once acknowledged, the document no longer matches any search.",
         "operationId": "deleteDocument",
         "tags": [
           "Objects"
@@ -1451,6 +1480,7 @@
     "/organizations/{organization}/indexes/{index}/query": {
       "post": {
         "summary": "Search an index",
+        "description": "Searches every searchable document in the index for a regular expression or literal text, and returns each match with the lines it covers, sorted by key, then line, then offset. A metadata filter restricts the search to matching documents, and context lines can be returned around each result. A pattern or filter that doesn't parse is rejected with 400 and code `invalid_pattern` or `invalid_filter`. Continue with `page` while `has_next` is true: a page can be empty while more results follow.",
         "operationId": "queryIndex",
         "tags": [
           "Search"
@@ -1571,6 +1601,7 @@
     },
     "parameters": {
       "Amount": {
+        "description": "The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold fewer, even none, while more follow.",
         "name": "amount",
         "in": "query",
         "schema": {
@@ -1581,6 +1612,7 @@
         }
       },
       "Page": {
+        "description": "The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A token is valid for 15 minutes, and only for the same caller and the same request, including `amount`.",
         "name": "page",
         "in": "query",
         "schema": {
@@ -1589,6 +1621,7 @@
         }
       },
       "Organization": {
+        "description": "The organization's name. Any spelling that differs only in case refers to the same organization.",
         "name": "organization",
         "in": "path",
         "required": true,
@@ -1597,6 +1630,7 @@
         }
       },
       "Index": {
+        "description": "The index's name within the organization. Any spelling that differs only in case refers to the same index.",
         "name": "index",
         "in": "path",
         "required": true,
@@ -1614,6 +1648,7 @@
         }
       },
       "DocumentKey": {
+        "description": "The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components.",
         "name": "key",
         "in": "path",
         "required": true,
@@ -1624,6 +1659,7 @@
         }
       },
       "Prefix": {
+        "description": "Lists only the documents whose keys start with this prefix, compared byte for byte. At most 1,024 characters.",
         "name": "prefix",
         "in": "query",
         "schema": {
@@ -1651,6 +1687,7 @@
         }
       },
       "User": {
+        "description": "The member's account name. Any spelling that differs only in case refers to the same account.",
         "name": "user",
         "in": "path",
         "required": true,
@@ -1659,6 +1696,7 @@
         }
       },
       "APIKeyID": {
+        "description": "The ID of the API key, as the listing returns it.",
         "name": "api_key_id",
         "in": "path",
         "required": true,
@@ -1668,6 +1706,7 @@
         }
       },
       "IdempotencyKey": {
+        "description": "A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.",
         "name": "Idempotency-Key",
         "in": "header",
         "required": true,
@@ -1688,6 +1727,7 @@
         }
       },
       "IfMatch": {
+        "description": "A revision. The write applies only if the document still has this revision; otherwise the request fails with 412.",
         "name": "If-Match",
         "in": "header",
         "schema": {
@@ -1696,6 +1736,7 @@
         }
       },
       "IfNoneMatch": {
+        "description": "Set to `*` to store the document only if no document has this key yet; otherwise the request fails with 412.",
         "name": "If-None-Match",
         "in": "header",
         "schema": {
@@ -1801,6 +1842,7 @@
     },
     "schemas": {
       "Error": {
+        "description": "A failed request. `code` says what went wrong and is stable; branch on it, not on the message.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1810,12 +1852,15 @@
         ],
         "properties": {
           "code": {
+            "description": "A stable, machine-readable code, such as `invalid_pattern`, `not_found` or `write_backlog`.",
             "type": "string"
           },
           "reason": {
+            "description": "The broad category of the error, such as `validation`, `authentication`, `state` or `capacity`.",
             "type": "string"
           },
           "error": {
+            "description": "A message for people that says what went wrong and what to do about it.",
             "type": "string"
           }
         }
@@ -1830,9 +1875,11 @@
         ],
         "properties": {
           "next_page_id": {
+            "description": "The token for the next page: pass it as `page`. Empty when has_next is false.",
             "type": "string"
           },
           "has_next": {
+            "description": "Whether more results follow. Keep requesting pages until it is false, even after an empty page.",
             "type": "boolean"
           }
         }
@@ -1848,6 +1895,7 @@
         "description": "An index name, unique in its organization. A name keeps the case it was created with, and any spelling that differs only in case refers to it; no other index in the organization can take such a spelling."
       },
       "User": {
+        "description": "A user account.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1858,21 +1906,26 @@
         ],
         "properties": {
           "id": {
+            "description": "The account's unique ID.",
             "type": "string",
             "format": "uuid"
           },
           "name": {
+            "description": "The account's username.",
             "$ref": "#/components/schemas/Name"
           },
           "email": {
+            "description": "The account's email address.",
             "type": "string",
             "format": "email"
           },
           "created_at": {
+            "description": "When the account was created.",
             "type": "string",
             "format": "date-time"
           },
           "staff_role": {
+            "description": "The account's role on the Grepvine team. Omitted for every other account.",
             "$ref": "#/components/schemas/StaffRole"
           }
         }
@@ -1886,6 +1939,7 @@
         "description": "The account's role on the Grepvine team, when it has one. Omitted for every other account."
       },
       "RegisterRequest": {
+        "description": "A new local account.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1895,14 +1949,17 @@
         ],
         "properties": {
           "name": {
+            "description": "The username. Accounts and organizations share one namespace.",
             "$ref": "#/components/schemas/Name"
           },
           "email": {
+            "description": "The account's email address, at most 320 characters. No other account can use it.",
             "type": "string",
             "format": "email",
             "maxLength": 320
           },
           "password": {
+            "description": "The password, 12 to 1,024 characters.",
             "type": "string",
             "minLength": 12,
             "maxLength": 1024
@@ -1924,6 +1981,7 @@
         "description": "How accounts are created. `open` lets anyone register; `invite` registers only with an invitation."
       },
       "AuthOptions": {
+        "description": "How accounts are created on this service.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1931,11 +1989,13 @@
         ],
         "properties": {
           "signup": {
+            "description": "Whether anyone can register, or only with an invitation.",
             "$ref": "#/components/schemas/SignupMode"
           }
         }
       },
       "InvitationCheckRequest": {
+        "description": "The invitation to look up.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1943,6 +2003,7 @@
         ],
         "properties": {
           "token": {
+            "description": "The token from the invitation link.",
             "type": "string",
             "minLength": 1,
             "maxLength": 256
@@ -1950,6 +2011,7 @@
         }
       },
       "InvitationRole": {
+        "description": "The role an invitation grants in its organization.",
         "type": "string",
         "enum": [
           "admin",
@@ -1958,6 +2020,7 @@
         ]
       },
       "InvitationPreview": {
+        "description": "What a pending invitation offers.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1970,18 +2033,22 @@
             "description": "The address the invitation was sent to, to prefill the registration form."
           },
           "organization": {
+            "description": "The organization the account joins on registering. Omitted when the invitation names none.",
             "$ref": "#/components/schemas/Name"
           },
           "role": {
+            "description": "The role the account receives in that organization.",
             "$ref": "#/components/schemas/InvitationRole"
           },
           "expires_at": {
+            "description": "When the invitation expires.",
             "type": "string",
             "format": "date-time"
           }
         }
       },
       "UsernameAvailability": {
+        "description": "Whether a username can be registered.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -1990,14 +2057,17 @@
         ],
         "properties": {
           "name": {
+            "description": "The username that was checked.",
             "$ref": "#/components/schemas/Name"
           },
           "available": {
+            "description": "Whether an account can register this username now.",
             "type": "boolean"
           }
         }
       },
       "LoginRequest": {
+        "description": "Credentials for a new session.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2011,12 +2081,14 @@
             "description": "A username or an email address, matched case-insensitively."
           },
           "password": {
+            "description": "The account's password.",
             "type": "string",
             "maxLength": 1024
           }
         }
       },
       "ChangePasswordRequest": {
+        "description": "The current password and its replacement.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2025,10 +2097,12 @@
         ],
         "properties": {
           "current_password": {
+            "description": "The account's current password.",
             "type": "string",
             "maxLength": 1024
           },
           "new_password": {
+            "description": "The new password, 12 to 1,024 characters.",
             "type": "string",
             "minLength": 12,
             "maxLength": 1024
@@ -2036,6 +2110,7 @@
         }
       },
       "DeviceAuthorizationRequest": {
+        "description": "A request to sign in a device.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2043,6 +2118,7 @@
         ],
         "properties": {
           "api_key_name": {
+            "description": "The name to give the API key the device receives, 1 to 128 characters.",
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -2050,6 +2126,7 @@
         }
       },
       "DeviceAuthorization": {
+        "description": "A pending device sign-in: the codes to show the user and to poll with.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2062,30 +2139,37 @@
         ],
         "properties": {
           "device_code": {
+            "description": "The secret code the device polls with. Keep it on the device; never show it.",
             "type": "string"
           },
           "user_code": {
+            "description": "The short code to show the user, who confirms it when approving.",
             "type": "string"
           },
           "verification_uri": {
+            "description": "The page where the user enters `user_code` and approves the device.",
             "type": "string",
             "format": "uri"
           },
           "verification_uri_complete": {
+            "description": "The same page with `user_code` already filled in, for a link or QR code.",
             "type": "string",
             "format": "uri"
           },
           "expires_in": {
+            "description": "Seconds until the codes expire.",
             "type": "integer",
             "minimum": 1
           },
           "interval": {
+            "description": "The minimum number of seconds to wait between polls.",
             "type": "integer",
             "minimum": 5
           }
         }
       },
       "DeviceDecisionRequest": {
+        "description": "The device authorization to approve or deny.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2093,6 +2177,7 @@
         ],
         "properties": {
           "user_code": {
+            "description": "The code the device shows. Hyphens, surrounding spaces and case are ignored.",
             "type": "string",
             "minLength": 8,
             "maxLength": 16
@@ -2100,6 +2185,7 @@
         }
       },
       "DeviceTokenRequest": {
+        "description": "The device code to exchange for an API key.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2107,11 +2193,13 @@
         ],
         "properties": {
           "device_code": {
+            "description": "The `device_code` from starting the authorization.",
             "type": "string"
           }
         }
       },
       "CreateAPIKeyRequest": {
+        "description": "A new API key.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2119,6 +2207,7 @@
         ],
         "properties": {
           "name": {
+            "description": "A name to tell the key apart, 1 to 128 characters.",
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -2126,6 +2215,7 @@
         }
       },
       "APIKey": {
+        "description": "An API key, without its secret.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2136,30 +2226,37 @@
         ],
         "properties": {
           "id": {
+            "description": "The key's unique ID.",
             "type": "string",
             "format": "uuid"
           },
           "name": {
+            "description": "The name the key was given.",
             "type": "string"
           },
           "prefix": {
+            "description": "The first characters of the key, shown to tell keys apart.",
             "type": "string"
           },
           "created_at": {
+            "description": "When the key was created.",
             "type": "string",
             "format": "date-time"
           },
           "last_used_at": {
+            "description": "When the key last authenticated a request. Omitted if it never has.",
             "type": "string",
             "format": "date-time"
           },
           "revoked_at": {
+            "description": "When the key was revoked. Omitted while the key is active.",
             "type": "string",
             "format": "date-time"
           }
         }
       },
       "APIKeyCreated": {
+        "description": "A new API key with its secret, which is shown only this once.",
         "allOf": [
           {
             "$ref": "#/components/schemas/APIKey"
@@ -2171,6 +2268,7 @@
             ],
             "properties": {
               "key": {
+                "description": "The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.",
                 "type": "string"
               }
             }
@@ -2178,6 +2276,7 @@
         ]
       },
       "APIKeyPage": {
+        "description": "A page of API keys.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2186,17 +2285,20 @@
         ],
         "properties": {
           "results": {
+            "description": "The API keys on this page.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/APIKey"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
       },
       "Organization": {
+        "description": "An organization, as seen by one of its members.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2208,13 +2310,16 @@
         ],
         "properties": {
           "id": {
+            "description": "The organization's unique ID.",
             "type": "string",
             "format": "uuid"
           },
           "name": {
+            "description": "The organization's name.",
             "$ref": "#/components/schemas/Name"
           },
           "role": {
+            "description": "The authenticated account's role in the organization.",
             "$ref": "#/components/schemas/Role"
           },
           "suspended": {
@@ -2222,12 +2327,14 @@
             "description": "A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support."
           },
           "created_at": {
+            "description": "When the organization was created.",
             "type": "string",
             "format": "date-time"
           }
         }
       },
       "OrganizationPage": {
+        "description": "A page of organizations.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2236,17 +2343,20 @@
         ],
         "properties": {
           "results": {
+            "description": "The organizations on this page.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Organization"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
       },
       "CreateOrganizationRequest": {
+        "description": "A new organization.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2254,11 +2364,13 @@
         ],
         "properties": {
           "name": {
+            "description": "The organization's name. Accounts and organizations share one namespace.",
             "$ref": "#/components/schemas/Name"
           }
         }
       },
       "Role": {
+        "description": "A member's role in an organization. `owner` can do everything, including deleting the organization and transferring ownership; `admin` also manages members and indexes; `developer` reads, writes and searches documents; `reader` reads and searches them.",
         "type": "string",
         "enum": [
           "owner",
@@ -2268,6 +2380,7 @@
         ]
       },
       "Member": {
+        "description": "A member of an organization.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2277,12 +2390,15 @@
         ],
         "properties": {
           "user": {
+            "description": "The member's account.",
             "$ref": "#/components/schemas/User"
           },
           "role": {
+            "description": "The member's role in the organization.",
             "$ref": "#/components/schemas/Role"
           },
           "created_at": {
+            "description": "When the account became a member.",
             "type": "string",
             "format": "date-time"
           },
@@ -2294,6 +2410,7 @@
         }
       },
       "MemberPage": {
+        "description": "A page of organization members.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2302,17 +2419,20 @@
         ],
         "properties": {
           "results": {
+            "description": "The members on this page.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Member"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
       },
       "AddMemberRequest": {
+        "description": "The account to add and its role.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2321,9 +2441,11 @@
         ],
         "properties": {
           "user": {
+            "description": "The username of the account to add.",
             "$ref": "#/components/schemas/Name"
           },
           "role": {
+            "description": "The role to grant. `owner` is granted only by transferring ownership.",
             "type": "string",
             "enum": [
               "admin",
@@ -2334,6 +2456,7 @@
         }
       },
       "UpdateMemberRequest": {
+        "description": "The member's new role.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2341,6 +2464,7 @@
         ],
         "properties": {
           "role": {
+            "description": "The new role. `owner` is granted only by transferring ownership.",
             "type": "string",
             "enum": [
               "admin",
@@ -2351,6 +2475,7 @@
         }
       },
       "TransferOwnershipRequest": {
+        "description": "The member who becomes the owner.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2358,11 +2483,13 @@
         ],
         "properties": {
           "user": {
+            "description": "The username of the member who becomes the owner.",
             "$ref": "#/components/schemas/Name"
           }
         }
       },
       "IndexState": {
+        "description": "Where an index is in its life. `creating`: not usable yet. `ready`: the only state that answers searches. `recreate_required`: answers nothing until it is deleted, created again and its documents written again. `deleting`: deletion is in progress. `delete_failed`: deletion did not finish and is retried.",
         "type": "string",
         "enum": [
           "creating",
@@ -2390,40 +2517,51 @@
         ],
         "properties": {
           "id": {
+            "description": "The index's unique ID.",
             "type": "string",
             "format": "uuid"
           },
           "organization": {
+            "description": "The name of the organization the index belongs to.",
             "$ref": "#/components/schemas/Name"
           },
           "name": {
+            "description": "The index's name.",
             "$ref": "#/components/schemas/IndexName"
           },
           "canonical_id": {
+            "description": "A stable identifier for the index, currently the same as `id`.",
             "type": "string"
           },
           "description": {
+            "description": "What the index holds, in Markdown. Empty when none was set.",
             "$ref": "#/components/schemas/IndexDescription"
           },
           "tags": {
+            "description": "Key/value labels on the index. Empty when none was set.",
             "$ref": "#/components/schemas/IndexTags"
           },
           "state": {
+            "description": "Where the index is in its life. Only a `ready` index answers searches.",
             "$ref": "#/components/schemas/IndexState"
           },
           "document_count": {
+            "description": "The number of documents in the index.",
             "type": "integer",
             "minimum": 0
           },
           "content_bytes": {
+            "description": "The total size of the documents' content, in bytes.",
             "type": "integer",
             "minimum": 0
           },
           "created_at": {
+            "description": "When the index was created.",
             "type": "string",
             "format": "date-time"
           },
           "last_updated_at": {
+            "description": "When a document was last stored or deleted. Omitted when that is not known, such as before the first write.",
             "type": "string",
             "format": "date-time"
           }
@@ -2450,6 +2588,7 @@
         ]
       },
       "IndexPage": {
+        "description": "A page of indexes.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2458,17 +2597,20 @@
         ],
         "properties": {
           "results": {
+            "description": "The indexes on this page.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/IndexSummary"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
       },
       "CreateIndexRequest": {
+        "description": "A new index.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2476,12 +2618,15 @@
         ],
         "properties": {
           "name": {
+            "description": "The index's name, unique in the organization regardless of case. It can't be changed later.",
             "$ref": "#/components/schemas/IndexName"
           },
           "description": {
+            "description": "What the index holds, in Markdown, at most 16,384 characters. Optional.",
             "$ref": "#/components/schemas/IndexDescription"
           },
           "tags": {
+            "description": "Key/value labels for the index, at most 64. Optional.",
             "$ref": "#/components/schemas/IndexTags"
           }
         }
@@ -2492,9 +2637,11 @@
         "additionalProperties": false,
         "properties": {
           "description": {
+            "description": "The new description, which replaces the old one. An empty string clears it.",
             "$ref": "#/components/schemas/IndexDescription"
           },
           "tags": {
+            "description": "Tags to set, by key, and tags to remove, given as null. Other tags are unchanged.",
             "$ref": "#/components/schemas/IndexTagChanges"
           }
         }
@@ -2526,6 +2673,7 @@
         }
       },
       "TaggedStringMetadataValue": {
+        "description": "A string metadata value with its type named.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2534,16 +2682,19 @@
         ],
         "properties": {
           "type": {
+            "description": "The value's type: always `string`.",
             "type": "string",
             "const": "string"
           },
           "value": {
+            "description": "The value, at most 8,192 characters.",
             "type": "string",
             "maxLength": 8192
           }
         }
       },
       "TaggedIntegerMetadataValue": {
+        "description": "A 64-bit integer metadata value with its type named.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2552,16 +2703,19 @@
         ],
         "properties": {
           "type": {
+            "description": "The value's type: always `integer`.",
             "type": "string",
             "const": "integer"
           },
           "value": {
+            "description": "The value, a signed 64-bit integer.",
             "type": "integer",
             "format": "int64"
           }
         }
       },
       "TaggedNumberMetadataValue": {
+        "description": "A floating-point metadata value with its type named.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2570,16 +2724,19 @@
         ],
         "properties": {
           "type": {
+            "description": "The value's type: always `number`.",
             "type": "string",
             "const": "number"
           },
           "value": {
+            "description": "The value, a double-precision floating-point number.",
             "type": "number",
             "format": "double"
           }
         }
       },
       "TaggedBooleanMetadataValue": {
+        "description": "A boolean metadata value with its type named.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2588,15 +2745,18 @@
         ],
         "properties": {
           "type": {
+            "description": "The value's type: always `boolean`.",
             "type": "string",
             "const": "boolean"
           },
           "value": {
+            "description": "The value.",
             "type": "boolean"
           }
         }
       },
       "TaggedTimestampMetadataValue": {
+        "description": "A timestamp metadata value with its type named.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2605,10 +2765,12 @@
         ],
         "properties": {
           "type": {
+            "description": "The value's type: always `timestamp`.",
             "type": "string",
             "const": "timestamp"
           },
           "value": {
+            "description": "The value, an RFC 3339 date and time.",
             "type": "string",
             "format": "date-time"
           }
@@ -2685,6 +2847,7 @@
         }
       },
       "PutDocumentForm": {
+        "description": "One document to store, sent as multipart form fields.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2693,10 +2856,12 @@
         ],
         "properties": {
           "key": {
+            "description": "The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components. Storing a key that exists replaces that document.",
             "type": "string",
             "maxLength": 1024
           },
           "metadata": {
+            "description": "The document's metadata as a JSON object, at most 64 fields. Optional.",
             "$ref": "#/components/schemas/Metadata"
           },
           "content": {
@@ -2707,6 +2872,7 @@
         }
       },
       "PutObjectRecord": {
+        "description": "One document of a batch to store.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2715,6 +2881,7 @@
         ],
         "properties": {
           "key": {
+            "description": "The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..` components. Storing a key that exists replaces that document.",
             "type": "string",
             "maxLength": 1024
           },
@@ -2723,18 +2890,22 @@
             "description": "The document text. A batch carries text only, so every document it stores is searchable."
           },
           "metadata": {
+            "description": "The document's metadata, at most 64 fields. Optional.",
             "$ref": "#/components/schemas/Metadata"
           },
           "if_match": {
+            "description": "A revision. The document is stored only if it still has this revision; otherwise its result has the error `precondition_failed`.",
             "type": "string"
           },
           "if_none_match": {
+            "description": "Set to `*` to store the document only if no document has this key yet; otherwise its result has the error `precondition_failed`.",
             "type": "string",
             "const": "*"
           }
         }
       },
       "DeleteObjectRecord": {
+        "description": "One document of a batch to delete.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2742,15 +2913,18 @@
         ],
         "properties": {
           "key": {
+            "description": "The key of the document to delete.",
             "type": "string",
             "maxLength": 1024
           },
           "if_match": {
+            "description": "A revision. The document is deleted only if it still has this revision; otherwise its result has the error `precondition_failed`.",
             "type": "string"
           }
         }
       },
       "DeleteObjectsRequest": {
+        "description": "The documents to delete.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2758,6 +2932,7 @@
         ],
         "properties": {
           "objects": {
+            "description": "The documents to delete, 1 to 2,048.",
             "type": "array",
             "minItems": 1,
             "maxItems": 2048,
@@ -2776,17 +2951,21 @@
         ],
         "properties": {
           "key": {
+            "description": "The document's key.",
             "type": "string"
           },
           "revision": {
+            "description": "The document's revision after the write. Omitted when the document was not changed.",
             "type": "string"
           },
           "error": {
+            "description": "Why this document was not changed. Omitted when it was.",
             "$ref": "#/components/schemas/Error"
           }
         }
       },
       "MutationBatchResult": {
+        "description": "The outcome of each document of a batch.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2794,6 +2973,7 @@
         ],
         "properties": {
           "results": {
+            "description": "One result per document, in request order.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MutationResult"
@@ -2802,6 +2982,7 @@
         }
       },
       "DocumentSummary": {
+        "description": "A document as a listing returns it, without its content.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2814,16 +2995,20 @@
         ],
         "properties": {
           "key": {
+            "description": "The document's key.",
             "type": "string"
           },
           "revision": {
+            "description": "The document's current revision, an opaque value that changes on every write. Pass it as If-Match to write only if nothing changed since.",
             "type": "string"
           },
           "content_bytes": {
+            "description": "The size of the document's content, in bytes.",
             "type": "integer",
             "minimum": 0
           },
           "metadata": {
+            "description": "The document's metadata, every value tagged with its type.",
             "$ref": "#/components/schemas/TaggedMetadata"
           },
           "updated_at": {
@@ -2838,6 +3023,7 @@
         }
       },
       "DocumentPage": {
+        "description": "A page of a document listing.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2847,23 +3033,27 @@
         ],
         "properties": {
           "results": {
+            "description": "The documents on this page, in key byte order.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DocumentSummary"
             }
           },
           "common_prefixes": {
+            "description": "With a delimiter, each distinct key prefix that ends at the delimiter, standing for every document under it. Empty without a delimiter.",
             "type": "array",
             "items": {
               "type": "string"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
       },
       "QueryRequest": {
+        "description": "A search: the pattern, how to match it, which documents to search and how much context to return.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2871,10 +3061,12 @@
         ],
         "properties": {
           "pattern": {
+            "description": "What to search for: an RE2 regular expression, or literal text when `mode` is `literal`. Required; at most 8,192 characters of valid UTF-8.",
             "type": "string",
             "maxLength": 8192
           },
           "mode": {
+            "description": "How to read the pattern: `regex` (the default) for RE2 syntax, without backreferences or lookaround, or `literal` to match its bytes exactly, with no escaping needed.",
             "type": "string",
             "enum": [
               "regex",
@@ -2883,10 +3075,12 @@
             "default": "regex"
           },
           "case_sensitive": {
+            "description": "Whether case must match. Defaults to true. False matches under Unicode simple case folding; in a regex, `(?i)` does the same for part of the pattern.",
             "type": "boolean",
             "default": true
           },
           "whole_word": {
+            "description": "Match only where the characters on either side of the match aren't word characters: letters, digits or `_`. Defaults to false. Valid only in literal mode.",
             "type": "boolean",
             "default": false
           },
@@ -2896,6 +3090,7 @@
             "description": "Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's edges, and a character class never matches a line break; a pattern that contains a line break is rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line edges, `\\A` and `\\z` mark the document's edges, and a match may contain line breaks."
           },
           "filter": {
+            "description": "Search only the documents whose metadata matches this expression, such as `path STARTSWITH 'src/' AND size < 1048576`. At most 8,192 characters. Omit it to search every document.",
             "type": "string",
             "maxLength": 8192
           },
@@ -2916,6 +3111,7 @@
         }
       },
       "Match": {
+        "description": "One match, as a byte range of the document.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2924,10 +3120,12 @@
         ],
         "properties": {
           "offset": {
+            "description": "Byte offset of the match within the document. It starts at byte `offset - text_start_offset` of the result's text.",
             "type": "integer",
             "minimum": 0
           },
           "length": {
+            "description": "The match's length in bytes.",
             "type": "integer",
             "minimum": 0
           }
@@ -2953,9 +3151,11 @@
         ],
         "properties": {
           "key": {
+            "description": "The key of the document that matched.",
             "type": "string"
           },
           "revision": {
+            "description": "The revision of the document that matched.",
             "type": "string"
           },
           "line_number": {
@@ -3035,19 +3235,23 @@
         ],
         "properties": {
           "line_number": {
+            "description": "One-based number of the line.",
             "type": "integer",
             "minimum": 1
           },
           "text": {
+            "description": "The line's text, without its line break, up to 64 KiB.",
             "type": "string",
             "maxLength": 65536
           },
           "text_truncated": {
+            "description": "Whether the line was cut.",
             "type": "boolean"
           }
         }
       },
       "QueryPage": {
+        "description": "A page of search results.",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -3056,12 +3260,14 @@
         ],
         "properties": {
           "results": {
+            "description": "The results on this page, sorted by key, then line, then offset.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/QueryResult"
             }
           },
           "pagination": {
+            "description": "How to request the next page.",
             "$ref": "#/components/schemas/Pagination"
           }
         }
