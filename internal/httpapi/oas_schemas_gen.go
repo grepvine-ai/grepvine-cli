@@ -17,14 +17,21 @@ func (s *ErrorStatusCodeWithHeaders) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// An API key, without its secret.
 // Ref: #/components/schemas/APIKey
 type APIKey struct {
-	ID         uuid.UUID   `json:"id"`
-	Name       string      `json:"name"`
-	Prefix     string      `json:"prefix"`
-	CreatedAt  time.Time   `json:"created_at"`
+	// The key's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The name the key was given.
+	Name string `json:"name"`
+	// The first characters of the key, shown to tell keys apart.
+	Prefix string `json:"prefix"`
+	// When the key was created.
+	CreatedAt time.Time `json:"created_at"`
+	// When the key last authenticated a request. Omitted if it never has.
 	LastUsedAt OptDateTime `json:"last_used_at"`
-	RevokedAt  OptDateTime `json:"revoked_at"`
+	// When the key was revoked. Omitted while the key is active.
+	RevokedAt OptDateTime `json:"revoked_at"`
 }
 
 // GetID returns the value of ID.
@@ -90,13 +97,20 @@ func (s *APIKey) SetRevokedAt(val OptDateTime) {
 // Merged schema.
 // Ref: #/components/schemas/APIKeyCreated
 type APIKeyCreated struct {
-	ID         uuid.UUID   `json:"id"`
-	Name       string      `json:"name"`
-	Prefix     string      `json:"prefix"`
-	CreatedAt  time.Time   `json:"created_at"`
+	// The key's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The name the key was given.
+	Name string `json:"name"`
+	// The first characters of the key, shown to tell keys apart.
+	Prefix string `json:"prefix"`
+	// When the key was created.
+	CreatedAt time.Time `json:"created_at"`
+	// When the key last authenticated a request. Omitted if it never has.
 	LastUsedAt OptDateTime `json:"last_used_at"`
-	RevokedAt  OptDateTime `json:"revoked_at"`
-	Key        string      `json:"key"`
+	// When the key was revoked. Omitted while the key is active.
+	RevokedAt OptDateTime `json:"revoked_at"`
+	// The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.
+	Key string `json:"key"`
 }
 
 // GetID returns the value of ID.
@@ -171,9 +185,12 @@ func (s *APIKeyCreated) SetKey(val string) {
 
 func (*APIKeyCreated) pollDeviceTokenRes() {}
 
+// A page of API keys.
 // Ref: #/components/schemas/APIKeyPage
 type APIKeyPage struct {
-	Results    []APIKey   `json:"results"`
+	// The API keys on this page.
+	Results []APIKey `json:"results"`
+	// How to request the next page.
 	Pagination Pagination `json:"pagination"`
 }
 
@@ -197,9 +214,12 @@ func (s *APIKeyPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// The account to add and its role.
 // Ref: #/components/schemas/AddMemberRequest
 type AddMemberRequest struct {
-	User Name                 `json:"user"`
+	// The username of the account to add.
+	User Name `json:"user"`
+	// The role to grant. `owner` is granted only by transferring ownership.
 	Role AddMemberRequestRole `json:"role"`
 }
 
@@ -223,6 +243,7 @@ func (s *AddMemberRequest) SetRole(val AddMemberRequestRole) {
 	s.Role = val
 }
 
+// The role to grant. `owner` is granted only by transferring ownership.
 type AddMemberRequestRole string
 
 const (
@@ -301,8 +322,10 @@ type ApproveDeviceAuthorizationNoContent struct{}
 
 func (*ApproveDeviceAuthorizationNoContent) approveDeviceAuthorizationRes() {}
 
+// How accounts are created on this service.
 // Ref: #/components/schemas/AuthOptions
 type AuthOptions struct {
+	// Whether anyone can register, or only with an invitation.
 	Signup SignupMode `json:"signup"`
 }
 
@@ -321,10 +344,13 @@ type ChangePasswordNoContent struct{}
 
 func (*ChangePasswordNoContent) changePasswordRes() {}
 
+// The current password and its replacement.
 // Ref: #/components/schemas/ChangePasswordRequest
 type ChangePasswordRequest struct {
+	// The account's current password.
 	CurrentPassword string `json:"current_password"`
-	NewPassword     string `json:"new_password"`
+	// The new password, 12 to 1,024 characters.
+	NewPassword string `json:"new_password"`
 }
 
 // GetCurrentPassword returns the value of CurrentPassword.
@@ -383,9 +409,12 @@ func (*ConflictHeaders) registerUserRes()       {}
 // a line that extends past either bound is returned in part and marked truncated.
 // Ref: #/components/schemas/ContextLine
 type ContextLine struct {
-	LineNumber    int    `json:"line_number"`
-	Text          string `json:"text"`
-	TextTruncated bool   `json:"text_truncated"`
+	// One-based number of the line.
+	LineNumber int `json:"line_number"`
+	// The line's text, without its line break, up to 64 KiB.
+	Text string `json:"text"`
+	// Whether the line was cut.
+	TextTruncated bool `json:"text_truncated"`
 }
 
 // GetLineNumber returns the value of LineNumber.
@@ -443,8 +472,10 @@ func (s *CookieAuth) SetRoles(val []string) {
 	s.Roles = val
 }
 
+// A new API key.
 // Ref: #/components/schemas/CreateAPIKeyRequest
 type CreateAPIKeyRequest struct {
+	// A name to tell the key apart, 1 to 128 characters.
 	Name string `json:"name"`
 }
 
@@ -458,11 +489,15 @@ func (s *CreateAPIKeyRequest) SetName(val string) {
 	s.Name = val
 }
 
+// A new index.
 // Ref: #/components/schemas/CreateIndexRequest
 type CreateIndexRequest struct {
-	Name        IndexName           `json:"name"`
+	// The index's name, unique in the organization regardless of case. It can't be changed later.
+	Name IndexName `json:"name"`
+	// What the index holds, in Markdown, at most 16,384 characters. Optional.
 	Description OptIndexDescription `json:"description"`
-	Tags        OptIndexTags        `json:"tags"`
+	// Key/value labels for the index, at most 64. Optional.
+	Tags OptIndexTags `json:"tags"`
 }
 
 // GetName returns the value of Name.
@@ -495,8 +530,10 @@ func (s *CreateIndexRequest) SetTags(val OptIndexTags) {
 	s.Tags = val
 }
 
+// A new organization.
 // Ref: #/components/schemas/CreateOrganizationRequest
 type CreateOrganizationRequest struct {
+	// The organization's name. Accounts and organizations share one namespace.
 	Name Name `json:"name"`
 }
 
@@ -515,9 +552,13 @@ type DeleteIndexAccepted struct{}
 
 func (*DeleteIndexAccepted) deleteIndexRes() {}
 
+// One document of a batch to delete.
 // Ref: #/components/schemas/DeleteObjectRecord
 type DeleteObjectRecord struct {
-	Key     string    `json:"key"`
+	// The key of the document to delete.
+	Key string `json:"key"`
+	// A revision. The document is deleted only if it still has this revision; otherwise its result has the
+	// error `precondition_failed`.
 	IfMatch OptString `json:"if_match"`
 }
 
@@ -541,8 +582,10 @@ func (s *DeleteObjectRecord) SetIfMatch(val OptString) {
 	s.IfMatch = val
 }
 
+// The documents to delete.
 // Ref: #/components/schemas/DeleteObjectsRequest
 type DeleteObjectsRequest struct {
+	// The documents to delete, 1 to 2,048.
 	Objects []DeleteObjectRecord `json:"objects"`
 }
 
@@ -566,14 +609,21 @@ type DenyDeviceAuthorizationNoContent struct{}
 
 func (*DenyDeviceAuthorizationNoContent) denyDeviceAuthorizationRes() {}
 
+// A pending device sign-in: the codes to show the user and to poll with.
 // Ref: #/components/schemas/DeviceAuthorization
 type DeviceAuthorization struct {
-	DeviceCode              string  `json:"device_code"`
-	UserCode                string  `json:"user_code"`
-	VerificationURI         url.URL `json:"verification_uri"`
+	// The secret code the device polls with. Keep it on the device; never show it.
+	DeviceCode string `json:"device_code"`
+	// The short code to show the user, who confirms it when approving.
+	UserCode string `json:"user_code"`
+	// The page where the user enters `user_code` and approves the device.
+	VerificationURI url.URL `json:"verification_uri"`
+	// The same page with `user_code` already filled in, for a link or QR code.
 	VerificationURIComplete url.URL `json:"verification_uri_complete"`
-	ExpiresIn               int     `json:"expires_in"`
-	Interval                int     `json:"interval"`
+	// Seconds until the codes expire.
+	ExpiresIn int `json:"expires_in"`
+	// The minimum number of seconds to wait between polls.
+	Interval int `json:"interval"`
 }
 
 // GetDeviceCode returns the value of DeviceCode.
@@ -636,8 +686,10 @@ func (s *DeviceAuthorization) SetInterval(val int) {
 	s.Interval = val
 }
 
+// A request to sign in a device.
 // Ref: #/components/schemas/DeviceAuthorizationRequest
 type DeviceAuthorizationRequest struct {
+	// The name to give the API key the device receives, 1 to 128 characters.
 	APIKeyName string `json:"api_key_name"`
 }
 
@@ -651,8 +703,10 @@ func (s *DeviceAuthorizationRequest) SetAPIKeyName(val string) {
 	s.APIKeyName = val
 }
 
+// The device authorization to approve or deny.
 // Ref: #/components/schemas/DeviceDecisionRequest
 type DeviceDecisionRequest struct {
+	// The code the device shows. Hyphens, surrounding spaces and case are ignored.
 	UserCode string `json:"user_code"`
 }
 
@@ -666,8 +720,10 @@ func (s *DeviceDecisionRequest) SetUserCode(val string) {
 	s.UserCode = val
 }
 
+// The device code to exchange for an API key.
 // Ref: #/components/schemas/DeviceTokenRequest
 type DeviceTokenRequest struct {
+	// The `device_code` from starting the authorization.
 	DeviceCode string `json:"device_code"`
 }
 
@@ -681,11 +737,16 @@ func (s *DeviceTokenRequest) SetDeviceCode(val string) {
 	s.DeviceCode = val
 }
 
+// A page of a document listing.
 // Ref: #/components/schemas/DocumentPage
 type DocumentPage struct {
-	Results        []DocumentSummary `json:"results"`
-	CommonPrefixes []string          `json:"common_prefixes"`
-	Pagination     Pagination        `json:"pagination"`
+	// The documents on this page, in key byte order.
+	Results []DocumentSummary `json:"results"`
+	// With a delimiter, each distinct key prefix that ends at the delimiter, standing for every document
+	// under it. Empty without a delimiter.
+	CommonPrefixes []string `json:"common_prefixes"`
+	// How to request the next page.
+	Pagination Pagination `json:"pagination"`
 }
 
 // GetResults returns the value of Results.
@@ -718,12 +779,18 @@ func (s *DocumentPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// A document as a listing returns it, without its content.
 // Ref: #/components/schemas/DocumentSummary
 type DocumentSummary struct {
-	Key          string         `json:"key"`
-	Revision     string         `json:"revision"`
-	ContentBytes int            `json:"content_bytes"`
-	Metadata     TaggedMetadata `json:"metadata"`
+	// The document's key.
+	Key string `json:"key"`
+	// The document's current revision, an opaque value that changes on every write. Pass it as If-Match to
+	// write only if nothing changed since.
+	Revision string `json:"revision"`
+	// The size of the document's content, in bytes.
+	ContentBytes int `json:"content_bytes"`
+	// The document's metadata, every value tagged with its type.
+	Metadata TaggedMetadata `json:"metadata"`
 	// When the document's current revision was stored.
 	UpdatedAt time.Time `json:"updated_at"`
 	// Whether a search can match this document. False for content that is not valid UTF-8 or is over 100
@@ -791,11 +858,15 @@ func (s *DocumentSummary) SetSearchable(val bool) {
 	s.Searchable = val
 }
 
+// A failed request. `code` says what went wrong and is stable; branch on it, not on the message.
 // Ref: #/components/schemas/Error
 type Error struct {
-	Code   string `json:"code"`
+	// A stable, machine-readable code, such as `invalid_pattern`, `not_found` or `write_backlog`.
+	Code string `json:"code"`
+	// The broad category of the error, such as `validation`, `authentication`, `state` or `capacity`.
 	Reason string `json:"reason"`
-	Error  string `json:"error"`
+	// A message for people that says what went wrong and what to do about it.
+	Error string `json:"error"`
 }
 
 // GetCode returns the value of Code.
@@ -1137,17 +1208,29 @@ func (*GetDocumentPartialContentHeaders) getDocumentRes() {}
 // Merged schema.
 // Ref: #/components/schemas/Index
 type Index struct {
-	ID            uuid.UUID        `json:"id"`
-	Organization  Name             `json:"organization"`
-	Name          IndexName        `json:"name"`
-	CanonicalID   string           `json:"canonical_id"`
-	Description   IndexDescription `json:"description"`
-	Tags          IndexTags        `json:"tags"`
-	State         IndexState       `json:"state"`
-	DocumentCount int              `json:"document_count"`
-	ContentBytes  int              `json:"content_bytes"`
-	CreatedAt     time.Time        `json:"created_at"`
-	LastUpdatedAt OptDateTime      `json:"last_updated_at"`
+	// The index's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The name of the organization the index belongs to.
+	Organization Name `json:"organization"`
+	// The index's name.
+	Name IndexName `json:"name"`
+	// A stable identifier for the index, currently the same as `id`.
+	CanonicalID string `json:"canonical_id"`
+	// What the index holds, in Markdown. Empty when none was set.
+	Description IndexDescription `json:"description"`
+	// Key/value labels on the index. Empty when none was set.
+	Tags IndexTags `json:"tags"`
+	// Where the index is in its life. Only a `ready` index answers searches.
+	State IndexState `json:"state"`
+	// The number of documents in the index.
+	DocumentCount int `json:"document_count"`
+	// The total size of the documents' content, in bytes.
+	ContentBytes int `json:"content_bytes"`
+	// When the index was created.
+	CreatedAt time.Time `json:"created_at"`
+	// When a document was last stored or deleted. Omitted when that is not known, such as before the first
+	// write.
+	LastUpdatedAt OptDateTime `json:"last_updated_at"`
 	// How far the background optimization of this index has progressed, as a percentage. Omitted when no
 	// optimization is running.
 	OptimizationProgressPercent OptInt `json:"optimization_progress_percent"`
@@ -1281,10 +1364,13 @@ type IndexDescription string
 
 type IndexName string
 
+// A page of indexes.
 // Ref: #/components/schemas/IndexPage
 type IndexPage struct {
-	Results    []IndexSummary `json:"results"`
-	Pagination Pagination     `json:"pagination"`
+	// The indexes on this page.
+	Results []IndexSummary `json:"results"`
+	// How to request the next page.
+	Pagination Pagination `json:"pagination"`
 }
 
 // GetResults returns the value of Results.
@@ -1307,6 +1393,10 @@ func (s *IndexPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// Where an index is in its life. `creating`: not usable yet. `ready`: the only state that answers
+// searches. `recreate_required`: answers nothing until it is deleted, created again and its documents
+// written again. `deleting`: deletion is in progress. `delete_failed`: deletion did not finish and is
+// retried.
 // Ref: #/components/schemas/IndexState
 type IndexState string
 
@@ -1373,17 +1463,29 @@ func (s *IndexState) UnmarshalText(data []byte) error {
 // An index as a listing returns it.
 // Ref: #/components/schemas/IndexSummary
 type IndexSummary struct {
-	ID            uuid.UUID        `json:"id"`
-	Organization  Name             `json:"organization"`
-	Name          IndexName        `json:"name"`
-	CanonicalID   string           `json:"canonical_id"`
-	Description   IndexDescription `json:"description"`
-	Tags          IndexTags        `json:"tags"`
-	State         IndexState       `json:"state"`
-	DocumentCount int              `json:"document_count"`
-	ContentBytes  int              `json:"content_bytes"`
-	CreatedAt     time.Time        `json:"created_at"`
-	LastUpdatedAt OptDateTime      `json:"last_updated_at"`
+	// The index's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The name of the organization the index belongs to.
+	Organization Name `json:"organization"`
+	// The index's name.
+	Name IndexName `json:"name"`
+	// A stable identifier for the index, currently the same as `id`.
+	CanonicalID string `json:"canonical_id"`
+	// What the index holds, in Markdown. Empty when none was set.
+	Description IndexDescription `json:"description"`
+	// Key/value labels on the index. Empty when none was set.
+	Tags IndexTags `json:"tags"`
+	// Where the index is in its life. Only a `ready` index answers searches.
+	State IndexState `json:"state"`
+	// The number of documents in the index.
+	DocumentCount int `json:"document_count"`
+	// The total size of the documents' content, in bytes.
+	ContentBytes int `json:"content_bytes"`
+	// When the index was created.
+	CreatedAt time.Time `json:"created_at"`
+	// When a document was last stored or deleted. Omitted when that is not known, such as before the first
+	// write.
+	LastUpdatedAt OptDateTime `json:"last_updated_at"`
 }
 
 // GetID returns the value of ID.
@@ -1524,8 +1626,10 @@ func (s *IndexTags) init() IndexTags {
 	return m
 }
 
+// The invitation to look up.
 // Ref: #/components/schemas/InvitationCheckRequest
 type InvitationCheckRequest struct {
+	// The token from the invitation link.
 	Token string `json:"token"`
 }
 
@@ -1539,13 +1643,17 @@ func (s *InvitationCheckRequest) SetToken(val string) {
 	s.Token = val
 }
 
+// What a pending invitation offers.
 // Ref: #/components/schemas/InvitationPreview
 type InvitationPreview struct {
 	// The address the invitation was sent to, to prefill the registration form.
-	Email        string            `json:"email"`
-	Organization OptName           `json:"organization"`
-	Role         OptInvitationRole `json:"role"`
-	ExpiresAt    time.Time         `json:"expires_at"`
+	Email string `json:"email"`
+	// The organization the account joins on registering. Omitted when the invitation names none.
+	Organization OptName `json:"organization"`
+	// The role the account receives in that organization.
+	Role OptInvitationRole `json:"role"`
+	// When the invitation expires.
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // GetEmail returns the value of Email.
@@ -1590,6 +1698,7 @@ func (s *InvitationPreview) SetExpiresAt(val time.Time) {
 
 func (*InvitationPreview) checkInvitationRes() {}
 
+// The role an invitation grants in its organization.
 // Ref: #/components/schemas/InvitationRole
 type InvitationRole string
 
@@ -1639,11 +1748,13 @@ func (s *InvitationRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// Credentials for a new session.
 // Ref: #/components/schemas/LoginRequest
 type LoginRequest struct {
 	// A username or an email address, matched case-insensitively.
 	Identifier string `json:"identifier"`
-	Password   string `json:"password"`
+	// The account's password.
+	Password string `json:"password"`
 }
 
 // GetIdentifier returns the value of Identifier.
@@ -1681,9 +1792,13 @@ func (s *LogoutNoContent) SetSetCookie(val OptString) {
 	s.SetCookie = val
 }
 
+// One match, as a byte range of the document.
 // Ref: #/components/schemas/Match
 type Match struct {
+	// Byte offset of the match within the document. It starts at byte `offset - text_start_offset` of the
+	// result's text.
 	Offset int `json:"offset"`
+	// The match's length in bytes.
 	Length int `json:"length"`
 }
 
@@ -1707,10 +1822,14 @@ func (s *Match) SetLength(val int) {
 	s.Length = val
 }
 
+// A member of an organization.
 // Ref: #/components/schemas/Member
 type Member struct {
-	User      User      `json:"user"`
-	Role      Role      `json:"role"`
+	// The member's account.
+	User User `json:"user"`
+	// The member's role in the organization.
+	Role Role `json:"role"`
+	// When the account became a member.
 	CreatedAt time.Time `json:"created_at"`
 	// When the membership ends, for time-limited access granted by Grepvine support. Omitted for an
 	// ordinary membership.
@@ -1757,9 +1876,12 @@ func (s *Member) SetExpiresAt(val OptDateTime) {
 	s.ExpiresAt = val
 }
 
+// A page of organization members.
 // Ref: #/components/schemas/MemberPage
 type MemberPage struct {
-	Results    []Member   `json:"results"`
+	// The members on this page.
+	Results []Member `json:"results"`
+	// How to request the next page.
 	Pagination Pagination `json:"pagination"`
 }
 
@@ -1919,8 +2041,10 @@ func NewTaggedMetadataValueMetadataValue(v TaggedMetadataValue) MetadataValue {
 	return s
 }
 
+// The outcome of each document of a batch.
 // Ref: #/components/schemas/MutationBatchResult
 type MutationBatchResult struct {
+	// One result per document, in request order.
 	Results []MutationResult `json:"results"`
 }
 
@@ -1940,9 +2064,12 @@ func (*MutationBatchResult) putObjectsRes() {}
 // change has an error instead.
 // Ref: #/components/schemas/MutationResult
 type MutationResult struct {
-	Key      string    `json:"key"`
+	// The document's key.
+	Key string `json:"key"`
+	// The document's revision after the write. Omitted when the document was not changed.
 	Revision OptString `json:"revision"`
-	Error    OptError  `json:"error"`
+	// Why this document was not changed. Omitted when it was.
+	Error OptError `json:"error"`
 }
 
 // GetKey returns the value of Key.
@@ -2661,14 +2788,19 @@ func (o OptString) Or(d string) string {
 	return d
 }
 
+// An organization, as seen by one of its members.
 // Ref: #/components/schemas/Organization
 type Organization struct {
-	ID   uuid.UUID `json:"id"`
-	Name Name      `json:"name"`
-	Role Role      `json:"role"`
+	// The organization's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The organization's name.
+	Name Name `json:"name"`
+	// The authenticated account's role in the organization.
+	Role Role `json:"role"`
 	// A suspended organization keeps its data, but refuses every operation on its members, indexes,
 	// documents and searches until it is resumed. Contact support.
-	Suspended bool      `json:"suspended"`
+	Suspended bool `json:"suspended"`
+	// When the organization was created.
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -2725,10 +2857,13 @@ func (s *Organization) SetCreatedAt(val time.Time) {
 func (*Organization) createOrganizationRes() {}
 func (*Organization) getOrganizationRes()    {}
 
+// A page of organizations.
 // Ref: #/components/schemas/OrganizationPage
 type OrganizationPage struct {
-	Results    []Organization `json:"results"`
-	Pagination Pagination     `json:"pagination"`
+	// The organizations on this page.
+	Results []Organization `json:"results"`
+	// How to request the next page.
+	Pagination Pagination `json:"pagination"`
 }
 
 // GetResults returns the value of Results.
@@ -2756,8 +2891,10 @@ func (s *OrganizationPage) SetPagination(val Pagination) {
 // candidate it examined. Clients continue while has_next is true.
 // Ref: #/components/schemas/Pagination
 type Pagination struct {
+	// The token for the next page: pass it as `page`. Empty when has_next is false.
 	NextPageID string `json:"next_page_id"`
-	HasNext    bool   `json:"has_next"`
+	// Whether more results follow. Keep requesting pages until it is false, even after an empty page.
+	HasNext bool `json:"has_next"`
 }
 
 // GetNextPageID returns the value of NextPageID.
@@ -2809,9 +2946,13 @@ func (s *PreconditionFailedHeaders) SetResponse(val Error) {
 func (*PreconditionFailedHeaders) deleteDocumentRes() {}
 func (*PreconditionFailedHeaders) putDocumentRes()    {}
 
+// One document to store, sent as multipart form fields.
 // Ref: #/components/schemas/PutDocumentForm
 type PutDocumentFormMultipart struct {
-	Key      string      `json:"key"`
+	// The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..`
+	// components. Storing a key that exists replaces that document.
+	Key string `json:"key"`
+	// The document's metadata as a JSON object, at most 64 fields. Optional.
 	Metadata OptMetadata `json:"metadata"`
 	// The document bytes, at most 1 GiB. Valid UTF-8 of at most 100 MiB is searchable; other content is
 	// stored without being searchable.
@@ -2864,10 +3005,13 @@ func (s PutObjectsReq) Read(p []byte) (n int, err error) {
 	return s.Data.Read(p)
 }
 
+// A page of search results.
 // Ref: #/components/schemas/QueryPage
 type QueryPage struct {
-	Results    []QueryResult `json:"results"`
-	Pagination Pagination    `json:"pagination"`
+	// The results on this page, sorted by key, then line, then offset.
+	Results []QueryResult `json:"results"`
+	// How to request the next page.
+	Pagination Pagination `json:"pagination"`
 }
 
 // GetResults returns the value of Results.
@@ -2890,18 +3034,30 @@ func (s *QueryPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// A search: the pattern, how to match it, which documents to search and how much context to return.
 // Ref: #/components/schemas/QueryRequest
 type QueryRequest struct {
-	Pattern       string              `json:"pattern"`
-	Mode          OptQueryRequestMode `json:"mode"`
-	CaseSensitive OptBool             `json:"case_sensitive"`
-	WholeWord     OptBool             `json:"whole_word"`
+	// What to search for: an RE2 regular expression, or literal text when `mode` is `literal`. Required;
+	// at most 8,192 characters of valid UTF-8.
+	Pattern string `json:"pattern"`
+	// How to read the pattern: `regex` (the default) for RE2 syntax, without backreferences or lookaround,
+	// or `literal` to match its bytes exactly, with no escaping needed.
+	Mode OptQueryRequestMode `json:"mode"`
+	// Whether case must match. Defaults to true. False matches under Unicode simple case folding; in a
+	// regex, `(?i)` does the same for part of the pattern.
+	CaseSensitive OptBool `json:"case_sensitive"`
+	// Match only where the characters on either side of the match aren't word characters: letters, digits
+	// or `_`. Defaults to false. Valid only in literal mode.
+	WholeWord OptBool `json:"whole_word"`
 	// Let a match span lines. Without it a pattern matches within one line, `^` and `$` mark the line's
 	// edges, and a character class never matches a line break; a pattern that contains a line break is
 	// rejected. With it the pattern is matched against the whole document, `^` and `$` still mark line
 	// edges, `\A` and `\z` mark the document's edges, and a match may contain line breaks.
-	Multiline OptBool   `json:"multiline"`
-	Filter    OptString `json:"filter"`
+	Multiline OptBool `json:"multiline"`
+	// Search only the documents whose metadata matches this expression, such as
+	// `path STARTSWITH 'src/' AND size < 1048576`. At most 8,192 characters. Omit it to search every
+	// document.
+	Filter OptString `json:"filter"`
 	// How many lines before each result to return with it, from the same document.
 	LinesBefore OptInt `json:"lines_before"`
 	// How many lines after each result to return with it, from the same document.
@@ -2988,6 +3144,8 @@ func (s *QueryRequest) SetLinesAfter(val OptInt) {
 	s.LinesAfter = val
 }
 
+// How to read the pattern: `regex` (the default) for RE2 syntax, without backreferences or lookaround,
+// or `literal` to match its bytes exactly, with no escaping needed.
 type QueryRequestMode string
 
 const (
@@ -3033,7 +3191,9 @@ func (s *QueryRequestMode) UnmarshalText(data []byte) error {
 // one line unless the query set multiline and a match spans lines.
 // Ref: #/components/schemas/QueryResult
 type QueryResult struct {
-	Key      string `json:"key"`
+	// The key of the document that matched.
+	Key string `json:"key"`
+	// The revision of the document that matched.
 	Revision string `json:"revision"`
 	// One-based number of the first line the result covers.
 	LineNumber int `json:"line_number"`
@@ -3207,10 +3367,14 @@ func (s *QueryResult) SetLinesAfter(val []ContextLine) {
 	s.LinesAfter = val
 }
 
+// A new local account.
 // Ref: #/components/schemas/RegisterRequest
 type RegisterRequest struct {
-	Name     Name   `json:"name"`
-	Email    string `json:"email"`
+	// The username. Accounts and organizations share one namespace.
+	Name Name `json:"name"`
+	// The account's email address, at most 320 characters. No other account can use it.
+	Email string `json:"email"`
+	// The password, 12 to 1,024 characters.
 	Password string `json:"password"`
 	// The token of the invitation link the account was invited with. Required when registration is by
 	// invitation.
@@ -3265,6 +3429,9 @@ type RevokeAPIKeyNoContent struct{}
 
 func (*RevokeAPIKeyNoContent) revokeAPIKeyRes() {}
 
+// A member's role in an organization. `owner` can do everything, including deleting the organization
+// and transferring ownership; `admin` also manages members and indexes; `developer` reads, writes and
+// searches documents; `reader` reads and searches them.
 // Ref: #/components/schemas/Role
 type Role string
 
@@ -3407,10 +3574,13 @@ func (s *StaffRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// A boolean metadata value with its type named.
 // Ref: #/components/schemas/TaggedBooleanMetadataValue
 type TaggedBooleanMetadataValue struct {
-	Type  string `json:"type"`
-	Value bool   `json:"value"`
+	// The value's type: always `boolean`.
+	Type string `json:"type"`
+	// The value.
+	Value bool `json:"value"`
 }
 
 // GetType returns the value of Type.
@@ -3433,10 +3603,13 @@ func (s *TaggedBooleanMetadataValue) SetValue(val bool) {
 	s.Value = val
 }
 
+// A 64-bit integer metadata value with its type named.
 // Ref: #/components/schemas/TaggedIntegerMetadataValue
 type TaggedIntegerMetadataValue struct {
-	Type  string `json:"type"`
-	Value int64  `json:"value"`
+	// The value's type: always `integer`.
+	Type string `json:"type"`
+	// The value, a signed 64-bit integer.
+	Value int64 `json:"value"`
 }
 
 // GetType returns the value of Type.
@@ -3627,9 +3800,12 @@ func NewTaggedTimestampMetadataValueTaggedMetadataValue(v TaggedTimestampMetadat
 	return s
 }
 
+// A floating-point metadata value with its type named.
 // Ref: #/components/schemas/TaggedNumberMetadataValue
 type TaggedNumberMetadataValue struct {
-	Type  string  `json:"type"`
+	// The value's type: always `number`.
+	Type string `json:"type"`
+	// The value, a double-precision floating-point number.
 	Value float64 `json:"value"`
 }
 
@@ -3653,9 +3829,12 @@ func (s *TaggedNumberMetadataValue) SetValue(val float64) {
 	s.Value = val
 }
 
+// A string metadata value with its type named.
 // Ref: #/components/schemas/TaggedStringMetadataValue
 type TaggedStringMetadataValue struct {
-	Type  string `json:"type"`
+	// The value's type: always `string`.
+	Type string `json:"type"`
+	// The value, at most 8,192 characters.
 	Value string `json:"value"`
 }
 
@@ -3679,9 +3858,12 @@ func (s *TaggedStringMetadataValue) SetValue(val string) {
 	s.Value = val
 }
 
+// A timestamp metadata value with its type named.
 // Ref: #/components/schemas/TaggedTimestampMetadataValue
 type TaggedTimestampMetadataValue struct {
-	Type  string    `json:"type"`
+	// The value's type: always `timestamp`.
+	Type string `json:"type"`
+	// The value, an RFC 3339 date and time.
 	Value time.Time `json:"value"`
 }
 
@@ -3708,8 +3890,10 @@ func (s *TaggedTimestampMetadataValue) SetValue(val time.Time) {
 // TransferOrganizationOwnershipNoContent is response for TransferOrganizationOwnership operation.
 type TransferOrganizationOwnershipNoContent struct{}
 
+// The member who becomes the owner.
 // Ref: #/components/schemas/TransferOwnershipRequest
 type TransferOwnershipRequest struct {
+	// The username of the member who becomes the owner.
 	User Name `json:"user"`
 }
 
@@ -3756,8 +3940,10 @@ func (*UnauthorizedHeaders) loginRes()          {}
 // The fields to change. A field that is absent is left as it is; at least one must be present.
 // Ref: #/components/schemas/UpdateIndexRequest
 type UpdateIndexRequest struct {
+	// The new description, which replaces the old one. An empty string clears it.
 	Description OptIndexDescription `json:"description"`
-	Tags        OptIndexTagChanges  `json:"tags"`
+	// Tags to set, by key, and tags to remove, given as null. Other tags are unchanged.
+	Tags OptIndexTagChanges `json:"tags"`
 }
 
 // GetDescription returns the value of Description.
@@ -3780,8 +3966,10 @@ func (s *UpdateIndexRequest) SetTags(val OptIndexTagChanges) {
 	s.Tags = val
 }
 
+// The member's new role.
 // Ref: #/components/schemas/UpdateMemberRequest
 type UpdateMemberRequest struct {
+	// The new role. `owner` is granted only by transferring ownership.
 	Role UpdateMemberRequestRole `json:"role"`
 }
 
@@ -3795,6 +3983,7 @@ func (s *UpdateMemberRequest) SetRole(val UpdateMemberRequestRole) {
 	s.Role = val
 }
 
+// The new role. `owner` is granted only by transferring ownership.
 type UpdateMemberRequestRole string
 
 const (
@@ -3843,12 +4032,18 @@ func (s *UpdateMemberRequestRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// A user account.
 // Ref: #/components/schemas/User
 type User struct {
-	ID        uuid.UUID    `json:"id"`
-	Name      Name         `json:"name"`
-	Email     string       `json:"email"`
-	CreatedAt time.Time    `json:"created_at"`
+	// The account's unique ID.
+	ID uuid.UUID `json:"id"`
+	// The account's username.
+	Name Name `json:"name"`
+	// The account's email address.
+	Email string `json:"email"`
+	// When the account was created.
+	CreatedAt time.Time `json:"created_at"`
+	// The account's role on the Grepvine team. Omitted for every other account.
 	StaffRole OptStaffRole `json:"staff_role"`
 }
 
@@ -3942,9 +4137,12 @@ func (s *UserHeaders) SetResponse(val User) {
 func (*UserHeaders) loginRes()        {}
 func (*UserHeaders) registerUserRes() {}
 
+// Whether a username can be registered.
 // Ref: #/components/schemas/UsernameAvailability
 type UsernameAvailability struct {
-	Name      Name `json:"name"`
+	// The username that was checked.
+	Name Name `json:"name"`
+	// Whether an account can register this username now.
 	Available bool `json:"available"`
 }
 

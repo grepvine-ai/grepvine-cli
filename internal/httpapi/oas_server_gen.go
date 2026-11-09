@@ -10,19 +10,24 @@ import (
 type Handler interface {
 	// AddOrganizationMember implements addOrganizationMember operation.
 	//
-	// Add an organization member.
+	// Adds an existing account to the organization with the admin, developer or reader role. Requires the
+	// owner or admin role. An organization has one owner, changed only by transferring ownership.
 	//
 	// POST /organizations/{organization}/members
 	AddOrganizationMember(ctx context.Context, req *AddMemberRequest, params AddOrganizationMemberParams) (*Member, error)
 	// ApproveDeviceAuthorization implements approveDeviceAuthorization operation.
 	//
-	// Approve device authorization.
+	// Approves a pending device authorization for the signed-in account, identified by the code the device
+	// shows. The device's next poll receives a new API key with the name it asked for. A code that is
+	// unknown, already decided or expired is not found.
 	//
 	// POST /device/authorizations/approve
 	ApproveDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
 	// ChangePassword implements changePassword operation.
 	//
-	// Change the current password.
+	// Changes the signed-in account's password after checking the current one. Every other session of the
+	// account is signed out; the session that made the request stays signed in, and API keys keep working.
+	// A 401 means the current password was wrong.
 	//
 	// PUT /auth/password
 	ChangePassword(ctx context.Context, req *ChangePasswordRequest, params ChangePasswordParams) (ChangePasswordRes, error)
@@ -35,31 +40,38 @@ type Handler interface {
 	CheckInvitation(ctx context.Context, req *InvitationCheckRequest) (CheckInvitationRes, error)
 	// CreateAPIKey implements createAPIKey operation.
 	//
-	// Create an API key.
+	// Creates an API key for the authenticated account. The response is the only time the secret key is
+	// shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
 	//
 	// POST /api-keys
 	CreateAPIKey(ctx context.Context, req *CreateAPIKeyRequest, params CreateAPIKeyParams) (*APIKeyCreated, error)
 	// CreateIndex implements createIndex operation.
 	//
-	// Create an index.
+	// Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the
+	// response; if it is still `creating`, read it until it is `ready`. A 409 means the organization
+	// already has an index with that name, in any case.
 	//
 	// POST /organizations/{organization}/indexes
 	CreateIndex(ctx context.Context, req *CreateIndexRequest, params CreateIndexParams) (CreateIndexRes, error)
 	// CreateOrganization implements createOrganization operation.
 	//
-	// Create an organization.
+	// Creates an organization owned by the authenticated account. Accounts and organizations share one
+	// namespace, so a 409 means an account or organization already holds the name, in any case.
 	//
 	// POST /organizations
 	CreateOrganization(ctx context.Context, req *CreateOrganizationRequest, params CreateOrganizationParams) (CreateOrganizationRes, error)
 	// DeleteDocument implements deleteDocument operation.
 	//
-	// Delete one document.
+	// Deletes one document. Send If-Match with a revision to delete it only if it still has that revision.
+	// Retrying with the same Idempotency-Key returns the original result. Once acknowledged, the document
+	// no longer matches any search.
 	//
 	// DELETE /organizations/{organization}/indexes/{index}/objects/{key}
 	DeleteDocument(ctx context.Context, params DeleteDocumentParams) (DeleteDocumentRes, error)
 	// DeleteIndex implements deleteIndex operation.
 	//
-	// Delete an index.
+	// Starts deleting an index and all its documents. Requires the owner or admin role. The index is
+	// `deleting` until the deletion finishes in the background, and it can't be undone.
 	//
 	// DELETE /organizations/{organization}/indexes/{index}
 	DeleteIndex(ctx context.Context, params DeleteIndexParams) (DeleteIndexRes, error)
@@ -73,13 +85,16 @@ type Handler interface {
 	DeleteObjects(ctx context.Context, req *DeleteObjectsRequest, params DeleteObjectsParams) (*MutationBatchResult, error)
 	// DeleteOrganization implements deleteOrganization operation.
 	//
-	// Delete an organization.
+	// Starts deleting an organization with all its indexes and documents. Only the owner can delete it.
+	// The deletion finishes in the background and can't be undone.
 	//
 	// DELETE /organizations/{organization}
 	DeleteOrganization(ctx context.Context, params DeleteOrganizationParams) (DeleteOrganizationRes, error)
 	// DenyDeviceAuthorization implements denyDeviceAuthorization operation.
 	//
-	// Deny device authorization.
+	// Denies a pending device authorization, identified by the code the device shows. The device's next
+	// poll fails with code `access_denied`. A code that is unknown, already decided or expired is not
+	// found.
 	//
 	// POST /device/authorizations/deny
 	DenyDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params DenyDeviceAuthorizationParams) (DenyDeviceAuthorizationRes, error)
@@ -92,79 +107,97 @@ type Handler interface {
 	GetAuthOptions(ctx context.Context) (*AuthOptions, error)
 	// GetCurrentUser implements getCurrentUser operation.
 	//
-	// Get the current user.
+	// Returns the account the request authenticates as, whether with a session or an API key. A session
+	// request also receives its CSRF token in X-Csrf-Token.
 	//
 	// GET /auth/me
 	GetCurrentUser(ctx context.Context) (GetCurrentUserRes, error)
 	// GetDocument implements getDocument operation.
 	//
-	// Get a document.
+	// Returns a document's content exactly as it was stored, its revision in the ETag header and its
+	// metadata in the X-Grepvine-Metadata header. Send a Range header to read one byte range; the response
+	// is then 206, or 416 when the range lies outside the document.
 	//
 	// GET /organizations/{organization}/indexes/{index}/objects/{key}
 	GetDocument(ctx context.Context, params GetDocumentParams) (GetDocumentRes, error)
 	// GetIndex implements getIndex operation.
 	//
-	// Get an index.
+	// Returns one index with its current state, document count and size, and the progress of its
+	// background optimization while one runs. Any member can read it.
 	//
 	// GET /organizations/{organization}/indexes/{index}
 	GetIndex(ctx context.Context, params GetIndexParams) (GetIndexRes, error)
 	// GetOrganization implements getOrganization operation.
 	//
-	// Get an organization.
+	// Returns an organization the authenticated account belongs to, with its role there. It answers for a
+	// suspended organization too, and reports `suspended`.
 	//
 	// GET /organizations/{organization}
 	GetOrganization(ctx context.Context, params GetOrganizationParams) (GetOrganizationRes, error)
 	// GetUsernameAvailability implements getUsernameAvailability operation.
 	//
-	// Check whether a username is available.
+	// Reports whether an account can register this username now. Accounts and organizations share one
+	// namespace, so a name either one holds, in any case, is taken. The answer can change before the name
+	// is registered.
 	//
 	// GET /auth/usernames/{name}
 	GetUsernameAvailability(ctx context.Context, params GetUsernameAvailabilityParams) (*UsernameAvailability, error)
 	// ListAPIKeys implements listAPIKeys operation.
 	//
-	// List API keys.
+	// Lists the authenticated account's API keys, oldest first, including revoked ones. The secret key
+	// itself is never returned again; `prefix` tells keys apart.
 	//
 	// GET /api-keys
 	ListAPIKeys(ctx context.Context, params ListAPIKeysParams) (*APIKeyPage, error)
 	// ListDocuments implements listDocuments operation.
 	//
-	// List documents.
+	// Lists documents in key byte order, with each one's revision, size, metadata and whether a search can
+	// match it. Narrow the listing with `prefix`, and add `delimiter` to browse keys like a directory
+	// tree: keys that share the part up to the next delimiter are returned once, in `common_prefixes`.
 	//
 	// GET /organizations/{organization}/indexes/{index}/objects
 	ListDocuments(ctx context.Context, params ListDocumentsParams) (*DocumentPage, error)
 	// ListIndexes implements listIndexes operation.
 	//
-	// List indexes.
+	// Lists the organization's indexes, ordered by name. Any member can list them.
 	//
 	// GET /organizations/{organization}/indexes
 	ListIndexes(ctx context.Context, params ListIndexesParams) (*IndexPage, error)
 	// ListOrganizationMembers implements listOrganizationMembers operation.
 	//
-	// List organization members.
+	// Lists an organization's members and their roles, ordered by name. Requires the owner or admin role.
 	//
 	// GET /organizations/{organization}/members
 	ListOrganizationMembers(ctx context.Context, params ListOrganizationMembersParams) (*MemberPage, error)
 	// ListOrganizations implements listOrganizations operation.
 	//
-	// List organizations.
+	// Lists the organizations the authenticated account belongs to, with its role in each, ordered by
+	// name.
 	//
 	// GET /organizations
 	ListOrganizations(ctx context.Context, params ListOrganizationsParams) (*OrganizationPage, error)
 	// Login implements login operation.
 	//
-	// Create a user session.
+	// Signs in with a username or email address and a password, and starts a browser session: the response
+	// sets the session cookie and returns, in X-Csrf-Token, the token every state change made with that
+	// cookie must send. A 401 means the credentials were not accepted. Programs authenticate with an API
+	// key instead.
 	//
 	// POST /auth/login
 	Login(ctx context.Context, req *LoginRequest) (LoginRes, error)
 	// Logout implements logout operation.
 	//
-	// Revoke the current session.
+	// Ends the session that made the request and clears its cookie. Other sessions and API keys are
+	// unaffected.
 	//
 	// POST /auth/logout
 	Logout(ctx context.Context, params LogoutParams) (*LogoutNoContent, error)
 	// PollDeviceToken implements pollDeviceToken operation.
 	//
-	// Poll for a device API key.
+	// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
+	// 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with
+	// `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`,
+	// and an unknown, expired or already used code with `expired_token`.
 	//
 	// POST /device/token
 	PollDeviceToken(ctx context.Context, req *DeviceTokenRequest) (PollDeviceTokenRes, error)
@@ -191,7 +224,12 @@ type Handler interface {
 	PutObjects(ctx context.Context, req PutObjectsReq, params PutObjectsParams) (PutObjectsRes, error)
 	// QueryIndex implements queryIndex operation.
 	//
-	// Search an index.
+	// Searches every searchable document in the index for a regular expression or literal text, and
+	// returns each match with the lines it covers, sorted by key, then line, then offset. A metadata
+	// filter restricts the search to matching documents, and context lines can be returned around each
+	// result. A pattern or filter that doesn't parse is rejected with 400 and code `invalid_pattern` or
+	// `invalid_filter`. Continue with `page` while `has_next` is true: a page can be empty while more
+	// results follow.
 	//
 	// POST /organizations/{organization}/indexes/{index}/query
 	QueryIndex(ctx context.Context, req *QueryRequest, params QueryIndexParams) (*QueryPage, error)
@@ -208,25 +246,32 @@ type Handler interface {
 	RegisterUser(ctx context.Context, req *RegisterRequest) (RegisterUserRes, error)
 	// RemoveOrganizationMember implements removeOrganizationMember operation.
 	//
-	// Remove an organization member.
+	// Removes a member from the organization. Requires the owner or admin role. The owner can't be
+	// removed; transfer ownership first.
 	//
 	// DELETE /organizations/{organization}/members/{user}
 	RemoveOrganizationMember(ctx context.Context, params RemoveOrganizationMemberParams) error
 	// RevokeAPIKey implements revokeAPIKey operation.
 	//
-	// Revoke an API key.
+	// Revokes one of the authenticated account's API keys. Requests authenticated with it are refused from
+	// then on. A key that doesn't exist or belongs to another account is not found.
 	//
 	// DELETE /api-keys/{api_key_id}
 	RevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams) (RevokeAPIKeyRes, error)
 	// StartDeviceAuthorization implements startDeviceAuthorization operation.
 	//
-	// Start device authorization.
+	// Starts signing in a device, such as the command-line client, without entering a password on it. Show
+	// the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve
+	// it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires
+	// after `expires_in` seconds.
 	//
 	// POST /device/authorizations
 	StartDeviceAuthorization(ctx context.Context, req *DeviceAuthorizationRequest) (*DeviceAuthorization, error)
 	// TransferOrganizationOwnership implements transferOrganizationOwnership operation.
 	//
-	// Transfer organization ownership.
+	// Makes another member the owner. Only the owner can transfer ownership, and the previous owner stays
+	// a member with the admin role. The new owner must already be a member, and not one with time-limited
+	// access.
 	//
 	// PUT /organizations/{organization}/owner
 	TransferOrganizationOwnership(ctx context.Context, req *TransferOwnershipRequest, params TransferOrganizationOwnershipParams) error
@@ -239,7 +284,8 @@ type Handler interface {
 	UpdateIndex(ctx context.Context, req *UpdateIndexRequest, params UpdateIndexParams) (UpdateIndexRes, error)
 	// UpdateOrganizationMember implements updateOrganizationMember operation.
 	//
-	// Change an organization member role.
+	// Changes a member's role to admin, developer or reader. Requires the owner or admin role. The owner's
+	// role changes only by transferring ownership.
 	//
 	// PUT /organizations/{organization}/members/{user}
 	UpdateOrganizationMember(ctx context.Context, req *UpdateMemberRequest, params UpdateOrganizationMemberParams) (*Member, error)

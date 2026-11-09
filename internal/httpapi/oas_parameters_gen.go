@@ -17,6 +17,7 @@ import (
 
 // AddOrganizationMemberParams is parameters of addOrganizationMember operation.
 type AddOrganizationMemberParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -445,6 +446,7 @@ func decodeCreateAPIKeyParams(args [0]string, argsEscaped bool, r *http.Request)
 
 // CreateIndexParams is parameters of createIndex operation.
 type CreateIndexParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -693,11 +695,20 @@ func decodeCreateOrganizationParams(args [0]string, argsEscaped bool, r *http.Re
 
 // DeleteDocumentParams is parameters of deleteDocument operation.
 type DeleteDocumentParams struct {
-	Organization   Name
-	Index          IndexName
-	Key            string
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..`
+	// components.
+	Key string
+	// A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating
+	// the request with the same key returns the original result and applies the write at most once.
 	IdempotencyKey string
-	IfMatch        OptString `json:",omitempty,omitzero"`
+	// A revision. The write applies only if the document still has this revision; otherwise the request
+	// fails with 412.
+	IfMatch OptString `json:",omitempty,omitzero"`
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
@@ -1130,8 +1141,11 @@ func decodeDeleteDocumentParams(args [3]string, argsEscaped bool, r *http.Reques
 
 // DeleteIndexParams is parameters of deleteIndex operation.
 type DeleteIndexParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
@@ -1356,8 +1370,13 @@ func decodeDeleteIndexParams(args [2]string, argsEscaped bool, r *http.Request) 
 
 // DeleteObjectsParams is parameters of deleteObjects operation.
 type DeleteObjectsParams struct {
-	Organization   Name
-	Index          IndexName
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating
+	// the request with the same key returns the original result and applies the write at most once.
 	IdempotencyKey string
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -1644,6 +1663,7 @@ func decodeDeleteObjectsParams(args [2]string, argsEscaped bool, r *http.Request
 
 // DeleteOrganizationParams is parameters of deleteOrganization operation.
 type DeleteOrganizationParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -1892,9 +1912,14 @@ func decodeDenyDeviceAuthorizationParams(args [0]string, argsEscaped bool, r *ht
 
 // GetDocumentParams is parameters of getDocument operation.
 type GetDocumentParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
-	Key          string
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// The document's key: a UTF-8, POSIX-style path of at most 1,024 bytes, with no empty, `.` or `..`
+	// components.
+	Key string
 	// One HTTP bytes range. Multiple ranges are not supported.
 	Range OptString `json:",omitempty,omitzero"`
 }
@@ -2191,8 +2216,11 @@ func decodeGetDocumentParams(args [3]string, argsEscaped bool, r *http.Request) 
 
 // GetIndexParams is parameters of getIndex operation.
 type GetIndexParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
 }
 
 func unpackGetIndexParams(packed middleware.Parameters) (params GetIndexParams) {
@@ -2339,6 +2367,7 @@ func decodeGetIndexParams(args [2]string, argsEscaped bool, r *http.Request) (pa
 
 // GetOrganizationParams is parameters of getOrganization operation.
 type GetOrganizationParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
 }
 
@@ -2419,6 +2448,7 @@ func decodeGetOrganizationParams(args [1]string, argsEscaped bool, r *http.Reque
 
 // GetUsernameAvailabilityParams is parameters of getUsernameAvailability operation.
 type GetUsernameAvailabilityParams struct {
+	// The username to check.
 	Name Name
 }
 
@@ -2499,8 +2529,13 @@ func decodeGetUsernameAvailabilityParams(args [1]string, argsEscaped bool, r *ht
 
 // ListAPIKeysParams is parameters of listAPIKeys operation.
 type ListAPIKeysParams struct {
-	Amount OptInt    `json:",omitempty,omitzero"`
-	Page   OptString `json:",omitempty,omitzero"`
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 }
 
 func unpackListAPIKeysParams(packed middleware.Parameters) (params ListAPIKeysParams) {
@@ -2671,11 +2706,21 @@ func decodeListAPIKeysParams(args [0]string, argsEscaped bool, r *http.Request) 
 
 // ListDocumentsParams is parameters of listDocuments operation.
 type ListDocumentsParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
-	Amount       OptInt    `json:",omitempty,omitzero"`
-	Page         OptString `json:",omitempty,omitzero"`
-	Prefix       OptString `json:",omitempty,omitzero"`
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
+	// Lists only the documents whose keys start with this prefix, compared byte for byte. At most 1,024
+	// characters.
+	Prefix OptString `json:",omitempty,omitzero"`
 	// Folds documents that share the substring through the first delimiter after prefix into one common
 	// prefix.
 	Delimiter OptString `json:",omitempty,omitzero"`
@@ -3137,9 +3182,15 @@ func decodeListDocumentsParams(args [2]string, argsEscaped bool, r *http.Request
 
 // ListIndexesParams is parameters of listIndexes operation.
 type ListIndexesParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Amount       OptInt    `json:",omitempty,omitzero"`
-	Page         OptString `json:",omitempty,omitzero"`
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 	// Lists only the indexes whose names start with this literal prefix, compared without regard to case.
 	// A page token is valid only with the prefix it was issued for.
 	Prefix OptString `json:",omitempty,omitzero"`
@@ -3457,9 +3508,15 @@ func decodeListIndexesParams(args [1]string, argsEscaped bool, r *http.Request) 
 
 // ListOrganizationMembersParams is parameters of listOrganizationMembers operation.
 type ListOrganizationMembersParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Amount       OptInt    `json:",omitempty,omitzero"`
-	Page         OptString `json:",omitempty,omitzero"`
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 }
 
 func unpackListOrganizationMembersParams(packed middleware.Parameters) (params ListOrganizationMembersParams) {
@@ -3697,8 +3754,13 @@ func decodeListOrganizationMembersParams(args [1]string, argsEscaped bool, r *ht
 
 // ListOrganizationsParams is parameters of listOrganizations operation.
 type ListOrganizationsParams struct {
-	Amount OptInt    `json:",omitempty,omitzero"`
-	Page   OptString `json:",omitempty,omitzero"`
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 }
 
 func unpackListOrganizationsParams(packed middleware.Parameters) (params ListOrganizationsParams) {
@@ -3959,11 +4021,20 @@ func decodeLogoutParams(args [0]string, argsEscaped bool, r *http.Request) (para
 
 // PutDocumentParams is parameters of putDocument operation.
 type PutDocumentParams struct {
-	Organization   Name
-	Index          IndexName
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating
+	// the request with the same key returns the original result and applies the write at most once.
 	IdempotencyKey string
-	IfMatch        OptString `json:",omitempty,omitzero"`
-	IfNoneMatch    OptString `json:",omitempty,omitzero"`
+	// A revision. The write applies only if the document still has this revision; otherwise the request
+	// fails with 412.
+	IfMatch OptString `json:",omitempty,omitzero"`
+	// Set to `*` to store the document only if no document has this key yet; otherwise the request fails
+	// with 412.
+	IfNoneMatch OptString `json:",omitempty,omitzero"`
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
@@ -4372,8 +4443,13 @@ func decodePutDocumentParams(args [2]string, argsEscaped bool, r *http.Request) 
 
 // PutObjectsParams is parameters of putObjects operation.
 type PutObjectsParams struct {
-	Organization   Name
-	Index          IndexName
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating
+	// the request with the same key returns the original result and applies the write at most once.
 	IdempotencyKey string
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -4660,10 +4736,18 @@ func decodePutObjectsParams(args [2]string, argsEscaped bool, r *http.Request) (
 
 // QueryIndexParams is parameters of queryIndex operation.
 type QueryIndexParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
-	Amount       OptInt    `json:",omitempty,omitzero"`
-	Page         OptString `json:",omitempty,omitzero"`
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 }
 
 func unpackQueryIndexParams(packed middleware.Parameters) (params QueryIndexParams) {
@@ -4968,8 +5052,10 @@ func decodeQueryIndexParams(args [2]string, argsEscaped bool, r *http.Request) (
 
 // RemoveOrganizationMemberParams is parameters of removeOrganizationMember operation.
 type RemoveOrganizationMemberParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	User         Name
+	// The member's account name. Any spelling that differs only in case refers to the same account.
+	User Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
@@ -5194,6 +5280,7 @@ func decodeRemoveOrganizationMemberParams(args [2]string, argsEscaped bool, r *h
 
 // RevokeAPIKeyParams is parameters of revokeAPIKey operation.
 type RevokeAPIKeyParams struct {
+	// The ID of the API key, as the listing returns it.
 	APIKeyID uuid.UUID
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -5337,6 +5424,7 @@ func decodeRevokeAPIKeyParams(args [1]string, argsEscaped bool, r *http.Request)
 
 // TransferOrganizationOwnershipParams is parameters of transferOrganizationOwnership operation.
 type TransferOrganizationOwnershipParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
@@ -5495,8 +5583,11 @@ func decodeTransferOrganizationOwnershipParams(args [1]string, argsEscaped bool,
 
 // UpdateIndexParams is parameters of updateIndex operation.
 type UpdateIndexParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	Index        IndexName
+	// The index's name within the organization. Any spelling that differs only in case refers to the same
+	// index.
+	Index IndexName
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
@@ -5721,8 +5812,10 @@ func decodeUpdateIndexParams(args [2]string, argsEscaped bool, r *http.Request) 
 
 // UpdateOrganizationMemberParams is parameters of updateOrganizationMember operation.
 type UpdateOrganizationMemberParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
-	User         Name
+	// The member's account name. Any spelling that differs only in case refers to the same account.
+	User Name
 	// Required for a state change that uses cookie authentication.
 	XCsrfToken OptString `json:",omitempty,omitzero"`
 }
