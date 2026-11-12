@@ -34,6 +34,10 @@
       "description": "Device authorization for the command-line client."
     },
     {
+      "name": "Connections",
+      "description": "Apps connected to an account through OAuth sign-in, such as MCP clients."
+    },
+    {
       "name": "API keys",
       "description": "Programmatic credentials for a user."
     },
@@ -537,6 +541,198 @@
           },
           "400": {
             "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/oauth/authorizations/lookup": {
+      "post": {
+        "summary": "Read an app's sign-in request",
+        "description": "Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to show before approving it. The permissions are those the request's `scope` names that an app can be granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its app is not sent back an answer. Only a signed-in session can read one.",
+        "operationId": "lookupOAuthAuthorization",
+        "tags": [
+          "Connections"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthAuthorizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The app and what it asks for.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingOAuthAuthorization"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/oauth/authorizations/approve": {
+      "post": {
+        "summary": "Approve an app's sign-in request",
+        "description": "Approves an app's sign-in request with the scope the signed-in account chose, creating a connection, and returns the address to send the browser to, which hands the app a single-use code. The connection never does more than the approving account can, and expires after 90 days unless the app keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means the organization or an index named does not exist or is not visible. Only a signed-in session can approve.",
+        "operationId": "approveOAuthAuthorization",
+        "tags": [
+          "Connections"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Where to send the browser.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthRedirect"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/oauth/authorizations/deny": {
+      "post": {
+        "summary": "Deny an app's sign-in request",
+        "description": "Denies an app's sign-in request and returns the address to send the browser to, which tells the app it was refused with `access_denied`. Only a signed-in session can deny.",
+        "operationId": "denyOAuthAuthorization",
+        "tags": [
+          "Connections"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthDenialRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Where to send the browser.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthRedirect"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/connections": {
+      "get": {
+        "summary": "List connections",
+        "description": "Lists the apps you have connected that are still in use: revoked and ended connections are left out. Newest first. Only a signed-in session can list them.",
+        "operationId": "listConnections",
+        "tags": [
+          "Connections"
+        ],
+        "responses": {
+          "200": {
+            "description": "The connections.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionPage"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/connections/{connection_id}": {
+      "delete": {
+        "summary": "Revoke a connection",
+        "description": "Revokes one of the authenticated account's connections. The app's requests are refused from then on, and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another account is not found. Only a signed-in session can revoke one.",
+        "operationId": "revokeConnection",
+        "tags": [
+          "Connections"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ConnectionID"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The connection was revoked."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "default": {
             "$ref": "#/components/responses/Error"
@@ -1751,6 +1947,16 @@
           "format": "uuid"
         }
       },
+      "ConnectionID": {
+        "description": "The ID of the connection, as the listing returns it.",
+        "name": "connection_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
       "IdempotencyKey": {
         "description": "A key of 16 to 128 characters that identifies this write. Keep it the same when you retry: repeating the request with the same key returns the original result and applies the write at most once.",
         "name": "Idempotency-Key",
@@ -2288,6 +2494,227 @@
             "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "OAuthAuthorizationRequest": {
+        "description": "An app's OAuth sign-in request, with the parameters it sent to the authorization endpoint.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "response_type",
+          "client_id",
+          "redirect_uri",
+          "code_challenge",
+          "code_challenge_method",
+          "resource"
+        ],
+        "properties": {
+          "response_type": {
+            "description": "Must be `code`.",
+            "type": "string",
+            "maxLength": 64
+          },
+          "client_id": {
+            "description": "The app's client ID: the HTTPS address of its client metadata document.",
+            "type": "string",
+            "maxLength": 2048
+          },
+          "redirect_uri": {
+            "description": "Where the app receives the answer; one of the addresses its metadata document lists.",
+            "type": "string",
+            "maxLength": 2048
+          },
+          "code_challenge": {
+            "description": "The PKCE code challenge, 43 to 128 characters.",
+            "type": "string",
+            "maxLength": 128
+          },
+          "code_challenge_method": {
+            "description": "Must be `S256`.",
+            "type": "string",
+            "maxLength": 16
+          },
+          "resource": {
+            "description": "The MCP server the app signs in to.",
+            "type": "string",
+            "maxLength": 2048
+          },
+          "state": {
+            "description": "A value the app sent, returned to it unchanged, at most 1,024 characters.",
+            "type": "string",
+            "maxLength": 1024
+          },
+          "scope": {
+            "description": "The space-separated scopes the app asked for.",
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "PendingOAuthAuthorization": {
+        "description": "Who an app signing in is and what it asks for. The name is the app's own and is not verified; the host is where its metadata document is served.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "client_name",
+          "client_host",
+          "redirect_host",
+          "loopback_redirect",
+          "permissions"
+        ],
+        "properties": {
+          "client_name": {
+            "description": "The name the app gives itself.",
+            "type": "string"
+          },
+          "client_host": {
+            "description": "The host that serves the app's client metadata document.",
+            "type": "string"
+          },
+          "redirect_host": {
+            "description": "The host the answer is sent to.",
+            "type": "string"
+          },
+          "loopback_redirect": {
+            "description": "Whether the answer is sent to this computer, as a desktop or command-line app receives it.",
+            "type": "boolean"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          }
+        }
+      },
+      "ConnectionScope": {
+        "description": "What a connection reaches and may do. A field left out sets no limit.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "organization": {
+            "description": "The one organization the connection reaches. Omitted for every organization of the account. A list of indexes needs one.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          }
+        }
+      },
+      "OAuthApprovalRequest": {
+        "description": "The sign-in request to approve and the scope to grant it.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request",
+          "scope"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/OAuthAuthorizationRequest"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ConnectionScope"
+          }
+        }
+      },
+      "OAuthDenialRequest": {
+        "description": "The sign-in request to deny.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/OAuthAuthorizationRequest"
+          }
+        }
+      },
+      "OAuthRedirect": {
+        "description": "Where to send the browser to answer the app.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "redirect_to"
+        ],
+        "properties": {
+          "redirect_to": {
+            "description": "The app's address, carrying the answer.",
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "Connection": {
+        "description": "An app the account connected, and what it reaches and may do.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "client_name",
+          "client_host",
+          "permissions",
+          "created_at",
+          "last_used_at",
+          "expires_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "client_name": {
+            "description": "The name the app gave itself when it was connected.",
+            "type": "string"
+          },
+          "client_host": {
+            "description": "The host that serves the app's client metadata document.",
+            "type": "string"
+          },
+          "organization": {
+            "description": "The one organization the connection reaches. Omitted for every organization of the account.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "description": "When the app last signed in or renewed its access.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "description": "When the connection stops working unless the app keeps using it.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConnectionPage": {
+        "description": "The account's connections.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "connections"
+        ],
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            }
           }
         }
       },
