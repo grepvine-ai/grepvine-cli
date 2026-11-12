@@ -506,17 +506,17 @@ func TestDeviceLoginCapturesEnvironmentEndpoint(t *testing.T) {
 				io.WriteString(w, `{"code":"authorization_pending","reason":"device","error":"authorization is pending"}`)
 				return
 			}
-			io.WriteString(w, `{"id":"0198f13d-f525-7f84-a98e-3c0264919c42","name":"gv","prefix":"gv_test","created_at":"2026-08-27T12:00:00Z","key":"secret-device-key"}`)
+			io.WriteString(w, `{"id":"0198f13d-f525-7f84-a98e-3c0264919c42","name":"gv","prefix":"gv_test","permissions":["search","read"],"created_at":"2026-08-27T12:00:00Z","expires_at":"2026-11-25T12:00:00Z","key":"secret-device-key"}`)
 		default:
 			http.NotFound(w, r)
 		}
 	}))
 	defer server.Close()
-	a, stdout, _ := testApp(t, server.URL+"/v1")
+	a, stdout, stderr := testApp(t, server.URL+"/v1")
 	if err := saveConfig(a.configPath, config{APIKey: "old-key", Organization: "acme"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.login(t.Context(), "gv"); err != nil {
+	if err := a.login(t.Context(), &httpapi.DeviceAuthorizationRequest{APIKeyName: "gv"}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, _, err := a.loadConfig()
@@ -527,8 +527,12 @@ func TestDeviceLoginCapturesEnvironmentEndpoint(t *testing.T) {
 	if cfg.Endpoint != server.URL+"/v1" || cfg.APIKey != "secret-device-key" || cfg.Organization != "acme" {
 		t.Fatalf("saved config = %+v", cfg)
 	}
-	if !strings.Contains(stdout.String(), "ABCD-EFGH") || polls != 2 {
-		t.Fatalf("output=%q polls=%d", stdout.String(), polls)
+	// Where to approve goes to standard error; what was approved, to standard output.
+	if !strings.Contains(stderr.String(), "ABCD-EFGH") || polls != 2 {
+		t.Fatalf("stderr=%q polls=%d", stderr.String(), polls)
+	}
+	if !strings.Contains(stdout.String(), "all organizations · all indexes · search, read · until 2026-11-25") {
+		t.Fatalf("stdout=%q", stdout.String())
 	}
 }
 

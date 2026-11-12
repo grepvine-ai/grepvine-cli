@@ -90,7 +90,6 @@ const (
 	globex  = `{"id":"2f0e4a8b-5c61-4d7a-8e93-1b2c3d4e5f60","name":"globex","role":"reader","suspended":false,"created_at":"2026-02-03T04:05:06Z"}`
 	alice   = `{"id":"0b6f3a3e-8c4d-4f0e-a1b2-c3d4e5f60718","name":"alice","email":"alice@example.com","created_at":"2026-01-01T00:00:00Z"}`
 	keyID   = "5d9e8f7a-6b5c-4d3e-8f1a-2b3c4d5e6f70"
-	apiKey  = `{"id":"` + keyID + `","name":"ci","prefix":"gv_ab12","created_at":"2026-03-04T05:06:07Z"}`
 	errBody = `{"code":"forbidden","reason":"forbidden","error":"you cannot manage members of this organization"}`
 )
 
@@ -212,41 +211,40 @@ func TestMemberCommands(t *testing.T) {
 	}
 }
 
-func TestKeyCommands(t *testing.T) {
-	revoked := strings.Replace(apiKey, `"created_at"`, `"revoked_at":"2026-05-06T07:08:09Z","created_at"`, 1)
+// gv key create asks for the key through the browser, as gv login does, and
+// prints it: an API key cannot create keys itself.
+func TestKeyCreateAsksThroughTheBrowser(t *testing.T) {
 	s, _, execute := newAdminServer(t, map[string]adminResponse{
-		"GET /api-keys":             {200, `{"results":[` + revoked + `],"pagination":{"next_page_id":"","has_next":false}}`},
-		"POST /api-keys":            {201, strings.TrimSuffix(apiKey, "}") + `,"key":"gv_ab12secret"}`}, // gitleaks:allow (fake test key)
-		"DELETE /api-keys/" + keyID: {204, ""},
+		"POST /device/authorizations": {200, `{"device_code":"device","user_code":"ABCD-EFGH","verification_uri":"https://console.example.test/device","verification_uri_complete":"https://console.example.test/device?user_code=ABCD-EFGH","expires_in":600,"interval":5}`},
+		"POST /device/token": {200, `{"id":"` + keyID + `","name":"ci","prefix":"gv_ab12","organization":"acme","indexes":["docs"],"permissions":["search"],` +
+			`"created_at":"2026-03-04T05:06:07Z","expires_at":"2026-04-03T05:06:07Z","key":"gv_ab12secret"}`}, // gitleaks:allow (fake test key)
 	})
 
-	stdout, _, err := execute("", "key", "ls")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{keyID, "ci", "gv_ab12", "2026-05-06T07:08:09Z"} {
-		if !strings.Contains(stdout, want) {
-			t.Fatalf("key ls missing %q:\n%s", want, stdout)
-		}
-	}
-	// The key was never used, so LAST USED is a dash.
-	if !strings.Contains(stdout, "  -  ") {
-		t.Fatalf("key ls has no dash for an unused key:\n%s", stdout)
-	}
-
-	stdout, stderr, err := execute("", "key", "create", "ci")
-	if err != nil || stdout != "gv_ab12secret\n" || !strings.Contains(stderr, "not shown again") {
+	stdout, stderr, err := execute("", "key", "create", "ci", "--org", "acme", "--index", "docs", "--permission", "search", "--expires", "2026-04-03")
+	if err != nil || stdout != "gv_ab12secret\n" {
 		t.Fatalf("key create stdout=%q stderr=%q err=%v", stdout, stderr, err)
 	}
-	expectRequests(t, s, `POST /api-keys {"name":"ci"}`)
-
-	if _, _, err = execute("", "key", "rm", "not-a-uuid"); err == nil || !strings.Contains(err.Error(), "gv key ls") {
-		t.Fatalf("key rm invalid ID error = %v", err)
+	for _, want := range []string{"ABCD-EFGH", "acme · docs · search · until 2026-04-03", "not shown again"} {
+		if !strings.Contains(stderr, want) {
+			t.Fatalf("key create stderr missing %q:\n%s", want, stderr)
+		}
 	}
-	expectRequests(t, s)
-	stdout, _, err = execute("", "key", "rm", keyID)
-	if err != nil || stdout != "Revoked API key "+keyID+"\n" {
-		t.Fatalf("key rm = %q, %v", stdout, err)
+	expectRequests(t, s,
+		`POST /device/authorizations {"api_key_name":"ci","organization":"acme","indexes":["docs"],"permissions":["search"],"expires_at":"2026-04-03T23:59:59Z"}`,
+		`POST /device/token {"device_code":"device"}`)
+
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--index", "docs"}, "--index needs --org"},
+		{[]string{"--permission", "admin"}, `--permission "admin" is not one of`},
+		{[]string{"--expires", "soon"}, `--expires "soon" is not`},
+	} {
+		if _, _, err := execute("", append([]string{"key", "create", "ci"}, test.args...)...); err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Errorf("key create %v error = %v, want %q", test.args, err, test.want)
+		}
+		expectRequests(t, s)
 	}
 }
 
