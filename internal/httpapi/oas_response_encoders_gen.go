@@ -594,6 +594,89 @@ func encodeGetCurrentUserResponse(response GetCurrentUserRes, w http.ResponseWri
 	}
 }
 
+func encodeGetDeviceAuthorizationResponse(response GetDeviceAuthorizationRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *PendingDeviceAuthorization:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ForbiddenHeaders:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
+		// Encoding response headers.
+		{
+			h := uri.NewHeaderEncoder(w.Header())
+			// Encode "X-Request-Id" header.
+			{
+				cfg := uri.HeaderParameterEncodingConfig{
+					Name:    "X-Request-Id",
+					Explode: false,
+				}
+				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+					if val, ok := response.XRequestID.Get(); ok {
+						return e.EncodeValue(conv.StringToString(val))
+					}
+					return nil
+				}); err != nil {
+					return errors.Wrap(err, "encode X-Request-Id header")
+				}
+			}
+		}
+		w.WriteHeader(403)
+
+		e := new(jx.Encoder)
+		response.Response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *NotFoundHeaders:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
+		// Encoding response headers.
+		{
+			h := uri.NewHeaderEncoder(w.Header())
+			// Encode "X-Request-Id" header.
+			{
+				cfg := uri.HeaderParameterEncodingConfig{
+					Name:    "X-Request-Id",
+					Explode: false,
+				}
+				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+					if val, ok := response.XRequestID.Get(); ok {
+						return e.EncodeValue(conv.StringToString(val))
+					}
+					return nil
+				}); err != nil {
+					return errors.Wrap(err, "encode X-Request-Id header")
+				}
+			}
+		}
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeGetDocumentResponse(response GetDocumentRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
 	case *GetDocumentOKHeaders:

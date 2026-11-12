@@ -17,12 +17,14 @@ type Handler interface {
 	AddOrganizationMember(ctx context.Context, req *AddMemberRequest, params AddOrganizationMemberParams) (*Member, error)
 	// ApproveDeviceAuthorization implements approveDeviceAuthorization operation.
 	//
-	// Approves a pending device authorization for the signed-in account, identified by the code the device
-	// shows. The device's next poll receives a new API key with the name it asked for. A code that is
-	// unknown, already decided or expired is not found.
+	// Approves a pending device authorization, identified by the code the device shows. The device's next
+	// poll receives a new API key with the name it asked for. Without a scope it grants what the device
+	// asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
+	// approving account can. A code that is unknown, already decided or expired is not found. Only a
+	// signed-in session can approve.
 	//
 	// POST /device/authorizations/approve
-	ApproveDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
+	ApproveDeviceAuthorization(ctx context.Context, req *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
 	// ChangePassword implements changePassword operation.
 	//
 	// Changes the signed-in account's password after checking the current one. Every other session of the
@@ -40,8 +42,11 @@ type Handler interface {
 	CheckInvitation(ctx context.Context, req *InvitationCheckRequest) (CheckInvitationRes, error)
 	// CreateAPIKey implements createAPIKey operation.
 	//
-	// Creates an API key for the authenticated account. The response is the only time the secret key is
-	// shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
+	// Creates a key that reaches one organization or all of the account's, a list of indexes or all of
+	// them, with a set of permissions, until it expires. A 404 means the organization or an index named
+	// does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The
+	// response is the only time the secret key is shown, so store it securely. Send it as a bearer token:
+	// `Authorization: Bearer <key>`.
 	//
 	// POST /api-keys
 	CreateAPIKey(ctx context.Context, req *CreateAPIKeyRequest, params CreateAPIKeyParams) (*APIKeyCreated, error)
@@ -112,6 +117,12 @@ type Handler interface {
 	//
 	// GET /auth/me
 	GetCurrentUser(ctx context.Context) (GetCurrentUserRes, error)
+	// GetDeviceAuthorization implements getDeviceAuthorization operation.
+	//
+	// Returns the scope a pending device authorization asks for. Only a signed-in session can read one.
+	//
+	// POST /device/authorizations/lookup
+	GetDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params GetDeviceAuthorizationParams) (GetDeviceAuthorizationRes, error)
 	// GetDocument implements getDocument operation.
 	//
 	// Returns a document's content exactly as it was stored, its revision in the ETag header and its

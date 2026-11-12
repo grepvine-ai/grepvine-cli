@@ -30,7 +30,7 @@ func encodeAddOrganizationMemberRequest(
 }
 
 func encodeApproveDeviceAuthorizationRequest(
-	req *DeviceDecisionRequest,
+	req *DeviceApprovalRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -128,6 +128,20 @@ func encodeDeleteObjectsRequest(
 }
 
 func encodeDenyDeviceAuthorizationRequest(
+	req *DeviceDecisionRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeGetDeviceAuthorizationRequest(
 	req *DeviceDecisionRequest,
 	r *http.Request,
 ) error {
