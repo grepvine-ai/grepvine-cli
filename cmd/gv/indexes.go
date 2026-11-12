@@ -433,6 +433,17 @@ func (a *app) printIndex(index *httpapi.Index, asJSON bool) error {
 	if percent, ok := index.OptimizationProgressPercent.Get(); ok {
 		fmt.Fprintf(table, "Optimized:\t%d%%\n", percent)
 	}
+	if index.Permissions != nil {
+		granted := make([]string, 0, len(index.Permissions))
+		for _, permission := range index.Permissions {
+			granted = append(granted, string(permission))
+		}
+		allowed := strings.Join(granted, ", ")
+		if allowed == "" {
+			allowed = "(none)"
+		}
+		fmt.Fprintf(table, "You may:\t%s\n", allowed)
+	}
 	if err := table.Flush(); err != nil {
 		return err
 	}

@@ -481,9 +481,32 @@ func friendlyAPIError(err error) error {
 }
 
 func responseError(response httpapi.Error, requestID httpapi.OptString) error {
-	id, _ := requestID.Get()
-	if id != "" {
-		return fmt.Errorf("%s (%s; request %s)", response.Error, response.Code, id)
+	message := fmt.Sprintf("%s (%s)", response.Error, response.Code)
+	if id, _ := requestID.Get(); id != "" {
+		message = fmt.Sprintf("%s (%s; request %s)", response.Error, response.Code, id)
 	}
-	return fmt.Errorf("%s (%s)", response.Error, response.Code)
+	if permission := missingPermission(response); permission != "" {
+		message += "\n" + permissionHint(permission)
+	}
+	return errors.New(message)
+}
+
+// missingPermission is the permission an error says the API key lacks, if any.
+func missingPermission(response httpapi.Error) string {
+	for _, detail := range response.Details {
+		if detail.Type == "missing_permission" {
+			return detail.Metadata["permission"]
+		}
+	}
+	return ""
+}
+
+// permissionHint says how to get a key that has a permission: sign in again
+// and ask for it, with the others the work needs.
+func permissionHint(permission string) string {
+	organization := ""
+	if permission == "manage_members" || permission == "manage_organization" {
+		organization = "--org ORGANIZATION "
+	}
+	return fmt.Sprintf("Sign in for a key that has it: gv login %s--permission %s (repeat --permission for each one you need)", organization, permission)
 }
