@@ -20,6 +20,7 @@ const (
 	DenyDeviceAuthorizationOperation       OperationName = "DenyDeviceAuthorization"
 	GetAuthOptionsOperation                OperationName = "GetAuthOptions"
 	GetCurrentUserOperation                OperationName = "GetCurrentUser"
+	GetDeviceAuthorizationOperation        OperationName = "GetDeviceAuthorization"
 	GetDocumentOperation                   OperationName = "GetDocument"
 	GetIndexOperation                      OperationName = "GetIndex"
 	GetOrganizationOperation               OperationName = "GetOrganization"

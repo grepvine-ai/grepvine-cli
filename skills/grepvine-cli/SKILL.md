@@ -74,7 +74,7 @@ See [references/indexing.md](references/indexing.md) for uploads, sync, descript
 
 Get the user's explicit confirmation, naming the exact target, before any of these:
 
-- `gv delete`, `gv index rm`, `gv org rm`, `gv member rm`, `gv key rm`, or a `gv sync` whose dry run shows deletions.
+- `gv delete`, `gv index rm`, `gv org rm`, `gv member rm`, or a `gv sync` whose dry run shows deletions.
 - `gv key create`, which prints a new secret, and `gv member add` or `gv member set-role`, which change who has access.
 
 The `rm` commands ask for confirmation on a terminal. Pass `--force` to skip it only after the user has confirmed that exact command in the conversation.

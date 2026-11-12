@@ -17,30 +17,68 @@ import (
 
 func newLoginCommand(a *app) *cobra.Command {
 	name := "gv"
+	var scope scopeFlags
 	command := &cobra.Command{
 		Use:   "login",
 		Short: "Authorize this device in a browser",
-		Args:  cobra.NoArgs,
+		Long: `Authorize this device in a browser and save the API key it receives.
+
+The key asks for what the flags say; without them it asks to search and read
+every index of every organization you belong to, for 90 days. You see the
+request in the browser and may change it before you approve it. A key never
+does more than your role allows.`,
+		Example: `  gv login
+  gv login --org acme --index docs --permission search --permission read --expires 30d`,
+		Args: cobra.NoArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
-			return a.login(command.Context(), name)
+			request, err := scope.request(name, time.Now())
+			if err != nil {
+				return err
+			}
+			return a.login(command.Context(), request)
 		},
 	}
 	command.Flags().StringVar(&name, "name", name, "name for the API key created by this login")
+	scope.register(command)
 	return command
 }
 
-func (a *app) login(ctx context.Context, name string) error {
+func (a *app) login(ctx context.Context, request *httpapi.DeviceAuthorizationRequest) error {
 	client, resolved, path, err := a.client(false)
 	if err != nil {
 		return err
 	}
-	authorization, err := client.StartDeviceAuthorization(ctx, &httpapi.DeviceAuthorizationRequest{APIKeyName: name})
+	created, err := a.deviceKey(ctx, client, request)
 	if err != nil {
-		return fmt.Errorf("start device authorization: %w", friendlyAPIError(err))
+		return err
+	}
+	stored, _, err := a.loadConfig()
+	if err != nil {
+		return err
+	}
+	stored.APIKey, stored.Endpoint = created.Key, ""
+	if resolved.Endpoint != defaultEndpoint {
+		stored.Endpoint = resolved.Endpoint
+	}
+	if err := saveConfig(path, stored); err != nil {
+		return err
+	}
+	fmt.Fprintf(a.stdout, "Logged in as API key %s: %s.\n", created.Prefix, describeKeyScope(created.Organization, created.Indexes, created.Permissions, created.ExpiresAt))
+	return nil
+}
+
+// deviceKey asks for a key through the browser: it prints where to approve the
+// request, waits for the decision, and returns the key the person approved.
+// Messages go to standard error, so a caller may print the key on standard
+// output.
+func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *httpapi.DeviceAuthorizationRequest) (*httpapi.APIKeyCreated, error) {
+	authorization, err := client.StartDeviceAuthorization(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("start device authorization: %w", friendlyAPIError(err))
 	}
 	complete := authorization.VerificationURIComplete.String()
-	fmt.Fprintf(a.stdout, "Open %s\n", complete)
-	fmt.Fprintf(a.stdout, "Enter code: %s\n", authorization.UserCode)
+	fmt.Fprintf(a.stderr, "Open %s\n", complete)
+	fmt.Fprintf(a.stderr, "Enter code: %s\n", authorization.UserCode)
 	if a.open != nil {
 		_ = a.open(complete)
 	}
@@ -49,30 +87,18 @@ func (a *app) login(ctx context.Context, name string) error {
 	expires := time.Now().Add(time.Duration(authorization.ExpiresIn) * time.Second)
 	for {
 		if !time.Now().Before(expires) {
-			return errors.New("device authorization expired")
+			return nil, errors.New("device authorization expired")
 		}
 		if err := a.sleep(ctx, interval); err != nil {
-			return err
+			return nil, err
 		}
 		response, err := client.PollDeviceToken(ctx, &httpapi.DeviceTokenRequest{DeviceCode: authorization.DeviceCode})
 		if err != nil {
-			return fmt.Errorf("poll device authorization: %w", friendlyAPIError(err))
+			return nil, fmt.Errorf("poll device authorization: %w", friendlyAPIError(err))
 		}
 		switch result := response.(type) {
 		case *httpapi.APIKeyCreated:
-			stored, _, err := a.loadConfig()
-			if err != nil {
-				return err
-			}
-			stored.APIKey, stored.Endpoint = result.Key, ""
-			if resolved.Endpoint != defaultEndpoint {
-				stored.Endpoint = resolved.Endpoint
-			}
-			if err := saveConfig(path, stored); err != nil {
-				return err
-			}
-			fmt.Fprintf(a.stdout, "Logged in as API key %s.\n", result.Prefix)
-			return nil
+			return result, nil
 		case *httpapi.ErrorStatusCodeWithHeaders:
 			switch result.Response.Code {
 			case "authorization_pending":
@@ -81,14 +107,14 @@ func (a *app) login(ctx context.Context, name string) error {
 				interval += 5 * time.Second
 				continue
 			case "access_denied":
-				return errors.New("device authorization was denied")
+				return nil, errors.New("device authorization was denied")
 			case "expired_token":
-				return errors.New("device authorization expired")
+				return nil, errors.New("device authorization expired")
 			default:
-				return publicAPIError(result)
+				return nil, publicAPIError(result)
 			}
 		default:
-			return fmt.Errorf("unexpected device authorization response %T", response)
+			return nil, fmt.Errorf("unexpected device authorization response %T", response)
 		}
 	}
 }

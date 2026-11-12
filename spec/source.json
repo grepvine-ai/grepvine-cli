@@ -1,6 +1,6 @@
 {
   "repository": "grepvine-ai/grepvine",
-  "commit": "a7dbbd368c8d85b4b82e8d464ade177a5d63b8d4",
+  "commit": "012f5feec7234ee3f46c7a9cefd622896cacc415",
   "path": "api/openapi.yaml",
   "operations": [
     "registerUser",
@@ -12,6 +12,7 @@
     "getCurrentUser",
     "changePassword",
     "startDeviceAuthorization",
+    "getDeviceAuthorization",
     "approveDeviceAuthorization",
     "denyDeviceAuthorization",
     "pollDeviceToken",
@@ -40,5 +41,5 @@
     "deleteObjects",
     "queryIndex"
   ],
-  "snapshot_sha256": "de1c255b69780bff1e7c0b4361d14e8e0ae92872cc4422e67d3dba54934cef30"
+  "snapshot_sha256": "0cf8b8d36baa2f1f44520b37108c7d810e486de00424d35abf67a1e141b7f918"
 }

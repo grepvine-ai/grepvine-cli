@@ -1910,6 +1910,96 @@ func decodeDenyDeviceAuthorizationParams(args [0]string, argsEscaped bool, r *ht
 	return params, nil
 }
 
+// GetDeviceAuthorizationParams is parameters of getDeviceAuthorization operation.
+type GetDeviceAuthorizationParams struct {
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackGetDeviceAuthorizationParams(packed middleware.Parameters) (params GetDeviceAuthorizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeGetDeviceAuthorizationParams(args [0]string, argsEscaped bool, r *http.Request) (params GetDeviceAuthorizationParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetDocumentParams is parameters of getDocument operation.
 type GetDocumentParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.

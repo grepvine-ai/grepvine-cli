@@ -26,10 +26,10 @@ gv member rm ORGANIZATION USER
 ## API keys
 
 ```sh
-gv key ls --json
-gv key create NAME          # prints the new key once
-gv key rm ID                # revoke it
+gv key create NAME --org ORGANIZATION --index INDEX --permission search --expires 30d   # prints the new key once; --expires never for no expiry
 ```
+
+`gv key create` asks for the key in a browser, like `gv login`, so the user must be present to approve it; without flags it asks to search and read every index for 90 days. A key reaches only what it was approved for and never more than the user's role. Listing and revoking keys happen in the console, not in `gv`.
 
 `gv key create` prints a secret. Create one only when the user asks, and hand it to them as-is: don't save it to a file, repeat it in a summary or commit it. `gv login` creates a key for the device it runs on; `gv logout` removes the saved key.
 

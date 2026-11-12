@@ -38,12 +38,14 @@ type Invoker interface {
 	AddOrganizationMember(ctx context.Context, request *AddMemberRequest, params AddOrganizationMemberParams) (*Member, error)
 	// ApproveDeviceAuthorization invokes approveDeviceAuthorization operation.
 	//
-	// Approves a pending device authorization for the signed-in account, identified by the code the device
-	// shows. The device's next poll receives a new API key with the name it asked for. A code that is
-	// unknown, already decided or expired is not found.
+	// Approves a pending device authorization, identified by the code the device shows. The device's next
+	// poll receives a new API key with the name it asked for. Without a scope it grants what the device
+	// asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
+	// approving account can. A code that is unknown, already decided or expired is not found. Only a
+	// signed-in session can approve.
 	//
 	// POST /device/authorizations/approve
-	ApproveDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
+	ApproveDeviceAuthorization(ctx context.Context, request *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
 	// ChangePassword invokes changePassword operation.
 	//
 	// Changes the signed-in account's password after checking the current one. Every other session of the
@@ -61,8 +63,11 @@ type Invoker interface {
 	CheckInvitation(ctx context.Context, request *InvitationCheckRequest) (CheckInvitationRes, error)
 	// CreateAPIKey invokes createAPIKey operation.
 	//
-	// Creates an API key for the authenticated account. The response is the only time the secret key is
-	// shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
+	// Creates a key that reaches one organization or all of the account's, a list of indexes or all of
+	// them, with a set of permissions, until it expires. A 404 means the organization or an index named
+	// does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The
+	// response is the only time the secret key is shown, so store it securely. Send it as a bearer token:
+	// `Authorization: Bearer <key>`.
 	//
 	// POST /api-keys
 	CreateAPIKey(ctx context.Context, request *CreateAPIKeyRequest, params CreateAPIKeyParams) (*APIKeyCreated, error)
@@ -133,6 +138,12 @@ type Invoker interface {
 	//
 	// GET /auth/me
 	GetCurrentUser(ctx context.Context) (GetCurrentUserRes, error)
+	// GetDeviceAuthorization invokes getDeviceAuthorization operation.
+	//
+	// Returns the scope a pending device authorization asks for. Only a signed-in session can read one.
+	//
+	// POST /device/authorizations/lookup
+	GetDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params GetDeviceAuthorizationParams) (GetDeviceAuthorizationRes, error)
 	// GetDocument invokes getDocument operation.
 	//
 	// Returns a document's content exactly as it was stored, its revision in the ETag header and its
@@ -523,17 +534,19 @@ func (c *Client) sendAddOrganizationMember(ctx context.Context, request *AddMemb
 
 // ApproveDeviceAuthorization invokes approveDeviceAuthorization operation.
 //
-// Approves a pending device authorization for the signed-in account, identified by the code the device
-// shows. The device's next poll receives a new API key with the name it asked for. A code that is
-// unknown, already decided or expired is not found.
+// Approves a pending device authorization, identified by the code the device shows. The device's next
+// poll receives a new API key with the name it asked for. Without a scope it grants what the device
+// asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
+// approving account can. A code that is unknown, already decided or expired is not found. Only a
+// signed-in session can approve.
 //
 // POST /device/authorizations/approve
-func (c *Client) ApproveDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error) {
+func (c *Client) ApproveDeviceAuthorization(ctx context.Context, request *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error) {
 	res, err := c.sendApproveDeviceAuthorization(ctx, request, params)
 	return res, err
 }
 
-func (c *Client) sendApproveDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (res ApproveDeviceAuthorizationRes, err error) {
+func (c *Client) sendApproveDeviceAuthorization(ctx context.Context, request *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (res ApproveDeviceAuthorizationRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("approveDeviceAuthorization"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -901,8 +914,11 @@ func (c *Client) sendCheckInvitation(ctx context.Context, request *InvitationChe
 
 // CreateAPIKey invokes createAPIKey operation.
 //
-// Creates an API key for the authenticated account. The response is the only time the secret key is
-// shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
+// Creates a key that reaches one organization or all of the account's, a list of indexes or all of
+// them, with a set of permissions, until it expires. A 404 means the organization or an index named
+// does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The
+// response is the only time the secret key is shown, so store it securely. Send it as a bearer token:
+// `Authorization: Bearer <key>`.
 //
 // POST /api-keys
 func (c *Client) CreateAPIKey(ctx context.Context, request *CreateAPIKeyRequest, params CreateAPIKeyParams) (*APIKeyCreated, error) {
@@ -2490,6 +2506,151 @@ func (c *Client) sendGetCurrentUser(ctx context.Context) (res GetCurrentUserRes,
 
 	stage = "DecodeResponse"
 	result, err := decodeGetCurrentUserResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetDeviceAuthorization invokes getDeviceAuthorization operation.
+//
+// Returns the scope a pending device authorization asks for. Only a signed-in session can read one.
+//
+// POST /device/authorizations/lookup
+func (c *Client) GetDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params GetDeviceAuthorizationParams) (GetDeviceAuthorizationRes, error) {
+	res, err := c.sendGetDeviceAuthorization(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendGetDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params GetDeviceAuthorizationParams) (res GetDeviceAuthorizationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getDeviceAuthorization"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/device/authorizations/lookup"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetDeviceAuthorizationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/device/authorizations/lookup"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeGetDeviceAuthorizationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetDeviceAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, GetDeviceAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetDeviceAuthorizationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

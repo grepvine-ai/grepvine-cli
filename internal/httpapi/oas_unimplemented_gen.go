@@ -25,12 +25,14 @@ func (UnimplementedHandler) AddOrganizationMember(ctx context.Context, req *AddM
 
 // ApproveDeviceAuthorization implements approveDeviceAuthorization operation.
 //
-// Approves a pending device authorization for the signed-in account, identified by the code the device
-// shows. The device's next poll receives a new API key with the name it asked for. A code that is
-// unknown, already decided or expired is not found.
+// Approves a pending device authorization, identified by the code the device shows. The device's next
+// poll receives a new API key with the name it asked for. Without a scope it grants what the device
+// asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
+// approving account can. A code that is unknown, already decided or expired is not found. Only a
+// signed-in session can approve.
 //
 // POST /device/authorizations/approve
-func (UnimplementedHandler) ApproveDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params ApproveDeviceAuthorizationParams) (r ApproveDeviceAuthorizationRes, _ error) {
+func (UnimplementedHandler) ApproveDeviceAuthorization(ctx context.Context, req *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (r ApproveDeviceAuthorizationRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -57,8 +59,11 @@ func (UnimplementedHandler) CheckInvitation(ctx context.Context, req *Invitation
 
 // CreateAPIKey implements createAPIKey operation.
 //
-// Creates an API key for the authenticated account. The response is the only time the secret key is
-// shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.
+// Creates a key that reaches one organization or all of the account's, a list of indexes or all of
+// them, with a set of permissions, until it expires. A 404 means the organization or an index named
+// does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The
+// response is the only time the secret key is shown, so store it securely. Send it as a bearer token:
+// `Authorization: Bearer <key>`.
 //
 // POST /api-keys
 func (UnimplementedHandler) CreateAPIKey(ctx context.Context, req *CreateAPIKeyRequest, params CreateAPIKeyParams) (r *APIKeyCreated, _ error) {
@@ -156,6 +161,15 @@ func (UnimplementedHandler) GetAuthOptions(ctx context.Context) (r *AuthOptions,
 //
 // GET /auth/me
 func (UnimplementedHandler) GetCurrentUser(ctx context.Context) (r GetCurrentUserRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetDeviceAuthorization implements getDeviceAuthorization operation.
+//
+// Returns the scope a pending device authorization asks for. Only a signed-in session can read one.
+//
+// POST /device/authorizations/lookup
+func (UnimplementedHandler) GetDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params GetDeviceAuthorizationParams) (r GetDeviceAuthorizationRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

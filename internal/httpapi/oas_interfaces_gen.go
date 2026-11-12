@@ -41,6 +41,10 @@ type GetCurrentUserRes interface {
 	getCurrentUserRes()
 }
 
+type GetDeviceAuthorizationRes interface {
+	getDeviceAuthorizationRes()
+}
+
 type GetDocumentRes interface {
 	getDocumentRes()
 }

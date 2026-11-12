@@ -36,7 +36,7 @@ Or download an archive for your platform from the [releases](https://github.com/
 gv login
 ```
 
-`gv login` opens a browser so you can approve this device. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
+`gv login` opens a browser so you can approve this device. The key it saves asks to search and read every index you can reach, for 90 days (`--expires never` for a key that works until it is revoked); ask for less or more with `--org`, `--index`, `--permission` and `--expires`, and change it in the browser before you approve. A key never does more than your role allows. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
 
 `gv config` shows and changes the configuration file. `gv config ls` lists each setting with the value `gv` uses and where it comes from: an environment variable, the file or the default. API keys are shown only in part.
 
@@ -106,7 +106,7 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations, members and API keys with `gv org`, `gv member` and `gv key`; create an organization and transfer its ownership in the console. Run `gv <command> --help` for every flag.
+Manage organizations and members with `gv org` and `gv member`. `gv key create` makes an API key you approve in a browser; list and revoke keys, create an organization and transfer its ownership in the console. Run `gv <command> --help` for every flag.
 
 ### Default organization
 

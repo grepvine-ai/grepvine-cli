@@ -26,8 +26,15 @@ type APIKey struct {
 	Name string `json:"name"`
 	// The first characters of the key, shown to tell keys apart.
 	Prefix string `json:"prefix"`
+	// The one organization the key reaches. Omitted when it reaches every organization of the account.
+	Organization OptName    `json:"organization"`
+	Indexes      IndexScope `json:"indexes"`
+	// What the key may do. May be empty on a revoked key.
+	Permissions []Permission `json:"permissions"`
 	// When the key was created.
 	CreatedAt time.Time `json:"created_at"`
+	// When the key stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
 	// When the key last authenticated a request. Omitted if it never has.
 	LastUsedAt OptDateTime `json:"last_used_at"`
 	// When the key was revoked. Omitted while the key is active.
@@ -49,9 +56,29 @@ func (s *APIKey) GetPrefix() string {
 	return s.Prefix
 }
 
+// GetOrganization returns the value of Organization.
+func (s *APIKey) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *APIKey) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *APIKey) GetPermissions() []Permission {
+	return s.Permissions
+}
+
 // GetCreatedAt returns the value of CreatedAt.
 func (s *APIKey) GetCreatedAt() time.Time {
 	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *APIKey) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
 }
 
 // GetLastUsedAt returns the value of LastUsedAt.
@@ -79,9 +106,29 @@ func (s *APIKey) SetPrefix(val string) {
 	s.Prefix = val
 }
 
+// SetOrganization sets the value of Organization.
+func (s *APIKey) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *APIKey) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *APIKey) SetPermissions(val []Permission) {
+	s.Permissions = val
+}
+
 // SetCreatedAt sets the value of CreatedAt.
 func (s *APIKey) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *APIKey) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // SetLastUsedAt sets the value of LastUsedAt.
@@ -103,8 +150,15 @@ type APIKeyCreated struct {
 	Name string `json:"name"`
 	// The first characters of the key, shown to tell keys apart.
 	Prefix string `json:"prefix"`
+	// The one organization the key reaches. Omitted when it reaches every organization of the account.
+	Organization OptName    `json:"organization"`
+	Indexes      IndexScope `json:"indexes"`
+	// What the key may do. May be empty on a revoked key.
+	Permissions []Permission `json:"permissions"`
 	// When the key was created.
 	CreatedAt time.Time `json:"created_at"`
+	// When the key stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
 	// When the key last authenticated a request. Omitted if it never has.
 	LastUsedAt OptDateTime `json:"last_used_at"`
 	// When the key was revoked. Omitted while the key is active.
@@ -128,9 +182,29 @@ func (s *APIKeyCreated) GetPrefix() string {
 	return s.Prefix
 }
 
+// GetOrganization returns the value of Organization.
+func (s *APIKeyCreated) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *APIKeyCreated) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *APIKeyCreated) GetPermissions() []Permission {
+	return s.Permissions
+}
+
 // GetCreatedAt returns the value of CreatedAt.
 func (s *APIKeyCreated) GetCreatedAt() time.Time {
 	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *APIKeyCreated) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
 }
 
 // GetLastUsedAt returns the value of LastUsedAt.
@@ -163,9 +237,29 @@ func (s *APIKeyCreated) SetPrefix(val string) {
 	s.Prefix = val
 }
 
+// SetOrganization sets the value of Organization.
+func (s *APIKeyCreated) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *APIKeyCreated) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *APIKeyCreated) SetPermissions(val []Permission) {
+	s.Permissions = val
+}
+
 // SetCreatedAt sets the value of CreatedAt.
 func (s *APIKeyCreated) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *APIKeyCreated) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // SetLastUsedAt sets the value of LastUsedAt.
@@ -472,11 +566,18 @@ func (s *CookieAuth) SetRoles(val []string) {
 	s.Roles = val
 }
 
-// A new API key.
+// Creates an API key. A scope field left out sets no limit.
 // Ref: #/components/schemas/CreateAPIKeyRequest
 type CreateAPIKeyRequest struct {
 	// A name to tell the key apart, 1 to 128 characters.
 	Name string `json:"name"`
+	// The one organization the key reaches. Omitted for every organization of the account. A list of
+	// indexes needs one.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
 // GetName returns the value of Name.
@@ -484,9 +585,49 @@ func (s *CreateAPIKeyRequest) GetName() string {
 	return s.Name
 }
 
+// GetOrganization returns the value of Organization.
+func (s *CreateAPIKeyRequest) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *CreateAPIKeyRequest) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *CreateAPIKeyRequest) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *CreateAPIKeyRequest) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
 // SetName sets the value of Name.
 func (s *CreateAPIKeyRequest) SetName(val string) {
 	s.Name = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *CreateAPIKeyRequest) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *CreateAPIKeyRequest) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *CreateAPIKeyRequest) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *CreateAPIKeyRequest) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // A new index.
@@ -609,6 +750,36 @@ type DenyDeviceAuthorizationNoContent struct{}
 
 func (*DenyDeviceAuthorizationNoContent) denyDeviceAuthorizationRes() {}
 
+// The device authorization to approve, and optionally the scope to grant.
+// Ref: #/components/schemas/DeviceApprovalRequest
+type DeviceApprovalRequest struct {
+	// The code the device shows. Hyphens, surrounding spaces and case are ignored.
+	UserCode string `json:"user_code"`
+	// The scope to grant instead of the one the device asked for, as a whole. Without it, the device's
+	// request is approved as asked.
+	Scope OptKeyScope `json:"scope"`
+}
+
+// GetUserCode returns the value of UserCode.
+func (s *DeviceApprovalRequest) GetUserCode() string {
+	return s.UserCode
+}
+
+// GetScope returns the value of Scope.
+func (s *DeviceApprovalRequest) GetScope() OptKeyScope {
+	return s.Scope
+}
+
+// SetUserCode sets the value of UserCode.
+func (s *DeviceApprovalRequest) SetUserCode(val string) {
+	s.UserCode = val
+}
+
+// SetScope sets the value of Scope.
+func (s *DeviceApprovalRequest) SetScope(val OptKeyScope) {
+	s.Scope = val
+}
+
 // A pending device sign-in: the codes to show the user and to poll with.
 // Ref: #/components/schemas/DeviceAuthorization
 type DeviceAuthorization struct {
@@ -686,11 +857,19 @@ func (s *DeviceAuthorization) SetInterval(val int) {
 	s.Interval = val
 }
 
-// A request to sign in a device.
+// Starts a device authorization. The scope fields are what the device asks for; the person approving
+// it sees them and may change them. A scope field left out sets no limit.
 // Ref: #/components/schemas/DeviceAuthorizationRequest
 type DeviceAuthorizationRequest struct {
 	// The name to give the API key the device receives, 1 to 128 characters.
 	APIKeyName string `json:"api_key_name"`
+	// The one organization the key reaches. Omitted for every organization of the account. A list of
+	// indexes needs one.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
 // GetAPIKeyName returns the value of APIKeyName.
@@ -698,9 +877,49 @@ func (s *DeviceAuthorizationRequest) GetAPIKeyName() string {
 	return s.APIKeyName
 }
 
+// GetOrganization returns the value of Organization.
+func (s *DeviceAuthorizationRequest) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *DeviceAuthorizationRequest) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *DeviceAuthorizationRequest) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *DeviceAuthorizationRequest) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
 // SetAPIKeyName sets the value of APIKeyName.
 func (s *DeviceAuthorizationRequest) SetAPIKeyName(val string) {
 	s.APIKeyName = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *DeviceAuthorizationRequest) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *DeviceAuthorizationRequest) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *DeviceAuthorizationRequest) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *DeviceAuthorizationRequest) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // The device authorization to approve or deny.
@@ -867,6 +1086,8 @@ type Error struct {
 	Reason string `json:"reason"`
 	// A message for people that says what went wrong and what to do about it.
 	Error string `json:"error"`
+	// Structured information about the error. Omitted when there is none.
+	Details []ErrorDetail `json:"details"`
 }
 
 // GetCode returns the value of Code.
@@ -884,6 +1105,11 @@ func (s *Error) GetError() string {
 	return s.Error
 }
 
+// GetDetails returns the value of Details.
+func (s *Error) GetDetails() []ErrorDetail {
+	return s.Details
+}
+
 // SetCode sets the value of Code.
 func (s *Error) SetCode(val string) {
 	s.Code = val
@@ -897,6 +1123,54 @@ func (s *Error) SetReason(val string) {
 // SetError sets the value of Error.
 func (s *Error) SetError(val string) {
 	s.Error = val
+}
+
+// SetDetails sets the value of Details.
+func (s *Error) SetDetails(val []ErrorDetail) {
+	s.Details = val
+}
+
+// One piece of information about an error. `type` names what it is and which `metadata` keys it
+// carries; clients ignore types they do not know. `missing_permission`: the API key lacks the
+// permission `metadata.permission` names.
+// Ref: #/components/schemas/ErrorDetail
+type ErrorDetail struct {
+	// What the detail is, such as `missing_permission`.
+	Type string `json:"type"`
+	// The detail's values, by key.
+	Metadata ErrorDetailMetadata `json:"metadata"`
+}
+
+// GetType returns the value of Type.
+func (s *ErrorDetail) GetType() string {
+	return s.Type
+}
+
+// GetMetadata returns the value of Metadata.
+func (s *ErrorDetail) GetMetadata() ErrorDetailMetadata {
+	return s.Metadata
+}
+
+// SetType sets the value of Type.
+func (s *ErrorDetail) SetType(val string) {
+	s.Type = val
+}
+
+// SetMetadata sets the value of Metadata.
+func (s *ErrorDetail) SetMetadata(val ErrorDetailMetadata) {
+	s.Metadata = val
+}
+
+// The detail's values, by key.
+type ErrorDetailMetadata map[string]string
+
+func (s *ErrorDetailMetadata) init() ErrorDetailMetadata {
+	m := *s
+	if m == nil {
+		m = map[string]string{}
+		*s = m
+	}
+	return m
 }
 
 // ErrorHeaders wraps Error with response headers.
@@ -1014,7 +1288,8 @@ func (s *ForbiddenHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*ForbiddenHeaders) registerUserRes() {}
+func (*ForbiddenHeaders) getDeviceAuthorizationRes() {}
+func (*ForbiddenHeaders) registerUserRes()           {}
 
 // GetCurrentUserOKHeaders wraps User with response headers.
 type GetCurrentUserOKHeaders struct {
@@ -1231,6 +1506,8 @@ type Index struct {
 	// When a document was last stored or deleted. Omitted when that is not known, such as before the first
 	// write.
 	LastUpdatedAt OptDateTime `json:"last_updated_at"`
+	// What the caller may do with this index, among `search`, `read`, `write` and `manage_index`.
+	Permissions []Permission `json:"permissions"`
 	// How far the background optimization of this index has progressed, as a percentage. Omitted when no
 	// optimization is running.
 	OptimizationProgressPercent OptInt `json:"optimization_progress_percent"`
@@ -1289,6 +1566,11 @@ func (s *Index) GetCreatedAt() time.Time {
 // GetLastUpdatedAt returns the value of LastUpdatedAt.
 func (s *Index) GetLastUpdatedAt() OptDateTime {
 	return s.LastUpdatedAt
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *Index) GetPermissions() []Permission {
+	return s.Permissions
 }
 
 // GetOptimizationProgressPercent returns the value of OptimizationProgressPercent.
@@ -1351,6 +1633,11 @@ func (s *Index) SetLastUpdatedAt(val OptDateTime) {
 	s.LastUpdatedAt = val
 }
 
+// SetPermissions sets the value of Permissions.
+func (s *Index) SetPermissions(val []Permission) {
+	s.Permissions = val
+}
+
 // SetOptimizationProgressPercent sets the value of OptimizationProgressPercent.
 func (s *Index) SetOptimizationProgressPercent(val OptInt) {
 	s.OptimizationProgressPercent = val
@@ -1392,6 +1679,8 @@ func (s *IndexPage) SetResults(val []IndexSummary) {
 func (s *IndexPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
+
+type IndexScope []IndexName
 
 // Where an index is in its life. `creating`: not usable yet. `ready`: the only state that answers
 // searches. `recreate_required`: answers nothing until it is deleted, created again and its documents
@@ -1746,6 +2035,58 @@ func (s *InvitationRole) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// What a key reaches and may do. A field left out sets no limit.
+// Ref: #/components/schemas/KeyScope
+type KeyScope struct {
+	// The one organization the key reaches. Omitted for every organization of the account. A list of
+	// indexes needs one.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+}
+
+// GetOrganization returns the value of Organization.
+func (s *KeyScope) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *KeyScope) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *KeyScope) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *KeyScope) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// SetOrganization sets the value of Organization.
+func (s *KeyScope) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *KeyScope) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *KeyScope) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *KeyScope) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // Credentials for a new session.
@@ -2184,6 +2525,7 @@ func (*NotFoundHeaders) deleteDocumentRes()             {}
 func (*NotFoundHeaders) deleteIndexRes()                {}
 func (*NotFoundHeaders) deleteOrganizationRes()         {}
 func (*NotFoundHeaders) denyDeviceAuthorizationRes()    {}
+func (*NotFoundHeaders) getDeviceAuthorizationRes()     {}
 func (*NotFoundHeaders) getDocumentRes()                {}
 func (*NotFoundHeaders) getIndexRes()                   {}
 func (*NotFoundHeaders) getOrganizationRes()            {}
@@ -2558,6 +2900,52 @@ func (o OptInvitationRole) Or(d InvitationRole) InvitationRole {
 	return d
 }
 
+// NewOptKeyScope returns new OptKeyScope with value set to v.
+func NewOptKeyScope(v KeyScope) OptKeyScope {
+	return OptKeyScope{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptKeyScope is optional KeyScope.
+type OptKeyScope struct {
+	Value KeyScope
+	Set   bool
+}
+
+// IsSet returns true if OptKeyScope was set.
+func (o OptKeyScope) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptKeyScope) Reset() {
+	var v KeyScope
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptKeyScope) SetTo(v KeyScope) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptKeyScope) Get() (v KeyScope, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptKeyScope) Or(d KeyScope) KeyScope {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptMetadata returns new OptMetadata with value set to v.
 func NewOptMetadata(v Metadata) OptMetadata {
 	return OptMetadata{
@@ -2916,6 +3304,156 @@ func (s *Pagination) SetNextPageID(val string) {
 func (s *Pagination) SetHasNext(val bool) {
 	s.HasNext = val
 }
+
+// What a pending device authorization asks for.
+// Ref: #/components/schemas/PendingDeviceAuthorization
+type PendingDeviceAuthorization struct {
+	// The name the key the device receives will have.
+	APIKeyName string `json:"api_key_name"`
+	// The one organization the device asks for. Omitted when it asks for every organization of the
+	// account.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+	// When the key the device receives stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+}
+
+// GetAPIKeyName returns the value of APIKeyName.
+func (s *PendingDeviceAuthorization) GetAPIKeyName() string {
+	return s.APIKeyName
+}
+
+// GetOrganization returns the value of Organization.
+func (s *PendingDeviceAuthorization) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *PendingDeviceAuthorization) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *PendingDeviceAuthorization) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *PendingDeviceAuthorization) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// SetAPIKeyName sets the value of APIKeyName.
+func (s *PendingDeviceAuthorization) SetAPIKeyName(val string) {
+	s.APIKeyName = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *PendingDeviceAuthorization) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *PendingDeviceAuthorization) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *PendingDeviceAuthorization) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *PendingDeviceAuthorization) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+func (*PendingDeviceAuthorization) getDeviceAuthorizationRes() {}
+
+// A permission a key can carry. A key never does more than its account's role allows in an
+// organization. `search` searches an index; `read` reads and lists its documents; `write` stores and
+// deletes documents; `create_index` creates indexes, and needs every index in scope; `manage_index`
+// changes and deletes indexes. `manage_members` adds members, changes their roles and removes them;
+// `manage_organization` deletes the organization. Both need a key scoped to one organization.
+// Ref: #/components/schemas/Permission
+type Permission string
+
+const (
+	PermissionSearch             Permission = "search"
+	PermissionRead               Permission = "read"
+	PermissionWrite              Permission = "write"
+	PermissionCreateIndex        Permission = "create_index"
+	PermissionManageIndex        Permission = "manage_index"
+	PermissionManageMembers      Permission = "manage_members"
+	PermissionManageOrganization Permission = "manage_organization"
+)
+
+// AllValues returns all Permission values.
+func (Permission) AllValues() []Permission {
+	return []Permission{
+		PermissionSearch,
+		PermissionRead,
+		PermissionWrite,
+		PermissionCreateIndex,
+		PermissionManageIndex,
+		PermissionManageMembers,
+		PermissionManageOrganization,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Permission) MarshalText() ([]byte, error) {
+	switch s {
+	case PermissionSearch:
+		return []byte(s), nil
+	case PermissionRead:
+		return []byte(s), nil
+	case PermissionWrite:
+		return []byte(s), nil
+	case PermissionCreateIndex:
+		return []byte(s), nil
+	case PermissionManageIndex:
+		return []byte(s), nil
+	case PermissionManageMembers:
+		return []byte(s), nil
+	case PermissionManageOrganization:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Permission) UnmarshalText(data []byte) error {
+	switch Permission(data) {
+	case PermissionSearch:
+		*s = PermissionSearch
+		return nil
+	case PermissionRead:
+		*s = PermissionRead
+		return nil
+	case PermissionWrite:
+		*s = PermissionWrite
+		return nil
+	case PermissionCreateIndex:
+		*s = PermissionCreateIndex
+		return nil
+	case PermissionManageIndex:
+		*s = PermissionManageIndex
+		return nil
+	case PermissionManageMembers:
+		*s = PermissionManageMembers
+		return nil
+	case PermissionManageOrganization:
+		*s = PermissionManageOrganization
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type Permissions []Permission
 
 // PreconditionFailedHeaders wraps Error with response headers.
 type PreconditionFailedHeaders struct {
