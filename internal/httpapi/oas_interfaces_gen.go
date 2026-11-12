@@ -5,6 +5,10 @@ type ApproveDeviceAuthorizationRes interface {
 	approveDeviceAuthorizationRes()
 }
 
+type ApproveOAuthAuthorizationRes interface {
+	approveOAuthAuthorizationRes()
+}
+
 type ChangePasswordRes interface {
 	changePasswordRes()
 }
@@ -37,6 +41,10 @@ type DenyDeviceAuthorizationRes interface {
 	denyDeviceAuthorizationRes()
 }
 
+type DenyOAuthAuthorizationRes interface {
+	denyOAuthAuthorizationRes()
+}
+
 type GetCurrentUserRes interface {
 	getCurrentUserRes()
 }
@@ -57,8 +65,16 @@ type GetOrganizationRes interface {
 	getOrganizationRes()
 }
 
+type ListConnectionsRes interface {
+	listConnectionsRes()
+}
+
 type LoginRes interface {
 	loginRes()
+}
+
+type LookupOAuthAuthorizationRes interface {
+	lookupOAuthAuthorizationRes()
 }
 
 type PollDeviceTokenRes interface {
@@ -79,6 +95,10 @@ type RegisterUserRes interface {
 
 type RevokeAPIKeyRes interface {
 	revokeAPIKeyRes()
+}
+
+type RevokeConnectionRes interface {
+	revokeConnectionRes()
 }
 
 type UpdateIndexRes interface {

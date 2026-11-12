@@ -43,6 +43,20 @@ func encodeApproveDeviceAuthorizationRequest(
 	return nil
 }
 
+func encodeApproveOAuthAuthorizationRequest(
+	req *OAuthApprovalRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeChangePasswordRequest(
 	req *ChangePasswordRequest,
 	r *http.Request,
@@ -141,6 +155,20 @@ func encodeDenyDeviceAuthorizationRequest(
 	return nil
 }
 
+func encodeDenyOAuthAuthorizationRequest(
+	req *OAuthDenialRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeGetDeviceAuthorizationRequest(
 	req *DeviceDecisionRequest,
 	r *http.Request,
@@ -157,6 +185,20 @@ func encodeGetDeviceAuthorizationRequest(
 
 func encodeLoginRequest(
 	req *LoginRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeLookupOAuthAuthorizationRequest(
+	req *OAuthAuthorizationRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

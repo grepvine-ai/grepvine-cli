@@ -36,6 +36,20 @@ func (UnimplementedHandler) ApproveDeviceAuthorization(ctx context.Context, req 
 	return r, ht.ErrNotImplemented
 }
 
+// ApproveOAuthAuthorization implements approveOAuthAuthorization operation.
+//
+// Approves an app's sign-in request with the scope the signed-in account chose, creating a connection,
+// and returns the address to send the browser to, which hands the app a single-use code. The
+// connection never does more than the approving account can, and expires after 90 days unless the app
+// keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means
+// the organization or an index named does not exist or is not visible. Only a signed-in session can
+// approve.
+//
+// POST /oauth/authorizations/approve
+func (UnimplementedHandler) ApproveOAuthAuthorization(ctx context.Context, req *OAuthApprovalRequest, params ApproveOAuthAuthorizationParams) (r ApproveOAuthAuthorizationRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ChangePassword implements changePassword operation.
 //
 // Changes the signed-in account's password after checking the current one. Every other session of the
@@ -144,6 +158,16 @@ func (UnimplementedHandler) DenyDeviceAuthorization(ctx context.Context, req *De
 	return r, ht.ErrNotImplemented
 }
 
+// DenyOAuthAuthorization implements denyOAuthAuthorization operation.
+//
+// Denies an app's sign-in request and returns the address to send the browser to, which tells the app
+// it was refused with `access_denied`. Only a signed-in session can deny.
+//
+// POST /oauth/authorizations/deny
+func (UnimplementedHandler) DenyOAuthAuthorization(ctx context.Context, req *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (r DenyOAuthAuthorizationRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetAuthOptions implements getAuthOptions operation.
 //
 // How accounts are created on this service. The console reads it to decide whether to offer
@@ -225,6 +249,16 @@ func (UnimplementedHandler) ListAPIKeys(ctx context.Context, params ListAPIKeysP
 	return r, ht.ErrNotImplemented
 }
 
+// ListConnections implements listConnections operation.
+//
+// Lists the apps you have connected that are still in use: revoked and ended connections are left out.
+// Newest first. Only a signed-in session can list them.
+//
+// GET /connections
+func (UnimplementedHandler) ListConnections(ctx context.Context) (r ListConnectionsRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListDocuments implements listDocuments operation.
 //
 // Lists documents in key byte order, with each one's revision, size, metadata and whether a search can
@@ -283,6 +317,18 @@ func (UnimplementedHandler) Login(ctx context.Context, req *LoginRequest) (r Log
 //
 // POST /auth/logout
 func (UnimplementedHandler) Logout(ctx context.Context, params LogoutParams) (r *LogoutNoContent, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// LookupOAuthAuthorization implements lookupOAuthAuthorization operation.
+//
+// Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to
+// show before approving it. The permissions are those the request's `scope` names that an app can be
+// granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its
+// app is not sent back an answer. Only a signed-in session can read one.
+//
+// POST /oauth/authorizations/lookup
+func (UnimplementedHandler) LookupOAuthAuthorization(ctx context.Context, req *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (r LookupOAuthAuthorizationRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -370,6 +416,17 @@ func (UnimplementedHandler) RemoveOrganizationMember(ctx context.Context, params
 //
 // DELETE /api-keys/{api_key_id}
 func (UnimplementedHandler) RevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams) (r RevokeAPIKeyRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RevokeConnection implements revokeConnection operation.
+//
+// Revokes one of the authenticated account's connections. The app's requests are refused from then on,
+// and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another
+// account is not found. Only a signed-in session can revoke one.
+//
+// DELETE /connections/{connection_id}
+func (UnimplementedHandler) RevokeConnection(ctx context.Context, params RevokeConnectionParams) (r RevokeConnectionRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

@@ -499,6 +499,173 @@ func (*ConflictHeaders) putDocumentRes()        {}
 func (*ConflictHeaders) putObjectsRes()         {}
 func (*ConflictHeaders) registerUserRes()       {}
 
+// An app the account connected, and what it reaches and may do.
+// Ref: #/components/schemas/Connection
+type Connection struct {
+	ID uuid.UUID `json:"id"`
+	// The name the app gave itself when it was connected.
+	ClientName string `json:"client_name"`
+	// The host that serves the app's client metadata document.
+	ClientHost string `json:"client_host"`
+	// The one organization the connection reaches. Omitted for every organization of the account.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+	CreatedAt    time.Time   `json:"created_at"`
+	// When the app last signed in or renewed its access.
+	LastUsedAt time.Time `json:"last_used_at"`
+	// When the connection stops working unless the app keeps using it.
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// GetID returns the value of ID.
+func (s *Connection) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetClientName returns the value of ClientName.
+func (s *Connection) GetClientName() string {
+	return s.ClientName
+}
+
+// GetClientHost returns the value of ClientHost.
+func (s *Connection) GetClientHost() string {
+	return s.ClientHost
+}
+
+// GetOrganization returns the value of Organization.
+func (s *Connection) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *Connection) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *Connection) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Connection) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetLastUsedAt returns the value of LastUsedAt.
+func (s *Connection) GetLastUsedAt() time.Time {
+	return s.LastUsedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *Connection) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// SetID sets the value of ID.
+func (s *Connection) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetClientName sets the value of ClientName.
+func (s *Connection) SetClientName(val string) {
+	s.ClientName = val
+}
+
+// SetClientHost sets the value of ClientHost.
+func (s *Connection) SetClientHost(val string) {
+	s.ClientHost = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *Connection) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *Connection) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *Connection) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Connection) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetLastUsedAt sets the value of LastUsedAt.
+func (s *Connection) SetLastUsedAt(val time.Time) {
+	s.LastUsedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *Connection) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// The account's connections.
+// Ref: #/components/schemas/ConnectionPage
+type ConnectionPage struct {
+	Connections []Connection `json:"connections"`
+}
+
+// GetConnections returns the value of Connections.
+func (s *ConnectionPage) GetConnections() []Connection {
+	return s.Connections
+}
+
+// SetConnections sets the value of Connections.
+func (s *ConnectionPage) SetConnections(val []Connection) {
+	s.Connections = val
+}
+
+func (*ConnectionPage) listConnectionsRes() {}
+
+// What a connection reaches and may do. A field left out sets no limit.
+// Ref: #/components/schemas/ConnectionScope
+type ConnectionScope struct {
+	// The one organization the connection reaches. Omitted for every organization of the account. A list
+	// of indexes needs one.
+	Organization OptName     `json:"organization"`
+	Indexes      IndexScope  `json:"indexes"`
+	Permissions  Permissions `json:"permissions"`
+}
+
+// GetOrganization returns the value of Organization.
+func (s *ConnectionScope) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *ConnectionScope) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *ConnectionScope) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// SetOrganization sets the value of Organization.
+func (s *ConnectionScope) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *ConnectionScope) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *ConnectionScope) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
 // One line near a result. Text is returned whole up to 64 KiB, and up to 64 KiB away from the result;
 // a line that extends past either bound is returned in part and marked truncated.
 // Ref: #/components/schemas/ContextLine
@@ -1288,8 +1455,13 @@ func (s *ForbiddenHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*ForbiddenHeaders) getDeviceAuthorizationRes() {}
-func (*ForbiddenHeaders) registerUserRes()           {}
+func (*ForbiddenHeaders) approveOAuthAuthorizationRes() {}
+func (*ForbiddenHeaders) denyOAuthAuthorizationRes()    {}
+func (*ForbiddenHeaders) getDeviceAuthorizationRes()    {}
+func (*ForbiddenHeaders) listConnectionsRes()           {}
+func (*ForbiddenHeaders) lookupOAuthAuthorizationRes()  {}
+func (*ForbiddenHeaders) registerUserRes()              {}
+func (*ForbiddenHeaders) revokeConnectionRes()          {}
 
 // GetCurrentUserOKHeaders wraps User with response headers.
 type GetCurrentUserOKHeaders struct {
@@ -2520,6 +2692,7 @@ func (s *NotFoundHeaders) SetResponse(val Error) {
 }
 
 func (*NotFoundHeaders) approveDeviceAuthorizationRes() {}
+func (*NotFoundHeaders) approveOAuthAuthorizationRes()  {}
 func (*NotFoundHeaders) checkInvitationRes()            {}
 func (*NotFoundHeaders) deleteDocumentRes()             {}
 func (*NotFoundHeaders) deleteIndexRes()                {}
@@ -2530,7 +2703,172 @@ func (*NotFoundHeaders) getDocumentRes()                {}
 func (*NotFoundHeaders) getIndexRes()                   {}
 func (*NotFoundHeaders) getOrganizationRes()            {}
 func (*NotFoundHeaders) revokeAPIKeyRes()               {}
+func (*NotFoundHeaders) revokeConnectionRes()           {}
 func (*NotFoundHeaders) updateIndexRes()                {}
+
+// The sign-in request to approve and the scope to grant it.
+// Ref: #/components/schemas/OAuthApprovalRequest
+type OAuthApprovalRequest struct {
+	Request OAuthAuthorizationRequest `json:"request"`
+	Scope   ConnectionScope           `json:"scope"`
+}
+
+// GetRequest returns the value of Request.
+func (s *OAuthApprovalRequest) GetRequest() OAuthAuthorizationRequest {
+	return s.Request
+}
+
+// GetScope returns the value of Scope.
+func (s *OAuthApprovalRequest) GetScope() ConnectionScope {
+	return s.Scope
+}
+
+// SetRequest sets the value of Request.
+func (s *OAuthApprovalRequest) SetRequest(val OAuthAuthorizationRequest) {
+	s.Request = val
+}
+
+// SetScope sets the value of Scope.
+func (s *OAuthApprovalRequest) SetScope(val ConnectionScope) {
+	s.Scope = val
+}
+
+// An app's OAuth sign-in request, with the parameters it sent to the authorization endpoint.
+// Ref: #/components/schemas/OAuthAuthorizationRequest
+type OAuthAuthorizationRequest struct {
+	// Must be `code`.
+	ResponseType string `json:"response_type"`
+	// The app's client ID: the HTTPS address of its client metadata document.
+	ClientID string `json:"client_id"`
+	// Where the app receives the answer; one of the addresses its metadata document lists.
+	RedirectURI string `json:"redirect_uri"`
+	// The PKCE code challenge, 43 to 128 characters.
+	CodeChallenge string `json:"code_challenge"`
+	// Must be `S256`.
+	CodeChallengeMethod string `json:"code_challenge_method"`
+	// The MCP server the app signs in to.
+	Resource string `json:"resource"`
+	// A value the app sent, returned to it unchanged, at most 1,024 characters.
+	State OptString `json:"state"`
+	// The space-separated scopes the app asked for.
+	Scope OptString `json:"scope"`
+}
+
+// GetResponseType returns the value of ResponseType.
+func (s *OAuthAuthorizationRequest) GetResponseType() string {
+	return s.ResponseType
+}
+
+// GetClientID returns the value of ClientID.
+func (s *OAuthAuthorizationRequest) GetClientID() string {
+	return s.ClientID
+}
+
+// GetRedirectURI returns the value of RedirectURI.
+func (s *OAuthAuthorizationRequest) GetRedirectURI() string {
+	return s.RedirectURI
+}
+
+// GetCodeChallenge returns the value of CodeChallenge.
+func (s *OAuthAuthorizationRequest) GetCodeChallenge() string {
+	return s.CodeChallenge
+}
+
+// GetCodeChallengeMethod returns the value of CodeChallengeMethod.
+func (s *OAuthAuthorizationRequest) GetCodeChallengeMethod() string {
+	return s.CodeChallengeMethod
+}
+
+// GetResource returns the value of Resource.
+func (s *OAuthAuthorizationRequest) GetResource() string {
+	return s.Resource
+}
+
+// GetState returns the value of State.
+func (s *OAuthAuthorizationRequest) GetState() OptString {
+	return s.State
+}
+
+// GetScope returns the value of Scope.
+func (s *OAuthAuthorizationRequest) GetScope() OptString {
+	return s.Scope
+}
+
+// SetResponseType sets the value of ResponseType.
+func (s *OAuthAuthorizationRequest) SetResponseType(val string) {
+	s.ResponseType = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *OAuthAuthorizationRequest) SetClientID(val string) {
+	s.ClientID = val
+}
+
+// SetRedirectURI sets the value of RedirectURI.
+func (s *OAuthAuthorizationRequest) SetRedirectURI(val string) {
+	s.RedirectURI = val
+}
+
+// SetCodeChallenge sets the value of CodeChallenge.
+func (s *OAuthAuthorizationRequest) SetCodeChallenge(val string) {
+	s.CodeChallenge = val
+}
+
+// SetCodeChallengeMethod sets the value of CodeChallengeMethod.
+func (s *OAuthAuthorizationRequest) SetCodeChallengeMethod(val string) {
+	s.CodeChallengeMethod = val
+}
+
+// SetResource sets the value of Resource.
+func (s *OAuthAuthorizationRequest) SetResource(val string) {
+	s.Resource = val
+}
+
+// SetState sets the value of State.
+func (s *OAuthAuthorizationRequest) SetState(val OptString) {
+	s.State = val
+}
+
+// SetScope sets the value of Scope.
+func (s *OAuthAuthorizationRequest) SetScope(val OptString) {
+	s.Scope = val
+}
+
+// The sign-in request to deny.
+// Ref: #/components/schemas/OAuthDenialRequest
+type OAuthDenialRequest struct {
+	Request OAuthAuthorizationRequest `json:"request"`
+}
+
+// GetRequest returns the value of Request.
+func (s *OAuthDenialRequest) GetRequest() OAuthAuthorizationRequest {
+	return s.Request
+}
+
+// SetRequest sets the value of Request.
+func (s *OAuthDenialRequest) SetRequest(val OAuthAuthorizationRequest) {
+	s.Request = val
+}
+
+// Where to send the browser to answer the app.
+// Ref: #/components/schemas/OAuthRedirect
+type OAuthRedirect struct {
+	// The app's address, carrying the answer.
+	RedirectTo url.URL `json:"redirect_to"`
+}
+
+// GetRedirectTo returns the value of RedirectTo.
+func (s *OAuthRedirect) GetRedirectTo() url.URL {
+	return s.RedirectTo
+}
+
+// SetRedirectTo sets the value of RedirectTo.
+func (s *OAuthRedirect) SetRedirectTo(val url.URL) {
+	s.RedirectTo = val
+}
+
+func (*OAuthRedirect) approveOAuthAuthorizationRes() {}
+func (*OAuthRedirect) denyOAuthAuthorizationRes()    {}
 
 // NewOptBool returns new OptBool with value set to v.
 func NewOptBool(v bool) OptBool {
@@ -3371,6 +3709,73 @@ func (s *PendingDeviceAuthorization) SetExpiresAt(val OptDateTime) {
 
 func (*PendingDeviceAuthorization) getDeviceAuthorizationRes() {}
 
+// Who an app signing in is and what it asks for. The name is the app's own and is not verified; the
+// host is where its metadata document is served.
+// Ref: #/components/schemas/PendingOAuthAuthorization
+type PendingOAuthAuthorization struct {
+	// The name the app gives itself.
+	ClientName string `json:"client_name"`
+	// The host that serves the app's client metadata document.
+	ClientHost string `json:"client_host"`
+	// The host the answer is sent to.
+	RedirectHost string `json:"redirect_host"`
+	// Whether the answer is sent to this computer, as a desktop or command-line app receives it.
+	LoopbackRedirect bool        `json:"loopback_redirect"`
+	Permissions      Permissions `json:"permissions"`
+}
+
+// GetClientName returns the value of ClientName.
+func (s *PendingOAuthAuthorization) GetClientName() string {
+	return s.ClientName
+}
+
+// GetClientHost returns the value of ClientHost.
+func (s *PendingOAuthAuthorization) GetClientHost() string {
+	return s.ClientHost
+}
+
+// GetRedirectHost returns the value of RedirectHost.
+func (s *PendingOAuthAuthorization) GetRedirectHost() string {
+	return s.RedirectHost
+}
+
+// GetLoopbackRedirect returns the value of LoopbackRedirect.
+func (s *PendingOAuthAuthorization) GetLoopbackRedirect() bool {
+	return s.LoopbackRedirect
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *PendingOAuthAuthorization) GetPermissions() Permissions {
+	return s.Permissions
+}
+
+// SetClientName sets the value of ClientName.
+func (s *PendingOAuthAuthorization) SetClientName(val string) {
+	s.ClientName = val
+}
+
+// SetClientHost sets the value of ClientHost.
+func (s *PendingOAuthAuthorization) SetClientHost(val string) {
+	s.ClientHost = val
+}
+
+// SetRedirectHost sets the value of RedirectHost.
+func (s *PendingOAuthAuthorization) SetRedirectHost(val string) {
+	s.RedirectHost = val
+}
+
+// SetLoopbackRedirect sets the value of LoopbackRedirect.
+func (s *PendingOAuthAuthorization) SetLoopbackRedirect(val bool) {
+	s.LoopbackRedirect = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *PendingOAuthAuthorization) SetPermissions(val Permissions) {
+	s.Permissions = val
+}
+
+func (*PendingOAuthAuthorization) lookupOAuthAuthorizationRes() {}
+
 // A permission a key can carry. A key never does more than its account's role allows in an
 // organization. `search` searches an index; `read` reads and lists its documents; `write` stores and
 // deletes documents; `create_index` creates indexes, and needs every index in scope; `manage_index`
@@ -3966,6 +4371,11 @@ type RemoveOrganizationMemberNoContent struct{}
 type RevokeAPIKeyNoContent struct{}
 
 func (*RevokeAPIKeyNoContent) revokeAPIKeyRes() {}
+
+// RevokeConnectionNoContent is response for RevokeConnection operation.
+type RevokeConnectionNoContent struct{}
+
+func (*RevokeConnectionNoContent) revokeConnectionRes() {}
 
 // A member's role in an organization. `owner` can do everything, including deleting the organization
 // and transferring ownership; `admin` also manages members and indexes; `developer` reads, writes and

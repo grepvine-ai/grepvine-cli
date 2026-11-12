@@ -25,6 +25,17 @@ type Handler interface {
 	//
 	// POST /device/authorizations/approve
 	ApproveDeviceAuthorization(ctx context.Context, req *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
+	// ApproveOAuthAuthorization implements approveOAuthAuthorization operation.
+	//
+	// Approves an app's sign-in request with the scope the signed-in account chose, creating a connection,
+	// and returns the address to send the browser to, which hands the app a single-use code. The
+	// connection never does more than the approving account can, and expires after 90 days unless the app
+	// keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means
+	// the organization or an index named does not exist or is not visible. Only a signed-in session can
+	// approve.
+	//
+	// POST /oauth/authorizations/approve
+	ApproveOAuthAuthorization(ctx context.Context, req *OAuthApprovalRequest, params ApproveOAuthAuthorizationParams) (ApproveOAuthAuthorizationRes, error)
 	// ChangePassword implements changePassword operation.
 	//
 	// Changes the signed-in account's password after checking the current one. Every other session of the
@@ -103,6 +114,13 @@ type Handler interface {
 	//
 	// POST /device/authorizations/deny
 	DenyDeviceAuthorization(ctx context.Context, req *DeviceDecisionRequest, params DenyDeviceAuthorizationParams) (DenyDeviceAuthorizationRes, error)
+	// DenyOAuthAuthorization implements denyOAuthAuthorization operation.
+	//
+	// Denies an app's sign-in request and returns the address to send the browser to, which tells the app
+	// it was refused with `access_denied`. Only a signed-in session can deny.
+	//
+	// POST /oauth/authorizations/deny
+	DenyOAuthAuthorization(ctx context.Context, req *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (DenyOAuthAuthorizationRes, error)
 	// GetAuthOptions implements getAuthOptions operation.
 	//
 	// How accounts are created on this service. The console reads it to decide whether to offer
@@ -160,6 +178,13 @@ type Handler interface {
 	//
 	// GET /api-keys
 	ListAPIKeys(ctx context.Context, params ListAPIKeysParams) (*APIKeyPage, error)
+	// ListConnections implements listConnections operation.
+	//
+	// Lists the apps you have connected that are still in use: revoked and ended connections are left out.
+	// Newest first. Only a signed-in session can list them.
+	//
+	// GET /connections
+	ListConnections(ctx context.Context) (ListConnectionsRes, error)
 	// ListDocuments implements listDocuments operation.
 	//
 	// Lists documents in key byte order, with each one's revision, size, metadata and whether a search can
@@ -203,6 +228,15 @@ type Handler interface {
 	//
 	// POST /auth/logout
 	Logout(ctx context.Context, params LogoutParams) (*LogoutNoContent, error)
+	// LookupOAuthAuthorization implements lookupOAuthAuthorization operation.
+	//
+	// Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to
+	// show before approving it. The permissions are those the request's `scope` names that an app can be
+	// granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its
+	// app is not sent back an answer. Only a signed-in session can read one.
+	//
+	// POST /oauth/authorizations/lookup
+	LookupOAuthAuthorization(ctx context.Context, req *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (LookupOAuthAuthorizationRes, error)
 	// PollDeviceToken implements pollDeviceToken operation.
 	//
 	// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
@@ -269,6 +303,14 @@ type Handler interface {
 	//
 	// DELETE /api-keys/{api_key_id}
 	RevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams) (RevokeAPIKeyRes, error)
+	// RevokeConnection implements revokeConnection operation.
+	//
+	// Revokes one of the authenticated account's connections. The app's requests are refused from then on,
+	// and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another
+	// account is not found. Only a signed-in session can revoke one.
+	//
+	// DELETE /connections/{connection_id}
+	RevokeConnection(ctx context.Context, params RevokeConnectionParams) (RevokeConnectionRes, error)
 	// StartDeviceAuthorization implements startDeviceAuthorization operation.
 	//
 	// Starts signing in a device, such as the command-line client, without entering a password on it. Show

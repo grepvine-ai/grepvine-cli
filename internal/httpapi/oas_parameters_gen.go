@@ -264,6 +264,96 @@ func decodeApproveDeviceAuthorizationParams(args [0]string, argsEscaped bool, r 
 	return params, nil
 }
 
+// ApproveOAuthAuthorizationParams is parameters of approveOAuthAuthorization operation.
+type ApproveOAuthAuthorizationParams struct {
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackApproveOAuthAuthorizationParams(packed middleware.Parameters) (params ApproveOAuthAuthorizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeApproveOAuthAuthorizationParams(args [0]string, argsEscaped bool, r *http.Request) (params ApproveOAuthAuthorizationParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ChangePasswordParams is parameters of changePassword operation.
 type ChangePasswordParams struct {
 	// Required for a state change that uses cookie authentication.
@@ -1840,6 +1930,96 @@ func unpackDenyDeviceAuthorizationParams(packed middleware.Parameters) (params D
 }
 
 func decodeDenyDeviceAuthorizationParams(args [0]string, argsEscaped bool, r *http.Request) (params DenyDeviceAuthorizationParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// DenyOAuthAuthorizationParams is parameters of denyOAuthAuthorization operation.
+type DenyOAuthAuthorizationParams struct {
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackDenyOAuthAuthorizationParams(packed middleware.Parameters) (params DenyOAuthAuthorizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeDenyOAuthAuthorizationParams(args [0]string, argsEscaped bool, r *http.Request) (params DenyOAuthAuthorizationParams, _ error) {
 	h := uri.NewHeaderDecoder(r.Header)
 	// Decode header: X-Csrf-Token.
 	if err := func() error {
@@ -4109,6 +4289,96 @@ func decodeLogoutParams(args [0]string, argsEscaped bool, r *http.Request) (para
 	return params, nil
 }
 
+// LookupOAuthAuthorizationParams is parameters of lookupOAuthAuthorization operation.
+type LookupOAuthAuthorizationParams struct {
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackLookupOAuthAuthorizationParams(packed middleware.Parameters) (params LookupOAuthAuthorizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeLookupOAuthAuthorizationParams(args [0]string, argsEscaped bool, r *http.Request) (params LookupOAuthAuthorizationParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // PutDocumentParams is parameters of putDocument operation.
 type PutDocumentParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
@@ -5439,6 +5709,150 @@ func decodeRevokeAPIKeyParams(args [1]string, argsEscaped bool, r *http.Request)
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "api_key_id",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// RevokeConnectionParams is parameters of revokeConnection operation.
+type RevokeConnectionParams struct {
+	// The ID of the connection, as the listing returns it.
+	ConnectionID uuid.UUID
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackRevokeConnectionParams(packed middleware.Parameters) (params RevokeConnectionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "connection_id",
+			In:   "path",
+		}
+		params.ConnectionID = packed[key].(uuid.UUID)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeRevokeConnectionParams(args [1]string, argsEscaped bool, r *http.Request) (params RevokeConnectionParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: connection_id.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "connection_id",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToUUID(val)
+				if err != nil {
+					return err
+				}
+
+				params.ConnectionID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "connection_id",
 			In:   "path",
 			Err:  err,
 		}

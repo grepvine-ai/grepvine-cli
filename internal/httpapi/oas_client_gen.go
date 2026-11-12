@@ -46,6 +46,17 @@ type Invoker interface {
 	//
 	// POST /device/authorizations/approve
 	ApproveDeviceAuthorization(ctx context.Context, request *DeviceApprovalRequest, params ApproveDeviceAuthorizationParams) (ApproveDeviceAuthorizationRes, error)
+	// ApproveOAuthAuthorization invokes approveOAuthAuthorization operation.
+	//
+	// Approves an app's sign-in request with the scope the signed-in account chose, creating a connection,
+	// and returns the address to send the browser to, which hands the app a single-use code. The
+	// connection never does more than the approving account can, and expires after 90 days unless the app
+	// keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means
+	// the organization or an index named does not exist or is not visible. Only a signed-in session can
+	// approve.
+	//
+	// POST /oauth/authorizations/approve
+	ApproveOAuthAuthorization(ctx context.Context, request *OAuthApprovalRequest, params ApproveOAuthAuthorizationParams) (ApproveOAuthAuthorizationRes, error)
 	// ChangePassword invokes changePassword operation.
 	//
 	// Changes the signed-in account's password after checking the current one. Every other session of the
@@ -124,6 +135,13 @@ type Invoker interface {
 	//
 	// POST /device/authorizations/deny
 	DenyDeviceAuthorization(ctx context.Context, request *DeviceDecisionRequest, params DenyDeviceAuthorizationParams) (DenyDeviceAuthorizationRes, error)
+	// DenyOAuthAuthorization invokes denyOAuthAuthorization operation.
+	//
+	// Denies an app's sign-in request and returns the address to send the browser to, which tells the app
+	// it was refused with `access_denied`. Only a signed-in session can deny.
+	//
+	// POST /oauth/authorizations/deny
+	DenyOAuthAuthorization(ctx context.Context, request *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (DenyOAuthAuthorizationRes, error)
 	// GetAuthOptions invokes getAuthOptions operation.
 	//
 	// How accounts are created on this service. The console reads it to decide whether to offer
@@ -181,6 +199,13 @@ type Invoker interface {
 	//
 	// GET /api-keys
 	ListAPIKeys(ctx context.Context, params ListAPIKeysParams) (*APIKeyPage, error)
+	// ListConnections invokes listConnections operation.
+	//
+	// Lists the apps you have connected that are still in use: revoked and ended connections are left out.
+	// Newest first. Only a signed-in session can list them.
+	//
+	// GET /connections
+	ListConnections(ctx context.Context) (ListConnectionsRes, error)
 	// ListDocuments invokes listDocuments operation.
 	//
 	// Lists documents in key byte order, with each one's revision, size, metadata and whether a search can
@@ -224,6 +249,15 @@ type Invoker interface {
 	//
 	// POST /auth/logout
 	Logout(ctx context.Context, params LogoutParams) (*LogoutNoContent, error)
+	// LookupOAuthAuthorization invokes lookupOAuthAuthorization operation.
+	//
+	// Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to
+	// show before approving it. The permissions are those the request's `scope` names that an app can be
+	// granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its
+	// app is not sent back an answer. Only a signed-in session can read one.
+	//
+	// POST /oauth/authorizations/lookup
+	LookupOAuthAuthorization(ctx context.Context, request *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (LookupOAuthAuthorizationRes, error)
 	// PollDeviceToken invokes pollDeviceToken operation.
 	//
 	// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
@@ -290,6 +324,14 @@ type Invoker interface {
 	//
 	// DELETE /api-keys/{api_key_id}
 	RevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams) (RevokeAPIKeyRes, error)
+	// RevokeConnection invokes revokeConnection operation.
+	//
+	// Revokes one of the authenticated account's connections. The app's requests are refused from then on,
+	// and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another
+	// account is not found. Only a signed-in session can revoke one.
+	//
+	// DELETE /connections/{connection_id}
+	RevokeConnection(ctx context.Context, params RevokeConnectionParams) (RevokeConnectionRes, error)
 	// StartDeviceAuthorization invokes startDeviceAuthorization operation.
 	//
 	// Starts signing in a device, such as the command-line client, without entering a password on it. Show
@@ -674,6 +716,156 @@ func (c *Client) sendApproveDeviceAuthorization(ctx context.Context, request *De
 
 	stage = "DecodeResponse"
 	result, err := decodeApproveDeviceAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ApproveOAuthAuthorization invokes approveOAuthAuthorization operation.
+//
+// Approves an app's sign-in request with the scope the signed-in account chose, creating a connection,
+// and returns the address to send the browser to, which hands the app a single-use code. The
+// connection never does more than the approving account can, and expires after 90 days unless the app
+// keeps using it. `manage_members` and `manage_organization` cannot be granted to an app. A 404 means
+// the organization or an index named does not exist or is not visible. Only a signed-in session can
+// approve.
+//
+// POST /oauth/authorizations/approve
+func (c *Client) ApproveOAuthAuthorization(ctx context.Context, request *OAuthApprovalRequest, params ApproveOAuthAuthorizationParams) (ApproveOAuthAuthorizationRes, error) {
+	res, err := c.sendApproveOAuthAuthorization(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendApproveOAuthAuthorization(ctx context.Context, request *OAuthApprovalRequest, params ApproveOAuthAuthorizationParams) (res ApproveOAuthAuthorizationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("approveOAuthAuthorization"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/oauth/authorizations/approve"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ApproveOAuthAuthorizationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/oauth/authorizations/approve"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeApproveOAuthAuthorizationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ApproveOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, ApproveOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeApproveOAuthAuthorizationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2306,6 +2498,152 @@ func (c *Client) sendDenyDeviceAuthorization(ctx context.Context, request *Devic
 	return result, nil
 }
 
+// DenyOAuthAuthorization invokes denyOAuthAuthorization operation.
+//
+// Denies an app's sign-in request and returns the address to send the browser to, which tells the app
+// it was refused with `access_denied`. Only a signed-in session can deny.
+//
+// POST /oauth/authorizations/deny
+func (c *Client) DenyOAuthAuthorization(ctx context.Context, request *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (DenyOAuthAuthorizationRes, error) {
+	res, err := c.sendDenyOAuthAuthorization(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendDenyOAuthAuthorization(ctx context.Context, request *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (res DenyOAuthAuthorizationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("denyOAuthAuthorization"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/oauth/authorizations/deny"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DenyOAuthAuthorizationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/oauth/authorizations/deny"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeDenyOAuthAuthorizationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, DenyOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, DenyOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDenyOAuthAuthorizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetAuthOptions invokes getAuthOptions operation.
 //
 // How accounts are created on this service. The console reads it to decide whether to offer
@@ -3447,6 +3785,132 @@ func (c *Client) sendListAPIKeys(ctx context.Context, params ListAPIKeysParams) 
 	return result, nil
 }
 
+// ListConnections invokes listConnections operation.
+//
+// Lists the apps you have connected that are still in use: revoked and ended connections are left out.
+// Newest first. Only a signed-in session can list them.
+//
+// GET /connections
+func (c *Client) ListConnections(ctx context.Context) (ListConnectionsRes, error) {
+	res, err := c.sendListConnections(ctx)
+	return res, err
+}
+
+func (c *Client) sendListConnections(ctx context.Context) (res ListConnectionsRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listConnections"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/connections"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListConnectionsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/connections"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ListConnectionsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, ListConnectionsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListConnectionsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListDocuments invokes listDocuments operation.
 //
 // Lists documents in key byte order, with each one's revision, size, metadata and whether a search can
@@ -4463,6 +4927,154 @@ func (c *Client) sendLogout(ctx context.Context, params LogoutParams) (res *Logo
 
 	stage = "DecodeResponse"
 	result, err := decodeLogoutResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// LookupOAuthAuthorization invokes lookupOAuthAuthorization operation.
+//
+// Returns who an app signing in through OAuth is and what it asks to do, for a signed-in session to
+// show before approving it. The permissions are those the request's `scope` names that an app can be
+// granted; without any, `search` and `read`. A request that cannot be approved fails with 400, and its
+// app is not sent back an answer. Only a signed-in session can read one.
+//
+// POST /oauth/authorizations/lookup
+func (c *Client) LookupOAuthAuthorization(ctx context.Context, request *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (LookupOAuthAuthorizationRes, error) {
+	res, err := c.sendLookupOAuthAuthorization(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendLookupOAuthAuthorization(ctx context.Context, request *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (res LookupOAuthAuthorizationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("lookupOAuthAuthorization"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/oauth/authorizations/lookup"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, LookupOAuthAuthorizationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/oauth/authorizations/lookup"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeLookupOAuthAuthorizationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, LookupOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, LookupOAuthAuthorizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeLookupOAuthAuthorizationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -5636,6 +6248,168 @@ func (c *Client) sendRevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams
 
 	stage = "DecodeResponse"
 	result, err := decodeRevokeAPIKeyResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RevokeConnection invokes revokeConnection operation.
+//
+// Revokes one of the authenticated account's connections. The app's requests are refused from then on,
+// and it must sign in again. A connection that doesn't exist, is already revoked or belongs to another
+// account is not found. Only a signed-in session can revoke one.
+//
+// DELETE /connections/{connection_id}
+func (c *Client) RevokeConnection(ctx context.Context, params RevokeConnectionParams) (RevokeConnectionRes, error) {
+	res, err := c.sendRevokeConnection(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRevokeConnection(ctx context.Context, params RevokeConnectionParams) (res RevokeConnectionRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("revokeConnection"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/connections/{connection_id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RevokeConnectionOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/connections/"
+	{
+		// Encode "connection_id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "connection_id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.UUIDToString(params.ConnectionID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RevokeConnectionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, RevokeConnectionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRevokeConnectionResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
