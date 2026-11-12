@@ -387,11 +387,11 @@
         }
       }
     },
-    "/device/authorizations/approve": {
+    "/device/authorizations/lookup": {
       "post": {
-        "summary": "Approve device authorization",
-        "description": "Approves a pending device authorization for the signed-in account, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. A code that is unknown, already decided or expired is not found.",
-        "operationId": "approveDeviceAuthorization",
+        "summary": "Read a pending device authorization",
+        "description": "Returns the scope a pending device authorization asks for. Only a signed-in session can read one.",
+        "operationId": "getDeviceAuthorization",
         "tags": [
           "Device login"
         ],
@@ -406,6 +406,52 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DeviceDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The pending device authorization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingDeviceAuthorization"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/device/authorizations/approve": {
+      "post": {
+        "summary": "Approve device authorization",
+        "description": "Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.",
+        "operationId": "approveDeviceAuthorization",
+        "tags": [
+          "Device login"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceApprovalRequest"
               }
             }
           }
@@ -532,7 +578,7 @@
       },
       "post": {
         "summary": "Create an API key",
-        "description": "Creates an API key for the authenticated account. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.",
+        "description": "Creates a key that reaches one organization or all of the account's, a list of indexes or all of them, with a set of permissions, until it expires. A 404 means the organization or an index named does not exist or is not visible. Only a signed-in session can create, list or revoke keys. The response is the only time the secret key is shown, so store it securely. Send it as a bearer token: `Authorization: Bearer <key>`.",
         "operationId": "createAPIKey",
         "tags": [
           "API keys"
@@ -1862,6 +1908,35 @@
           "error": {
             "description": "A message for people that says what went wrong and what to do about it.",
             "type": "string"
+          },
+          "details": {
+            "description": "Structured information about the error. Omitted when there is none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            }
+          }
+        }
+      },
+      "ErrorDetail": {
+        "description": "One piece of information about an error. `type` names what it is and which `metadata` keys it carries;\nclients ignore types they do not know. `missing_permission`: the API key lacks the permission\n`metadata.permission` names.\n",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "metadata"
+        ],
+        "properties": {
+          "type": {
+            "description": "What the detail is, such as `missing_permission`.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "The detail's values, by key.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2110,11 +2185,12 @@
         }
       },
       "DeviceAuthorizationRequest": {
-        "description": "A request to sign in a device.",
+        "description": "Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.",
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "api_key_name"
+          "api_key_name",
+          "permissions"
         ],
         "properties": {
           "api_key_name": {
@@ -2122,6 +2198,96 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "organization": {
+            "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "expires_at": {
+            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PendingDeviceAuthorization": {
+        "description": "What a pending device authorization asks for.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "api_key_name",
+          "permissions"
+        ],
+        "properties": {
+          "api_key_name": {
+            "description": "The name the key the device receives will have.",
+            "type": "string"
+          },
+          "organization": {
+            "description": "The one organization the device asks for. Omitted when it asks for every organization of the account.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "expires_at": {
+            "description": "When the key the device receives stops working. Omitted when it never expires.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceApprovalRequest": {
+        "description": "The device authorization to approve, and optionally the scope to grant.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_code"
+        ],
+        "properties": {
+          "user_code": {
+            "description": "The code the device shows. Hyphens, surrounding spaces and case are ignored.",
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 16
+          },
+          "scope": {
+            "description": "The scope to grant instead of the one the device asked for, as a whole. Without it, the device's request is approved as asked.",
+            "$ref": "#/components/schemas/KeyScope"
+          }
+        }
+      },
+      "KeyScope": {
+        "description": "What a key reaches and may do. A field left out sets no limit.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "organization": {
+            "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "expires_at": {
+            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -2198,12 +2364,43 @@
           }
         }
       },
+      "Permission": {
+        "description": "A permission a key can carry. A key never does more than its account's role allows in an organization.\n`search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;\n`create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.\n`manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the\norganization. Both need a key scoped to one organization.\n",
+        "type": "string",
+        "enum": [
+          "search",
+          "read",
+          "write",
+          "create_index",
+          "manage_index",
+          "manage_members",
+          "manage_organization"
+        ]
+      },
+      "Permissions": {
+        "description": "The permissions a key carries, each named once.",
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/components/schemas/Permission"
+        }
+      },
+      "IndexScope": {
+        "description": "The indexes a key reaches, by name, in the key's one organization. Omitted for every index of its organizations, including indexes created later. A request names at least one; a key's list is empty once every index it named is deleted.",
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/components/schemas/IndexName"
+        }
+      },
       "CreateAPIKeyRequest": {
-        "description": "A new API key.",
+        "description": "Creates an API key. A scope field left out sets no limit.",
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "name"
+          "name",
+          "permissions"
         ],
         "properties": {
           "name": {
@@ -2211,6 +2408,21 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "organization": {
+            "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "expires_at": {
+            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -2222,6 +2434,7 @@
           "id",
           "name",
           "prefix",
+          "permissions",
           "created_at"
         ],
         "properties": {
@@ -2238,8 +2451,28 @@
             "description": "The first characters of the key, shown to tell keys apart.",
             "type": "string"
           },
+          "organization": {
+            "description": "The one organization the key reaches. Omitted when it reaches every organization of the account.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "description": "What the key may do. May be empty on a revoked key.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
           "created_at": {
             "description": "When the key was created.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "description": "When the key stops working. Omitted when it never expires.",
             "type": "string",
             "format": "date-time"
           },
@@ -2576,7 +2809,18 @@
           {
             "type": "object",
             "additionalProperties": false,
+            "required": [
+              "permissions"
+            ],
             "properties": {
+              "permissions": {
+                "description": "What the caller may do with this index, among `search`, `read`, `write` and `manage_index`.",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/components/schemas/Permission"
+                }
+              },
               "optimization_progress_percent": {
                 "description": "How far the background optimization of this index has progressed, as a percentage. Omitted when no optimization is running.",
                 "type": "integer",
