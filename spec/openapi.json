@@ -46,6 +46,10 @@
       "description": "Organization membership and ownership."
     },
     {
+      "name": "Agents",
+      "description": "Agents of an organization: named, non-human identities for automation, with the permissions their managers grant them."
+    },
+    {
       "name": "Indexes",
       "description": "Search index lifecycle operations."
     },
@@ -289,7 +293,7 @@
     "/auth/me": {
       "get": {
         "summary": "Get the current user",
-        "description": "Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token.",
+        "description": "Returns the account the request authenticates as, whether with a session or an API key. A session request also receives its CSRF token in X-Csrf-Token. An agent working on its own has no account and is refused with 403.",
         "operationId": "getCurrentUser",
         "tags": [
           "Authentication"
@@ -358,7 +362,7 @@
     "/device/authorizations": {
       "post": {
         "summary": "Start device authorization",
-        "description": "Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds.",
+        "description": "Starts signing in a device, such as the command-line client, without entering a password on it. Show the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires after `expires_in` seconds. A device may ask for a new secret of an agent instead of an API key, with `agent_secret` and none of the key's fields.",
         "operationId": "startDeviceAuthorization",
         "tags": [
           "Device login"
@@ -440,7 +444,7 @@
     "/device/authorizations/approve": {
       "post": {
         "summary": "Approve device authorization",
-        "description": "Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.",
+        "description": "Approves a pending device authorization, identified by the code the device shows. The device's next poll receives a new API key with the name it asked for. Without a scope it grants what the device asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the approving account can. A request for an agent secret is approved as asked, without a scope, by a manager of the agent or an account that manages the organization's agents; the device's next poll receives the new secret. A code that is unknown, already decided or expired is not found. Only a signed-in session can approve.",
         "operationId": "approveDeviceAuthorization",
         "tags": [
           "Device login"
@@ -512,7 +516,7 @@
     "/device/token": {
       "post": {
         "summary": "Poll for a device API key",
-        "description": "Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, and an unknown, expired or already used code with `expired_token`.",
+        "description": "Exchanges an approved device code for an API key, or for the agent secret it asked for, once. Until the user decides, a poll fails with 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`, as does a request for a secret of an agent that already has two, and an unknown, expired or already used code with `expired_token`.",
         "operationId": "pollDeviceToken",
         "tags": [
           "Device login"
@@ -530,11 +534,11 @@
         },
         "responses": {
           "200": {
-            "description": "The device API key. The key is shown once.",
+            "description": "The device API key or agent secret, shown once.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/APIKeyCreated"
+                  "$ref": "#/components/schemas/DeviceToken"
                 }
               }
             }
@@ -946,6 +950,53 @@
           }
         }
       },
+      "patch": {
+        "summary": "Update an organization",
+        "description": "Changes an organization's settings. Requires the owner or admin role, and only a signed-in session can change them.",
+        "operationId": "updateOrganization",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The organization as changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organization"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
       "delete": {
         "summary": "Delete an organization",
         "description": "Starts deleting an organization with all its indexes and documents. Only the owner can delete it. The deletion finishes in the background and can't be undone.",
@@ -1153,6 +1204,438 @@
         "responses": {
           "204": {
             "description": "Ownership was transferred."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/agents": {
+      "get": {
+        "summary": "List agents",
+        "description": "Lists an organization's agents, ordered by name. Any member can list them; an agent cannot.",
+        "operationId": "listAgents",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agents.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentPage"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an agent",
+        "description": "Creates an agent, with the creator as its first manager. Owners and admins can create agents, and developers too when the organization allows it. The agent's permissions must be within your own, and within the key's when a key creates it; a key needs `manage_agents`. A 409 means the organization already has an agent of that name, in any case.",
+        "operationId": "createAgent",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The agent was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/agents/{agent}": {
+      "get": {
+        "summary": "Get an agent",
+        "description": "Returns one of the organization's agents. Any member can read it; an agent cannot.",
+        "operationId": "getAgent",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update an agent",
+        "description": "Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused at once, with every credential it has.",
+        "operationId": "updateAgent",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The agent as changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an agent",
+        "description": "Deletes an agent with its secrets and every credential it has. Requires the owner or admin role. It can't be undone.",
+        "operationId": "deleteAgent",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The agent was deleted."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/agents/{agent}/managers/{user}": {
+      "put": {
+        "summary": "Add an agent manager",
+        "description": "Makes a member of the organization a manager of the agent. Its managers, owners and admins can add one. A 404 means the account is not an active member; a 409, that their role does not allow everything the agent may do.",
+        "operationId": "addAgentManager",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/User"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agent with its managers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove an agent manager",
+        "description": "Removes a manager of the agent. Its managers, owners and admins can remove one.",
+        "operationId": "removeAgentManager",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/User"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agent with its managers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/agents/{agent}/secrets": {
+      "get": {
+        "summary": "List agent secrets",
+        "description": "Lists an agent's active secrets, oldest first. The secret itself is never returned again; `prefix` tells secrets apart. Its managers, owners and admins can list them.",
+        "operationId": "listAgentSecrets",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The secrets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSecretPage"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an agent secret",
+        "description": "Creates a secret the agent signs in with. An agent has at most two, so one can replace the other; a 409 asks you to remove one first. Its managers, owners and admins can create one, and only from a signed-in session. The response is the only time the secret is shown, so store it securely.",
+        "operationId": "createAgentSecret",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentSecretRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The new secret. It is shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSecretCreated"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/agents/{agent}/secrets/{secret_id}": {
+      "delete": {
+        "summary": "Revoke an agent secret",
+        "description": "Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working at once. Its managers, owners and admins can revoke one.",
+        "operationId": "revokeAgentSecret",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Agent"
+          },
+          {
+            "$ref": "#/components/parameters/SecretID"
+          },
+          {
+            "$ref": "#/components/parameters/CSRFToken"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The secret was revoked."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "default": {
             "$ref": "#/components/responses/Error"
@@ -1937,6 +2420,25 @@
           "$ref": "#/components/schemas/Name"
         }
       },
+      "Agent": {
+        "description": "The agent's name within the organization. Any spelling that differs only in case refers to the same agent.",
+        "name": "agent",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/Name"
+        }
+      },
+      "SecretID": {
+        "description": "The ID of the secret, as the listing returns it.",
+        "name": "secret_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
       "APIKeyID": {
         "description": "The ID of the API key, as the listing returns it.",
         "name": "api_key_id",
@@ -2125,7 +2627,7 @@
         }
       },
       "ErrorDetail": {
-        "description": "One piece of information about an error. `type` names what it is and which `metadata` keys it carries;\nclients ignore types they do not know. `missing_permission`: the API key lacks the permission\n`metadata.permission` names.\n",
+        "description": "One piece of information about an error. `type` names what it is and which `metadata` keys it carries;\nclients ignore types they do not know. `missing_permission`: the API key lacks the permission\n`metadata.permission` names. `agent_missing_permission`: the agent lacks the permission\n`metadata.permission` names; one of its managers can grant it.\n",
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -2168,7 +2670,7 @@
       "Name": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9-]{2,62}$",
-        "description": "An account or organization name. Accounts and organizations share one namespace. A name keeps the case it was created with, and any spelling that differs only in case refers to it; no other account or organization can take such a spelling."
+        "description": "A name: of an account, an organization or an agent. Accounts and organizations share one namespace; an agent's name is unique within its organization. A name keeps the case it was created with, and any spelling that differs only in case refers to it; nothing else in the same namespace can take such a spelling."
       },
       "IndexName": {
         "type": "string",
@@ -2391,19 +2893,22 @@
         }
       },
       "DeviceAuthorizationRequest": {
-        "description": "Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit.",
+        "description": "Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.",
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "api_key_name",
-          "permissions"
-        ],
         "properties": {
+          "agent_secret": {
+            "$ref": "#/components/schemas/DeviceAgentSecret"
+          },
           "api_key_name": {
-            "description": "The name to give the API key the device receives, 1 to 128 characters.",
+            "description": "The name to give the API key the device receives, 1 to 128 characters. Required for an API key.",
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "agent": {
+            "description": "The agent of the key's organization the key acts as. Omitted for a key that acts as the account.",
+            "$ref": "#/components/schemas/Name"
           },
           "organization": {
             "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
@@ -2423,17 +2928,20 @@
         }
       },
       "PendingDeviceAuthorization": {
-        "description": "What a pending device authorization asks for.",
+        "description": "What a pending device authorization asks for. A request for an agent secret has `agent_secret` and none of the key's fields.",
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "api_key_name",
-          "permissions"
-        ],
         "properties": {
+          "agent_secret": {
+            "$ref": "#/components/schemas/DeviceAgentSecret"
+          },
           "api_key_name": {
             "description": "The name the key the device receives will have.",
             "type": "string"
+          },
+          "agent": {
+            "description": "The agent the key acts as. Omitted for a key that acts as the account.",
+            "$ref": "#/components/schemas/Name"
           },
           "organization": {
             "description": "The one organization the device asks for. Omitted when it asks for every organization of the account.",
@@ -2449,6 +2957,85 @@
             "description": "When the key the device receives stops working. Omitted when it never expires.",
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DeviceAgentSecret": {
+        "description": "A new secret of an agent, which a device asks for instead of an API key.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "organization",
+          "agent"
+        ],
+        "properties": {
+          "organization": {
+            "description": "The agent's organization.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "expires_at": {
+            "description": "When the secret stops working, at most one year ahead. Omitted for a secret that never expires.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeviceToken": {
+        "description": "What an approved device receives, once: an API key, with `key` and the key's fields, or a new agent secret in `agent_secret`. Exactly one of `key` and `agent_secret` is set.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The key's unique ID.",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "description": "The name the key was given.",
+            "type": "string"
+          },
+          "prefix": {
+            "description": "The first characters of the key, shown to tell keys apart.",
+            "type": "string"
+          },
+          "agent": {
+            "description": "The agent the key acts as. Omitted when it acts as the account.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "organization": {
+            "description": "The one organization the key reaches. Omitted when it reaches every organization of the account.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "description": "What the key may do.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Permission"
+            }
+          },
+          "created_at": {
+            "description": "When the key was created.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "description": "When the key stops working. Omitted when it never expires.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "key": {
+            "description": "The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.",
+            "type": "string"
+          },
+          "agent_secret": {
+            "$ref": "#/components/schemas/AgentSecretCreated"
           }
         }
       },
@@ -2480,6 +3067,10 @@
           "permissions"
         ],
         "properties": {
+          "agent": {
+            "description": "The agent of the key's organization the key acts as. Omitted for a key that acts as the account.",
+            "$ref": "#/components/schemas/Name"
+          },
           "organization": {
             "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
             "$ref": "#/components/schemas/Name"
@@ -2593,6 +3184,10 @@
           "permissions"
         ],
         "properties": {
+          "agent": {
+            "description": "The agent of the connection's organization the app acts as. Omitted for an app that acts as the account.",
+            "$ref": "#/components/schemas/Name"
+          },
           "organization": {
             "description": "The one organization the connection reaches. Omitted for every organization of the account. A list of indexes needs one.",
             "$ref": "#/components/schemas/Name"
@@ -2675,6 +3270,10 @@
           "client_host": {
             "description": "The host that serves the app's client metadata document.",
             "type": "string"
+          },
+          "agent": {
+            "description": "The agent the app acts as. Omitted when it acts as the account.",
+            "$ref": "#/components/schemas/Name"
           },
           "organization": {
             "description": "The one organization the connection reaches. Omitted for every organization of the account.",
@@ -2792,7 +3391,7 @@
         }
       },
       "Permission": {
-        "description": "A permission a key can carry. A key never does more than its account's role allows in an organization.\n`search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;\n`create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.\n`manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the\norganization. Both need a key scoped to one organization.\n",
+        "description": "A permission a key can carry. A key never does more than its account's role allows in an organization.\n`search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;\n`create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.\n`manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the\norganization; `manage_agents` creates, changes and deletes agents and their managers, and revokes their\nsecrets, but never creates a secret. These three are opt-in and need a key scoped to one organization.\n",
         "type": "string",
         "enum": [
           "search",
@@ -2801,7 +3400,8 @@
           "create_index",
           "manage_index",
           "manage_members",
-          "manage_organization"
+          "manage_organization",
+          "manage_agents"
         ]
       },
       "Permissions": {
@@ -2835,6 +3435,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "agent": {
+            "description": "The agent of the key's organization the key acts as. Omitted for a key that acts as the account.",
+            "$ref": "#/components/schemas/Name"
           },
           "organization": {
             "description": "The one organization the key reaches. Omitted for every organization of the account. A list of indexes needs one.",
@@ -2877,6 +3481,10 @@
           "prefix": {
             "description": "The first characters of the key, shown to tell keys apart.",
             "type": "string"
+          },
+          "agent": {
+            "description": "The agent the key acts as. Omitted when it acts as the account.",
+            "$ref": "#/components/schemas/Name"
           },
           "organization": {
             "description": "The one organization the key reaches. Omitted when it reaches every organization of the account.",
@@ -2964,8 +3572,8 @@
         "required": [
           "id",
           "name",
-          "role",
           "suspended",
+          "members_create_agents",
           "created_at"
         ],
         "properties": {
@@ -2979,12 +3587,16 @@
             "$ref": "#/components/schemas/Name"
           },
           "role": {
-            "description": "The authenticated account's role in the organization.",
+            "description": "The authenticated account's role in the organization. Left out for an agent working on its own, which is not a member.",
             "$ref": "#/components/schemas/Role"
           },
           "suspended": {
             "type": "boolean",
             "description": "A suspended organization keeps its data, but refuses every operation on its members, indexes, documents and searches until it is resumed. Contact support."
+          },
+          "members_create_agents": {
+            "type": "boolean",
+            "description": "Whether developers can create agents, as owners and admins always can."
           },
           "created_at": {
             "description": "When the organization was created.",
@@ -3028,6 +3640,251 @@
             "$ref": "#/components/schemas/Name"
           }
         }
+      },
+      "UpdateOrganizationRequest": {
+        "description": "The settings to change. A field left out is kept.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "members_create_agents": {
+            "description": "Whether developers can create agents.",
+            "type": "boolean"
+          }
+        }
+      },
+      "AgentDescription": {
+        "description": "What the agent is for, at most 1,024 characters.",
+        "type": "string",
+        "maxLength": 1024
+      },
+      "Agent": {
+        "description": "An agent of an organization: what it reaches and may do, and who manages it.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "description",
+          "permissions",
+          "managers",
+          "created_at",
+          "disabled",
+          "needs_review"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "description": {
+            "$ref": "#/components/schemas/AgentDescription"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/AgentPermissions"
+          },
+          "managers": {
+            "description": "The accounts that manage the agent, by name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Name"
+            }
+          },
+          "created_by": {
+            "description": "The account that created the agent. Omitted once that account is gone.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "description": "When the agent last authenticated a request. Omitted if it never has.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled": {
+            "description": "Whether the agent is disabled: every request it makes is refused.",
+            "type": "boolean"
+          },
+          "needs_review": {
+            "description": "Whether the agent's permissions should be reviewed, because a manager left or lost a role.",
+            "type": "boolean"
+          }
+        }
+      },
+      "AgentPermissions": {
+        "description": "What an agent may do, each named once: `search`, `read`, `write`, `create_index` and `manage_index`, as for a key. `create_index` needs every index.",
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/components/schemas/Permission"
+        }
+      },
+      "AgentPage": {
+        "description": "An organization's agents.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agents"
+        ],
+        "properties": {
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Agent"
+            }
+          }
+        }
+      },
+      "CreateAgentRequest": {
+        "description": "A new agent. Leave indexes out for every index of the organization, including indexes created later.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/Name"
+          },
+          "description": {
+            "$ref": "#/components/schemas/AgentDescription"
+          },
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/AgentPermissions"
+          }
+        }
+      },
+      "AgentCeiling": {
+        "description": "What an agent reaches and may do, as a whole. Leave indexes out for every index.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "indexes": {
+            "$ref": "#/components/schemas/IndexScope"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/AgentPermissions"
+          }
+        }
+      },
+      "UpdateAgentRequest": {
+        "description": "The changes to make to an agent. A field left out is kept.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/AgentDescription"
+          },
+          "ceiling": {
+            "description": "What the agent reaches and may do, replacing it as a whole.",
+            "$ref": "#/components/schemas/AgentCeiling"
+          },
+          "disabled": {
+            "description": "Disables or enables the agent.",
+            "type": "boolean"
+          }
+        }
+      },
+      "AgentSecret": {
+        "description": "A secret an agent signs in with, without the secret itself.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "prefix",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prefix": {
+            "description": "The first characters of the secret, shown to tell secrets apart.",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "The account that created the secret. Omitted once that account is gone.",
+            "$ref": "#/components/schemas/Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "description": "When the secret stops working. Omitted when it never expires.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used_at": {
+            "description": "When the agent last signed in with it. Omitted if it never has.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AgentSecretPage": {
+        "description": "An agent's active secrets.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "secrets"
+        ],
+        "properties": {
+          "secrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentSecret"
+            }
+          }
+        }
+      },
+      "CreateAgentSecretRequest": {
+        "description": "A new agent secret.",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "description": "When the secret stops working, at most one year ahead. Omitted for a secret that never expires.",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AgentSecretCreated": {
+        "description": "A new agent secret, which is shown only this once.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentSecret"
+          },
+          {
+            "type": "object",
+            "required": [
+              "secret"
+            ],
+            "properties": {
+              "secret": {
+                "description": "The secret. It is shown only in this response.",
+                "type": "string"
+              }
+            }
+          }
+        ]
       },
       "Role": {
         "description": "A member's role in an organization. `owner` can do everything, including deleting the organization and transferring ownership; `admin` also manages members and indexes; `developer` reads, writes and searches documents; `reader` reads and searches them.",
