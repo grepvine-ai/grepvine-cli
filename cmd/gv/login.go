@@ -126,7 +126,9 @@ func (a *app) deviceToken(ctx context.Context, client *httpapi.Client, request *
 				interval += 5 * time.Second
 				continue
 			case "access_denied":
-				return nil, errors.New("device authorization was denied")
+				// The service says why: denied by the person, or refused, such
+				// as an agent that already has two secrets.
+				return nil, fmt.Errorf("device authorization: %s", result.Response.Error)
 			case "expired_token":
 				return nil, errors.New("device authorization expired")
 			default:

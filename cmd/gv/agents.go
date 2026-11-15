@@ -44,24 +44,35 @@ owner or admin.`,
 	return command
 }
 
-// agentAnswer returns the successful answer of an agent operation, or an
-// error that says what went wrong.
-func agentAnswer[T any](what string, response any, err error) (*T, error) {
+// agentAnswer returns the successful answer of an agent operation in
+// organization, or an error that says what went wrong.
+func agentAnswer[T any](organization, what string, response any, err error) (*T, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", what, friendlyAPIError(err))
 	}
+	hint := func(permission string) string { return agentPermissionHint(organization, permission) }
 	switch value := response.(type) {
 	case *T:
 		return value, nil
 	case *httpapi.NotFoundHeaders:
-		return nil, responseError(value.Response, value.XRequestID)
+		return nil, responseErrorHint(value.Response, value.XRequestID, hint)
 	case *httpapi.ForbiddenHeaders:
-		return nil, responseError(value.Response, value.XRequestID)
+		return nil, responseErrorHint(value.Response, value.XRequestID, hint)
 	case *httpapi.ConflictHeaders:
-		return nil, responseError(value.Response, value.XRequestID)
+		return nil, responseErrorHint(value.Response, value.XRequestID, hint)
 	default:
 		return nil, fmt.Errorf("%s: unexpected response %T", what, response)
 	}
+}
+
+// agentPermissionHint says how to get a key that can manage the agents of
+// organization and has permission: a key holds every permission it gives an
+// agent, and manage_agents needs one organization.
+func agentPermissionHint(organization, permission string) string {
+	if permission == "manage_agents" {
+		return fmt.Sprintf("Sign in for a key that has it: gv login --org %s --permission manage_agents", organization)
+	}
+	return fmt.Sprintf("A key gives an agent only permissions it has itself. Sign in for one that has it: gv login --org %s --permission manage_agents --permission %s (repeat --permission for each one the agent needs)", organization, permission)
 }
 
 func agentParams(organization, agent string) (httpapi.Name, httpapi.Name) {
@@ -85,7 +96,7 @@ func newAgentListCommand(a *app) *cobra.Command {
 				return err
 			}
 			response, err := client.ListAgents(command.Context(), httpapi.ListAgentsParams{Organization: httpapi.Name(organization)})
-			page, err := agentAnswer[httpapi.AgentPage]("list agents", response, err)
+			page, err := agentAnswer[httpapi.AgentPage](organization, "list agents", response, err)
 			if err != nil {
 				return err
 			}
@@ -140,7 +151,7 @@ func newAgentInfoCommand(a *app) *cobra.Command {
 func fetchAgent(ctx context.Context, client *httpapi.Client, organization, agent string) (*httpapi.Agent, error) {
 	org, name := agentParams(organization, agent)
 	response, err := client.GetAgent(ctx, httpapi.GetAgentParams{Organization: org, Agent: name})
-	return agentAnswer[httpapi.Agent]("get agent", response, err)
+	return agentAnswer[httpapi.Agent](organization, "get agent", response, err)
 }
 
 // ceilingFlags are an agent's ceiling as flags: its permissions and the
@@ -228,7 +239,7 @@ indexes cannot have create_index.`,
 				return err
 			}
 			response, err := client.CreateAgent(command.Context(), request, httpapi.CreateAgentParams{Organization: httpapi.Name(organization)})
-			agent, err := agentAnswer[httpapi.Agent]("create agent", response, err)
+			agent, err := agentAnswer[httpapi.Agent](organization, "create agent", response, err)
 			if err != nil {
 				return err
 			}
@@ -298,7 +309,7 @@ Saving an agent marked "needs review" clears the mark, even with no change.`,
 func (a *app) updateAgent(ctx context.Context, client *httpapi.Client, organization, agent string, request *httpapi.UpdateAgentRequest) (*httpapi.Agent, error) {
 	org, name := agentParams(organization, agent)
 	response, err := client.UpdateAgent(ctx, request, httpapi.UpdateAgentParams{Organization: org, Agent: name})
-	return agentAnswer[httpapi.Agent]("update agent", response, err)
+	return agentAnswer[httpapi.Agent](organization, "update agent", response, err)
 }
 
 func newAgentDisableCommand(a *app, disable bool) *cobra.Command {
@@ -356,7 +367,7 @@ Without --force, gv asks you to type the agent name to confirm.`,
 			}
 			org, agent := agentParams(organization, name)
 			response, err := client.DeleteAgent(command.Context(), httpapi.DeleteAgentParams{Organization: org, Agent: agent})
-			if _, err := agentAnswer[httpapi.DeleteAgentNoContent]("delete agent", response, err); err != nil {
+			if _, err := agentAnswer[httpapi.DeleteAgentNoContent](organization, "delete agent", response, err); err != nil {
 				return err
 			}
 			fmt.Fprintf(a.stdout, "Deleted agent %s/%s\n", organization, name)
@@ -389,7 +400,7 @@ must be a member whose role allows everything the agent may do.`,
 			}
 			org, agent := agentParams(organization, name)
 			response, err := client.AddAgentManager(command.Context(), httpapi.AddAgentManagerParams{Organization: org, Agent: agent, User: httpapi.Name(args[1])})
-			if _, err := agentAnswer[httpapi.Agent]("add manager", response, err); err != nil {
+			if _, err := agentAnswer[httpapi.Agent](organization, "add manager", response, err); err != nil {
 				return err
 			}
 			fmt.Fprintf(a.stdout, "%s now manages %s/%s\n", args[1], organization, name)
@@ -412,7 +423,7 @@ must be a member whose role allows everything the agent may do.`,
 			}
 			org, agent := agentParams(organization, name)
 			response, err := client.RemoveAgentManager(command.Context(), httpapi.RemoveAgentManagerParams{Organization: org, Agent: agent, User: httpapi.Name(args[1])})
-			if _, err := agentAnswer[httpapi.Agent]("remove manager", response, err); err != nil {
+			if _, err := agentAnswer[httpapi.Agent](organization, "remove manager", response, err); err != nil {
 				return err
 			}
 			fmt.Fprintf(a.stdout, "%s no longer manages %s/%s\n", args[1], organization, name)
@@ -580,7 +591,7 @@ API key: gv then runs as the agent. Run gv login to act as yourself again.`,
 func (a *app) listAgentSecrets(ctx context.Context, client *httpapi.Client, organization, agent string) ([]httpapi.AgentSecret, error) {
 	org, name := agentParams(organization, agent)
 	response, err := client.ListAgentSecrets(ctx, httpapi.ListAgentSecretsParams{Organization: org, Agent: name})
-	page, err := agentAnswer[httpapi.AgentSecretPage]("list agent secrets", response, err)
+	page, err := agentAnswer[httpapi.AgentSecretPage](organization, "list agent secrets", response, err)
 	if err != nil {
 		return nil, err
 	}
@@ -661,7 +672,7 @@ secret keeps working.`,
 			}
 			org, agent := agentParams(organization, name)
 			response, err := client.RevokeAgentSecret(command.Context(), httpapi.RevokeAgentSecretParams{Organization: org, Agent: agent, SecretID: id})
-			if _, err := agentAnswer[httpapi.RevokeAgentSecretNoContent]("revoke agent secret", response, err); err != nil {
+			if _, err := agentAnswer[httpapi.RevokeAgentSecretNoContent](organization, "revoke agent secret", response, err); err != nil {
 				return err
 			}
 			fmt.Fprintf(a.stdout, "Revoked secret %s of agent %s/%s\n", args[1], organization, name)

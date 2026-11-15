@@ -222,3 +222,28 @@ func TestAgentSecretCreate(t *testing.T) {
 		t.Fatalf("saved config = %+v, %v", cfg, err)
 	}
 }
+
+// A key refused a permission it would give an agent is told to sign in for
+// one in the agent's organization that keeps manage_agents.
+func TestAgentKeyPermissionHint(t *testing.T) {
+	refusal := `{"code":"forbidden","reason":"forbidden","error":"this API key does not have the create_index permission","details":[{"type":"missing_permission","metadata":{"permission":"create_index"}}]}`
+	_, _, execute := newAdminServer(t, map[string]adminResponse{
+		"GET /organizations/acme/agents/ci-bot":   {200, ciAgent},
+		"PATCH /organizations/acme/agents/ci-bot": {403, refusal},
+	})
+	_, _, err := execute("", "agent", "update", "acme/ci-bot", "--permission", "create_index", "--all-indexes")
+	if err == nil || !strings.Contains(err.Error(), "gv login --org acme --permission manage_agents --permission create_index") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+// A refused secret says why, such as the two-secret limit.
+func TestAgentSecretCreateRefused(t *testing.T) {
+	_, _, execute := newAdminServer(t, map[string]adminResponse{
+		"POST /device/authorizations": {200, `{"device_code":"device","user_code":"ABCD-EFGH","verification_uri":"https://console.example/device","verification_uri_complete":"https://console.example/device?user_code=ABCD-EFGH","expires_in":600,"interval":5}`},
+		"POST /device/token":          {400, `{"code":"access_denied","reason":"device_authorization","error":"the agent already has two secrets; remove one first"}`},
+	})
+	if _, _, err := execute("", "agent", "secret", "create", "acme/ci-bot"); err == nil || !strings.Contains(err.Error(), "already has two secrets; remove one first") {
+		t.Fatalf("error = %v", err)
+	}
+}

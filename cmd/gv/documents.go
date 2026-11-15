@@ -491,6 +491,12 @@ func friendlyAPIError(err error) error {
 }
 
 func responseError(response httpapi.Error, requestID httpapi.OptString) error {
+	return responseErrorHint(response, requestID, permissionHint)
+}
+
+// responseErrorHint is responseError with hint saying how to get a key that
+// has a missing permission.
+func responseErrorHint(response httpapi.Error, requestID httpapi.OptString, hint func(permission string) string) error {
 	message := fmt.Sprintf("%s (%s)", response.Error, response.Code)
 	if id, _ := requestID.Get(); id != "" {
 		message = fmt.Sprintf("%s (%s; request %s)", response.Error, response.Code, id)
@@ -500,7 +506,7 @@ func responseError(response httpapi.Error, requestID httpapi.OptString) error {
 	// the message already says to ask one of its managers.
 	for _, detail := range response.Details {
 		if permission := detail.Metadata["permission"]; detail.Type == "missing_permission" && permission != "" {
-			message += "\n" + permissionHint(permission)
+			message += "\n" + hint(permission)
 		}
 	}
 	return errors.New(message)
