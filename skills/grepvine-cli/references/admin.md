@@ -1,4 +1,4 @@
-# Organizations, members, API keys and configuration
+# Organizations, members, agents, API keys and configuration
 
 Every command in this file changes who can do what, or prints secrets. Run the read-only `ls` and `info` commands freely; ask the user before anything else.
 
@@ -23,6 +23,32 @@ gv member set-role ORGANIZATION USER reader
 gv member rm ORGANIZATION USER
 ```
 
+## Agents
+
+An agent is a named identity for automation, such as a CI job, named `ORGANIZATION/AGENT`. Its ceiling (indexes and permissions: `search`, `read`, `write`, `create_index`, `manage_index`) bounds what it does. Changing agents needs a key with `manage_agents`: `gv login --org ORGANIZATION --permission manage_agents`.
+
+```sh
+gv agent ls ORGANIZATION --json
+gv agent info ORGANIZATION/AGENT --json
+gv agent create ORGANIZATION/AGENT --permission search --permission read --index INDEX
+gv agent update ORGANIZATION/AGENT --permission search
+gv agent disable ORGANIZATION/AGENT
+gv agent enable ORGANIZATION/AGENT
+gv agent manager add ORGANIZATION/AGENT USER
+gv agent manager rm ORGANIZATION/AGENT USER
+gv agent rm ORGANIZATION/AGENT
+```
+
+An agent marked `needs review` keeps working; `gv agent update ORGANIZATION/AGENT` with no flags saves it as it is and clears the mark, once the user has checked it.
+
+```sh
+gv agent secret create ORGANIZATION/AGENT --expires 90d   # approved in a browser; prints the secret once
+gv agent secret ls ORGANIZATION/AGENT --json
+gv agent secret rm ORGANIZATION/AGENT PREFIX
+```
+
+A job uses the secret through `GREPVINE_AGENT_SECRET`. Treat it like an API key: hand it to the user as-is, never save, repeat or commit it. `gv login --org ORGANIZATION --agent AGENT` signs in with a key that acts as the agent for the user.
+
 ## API keys
 
 ```sh
@@ -42,4 +68,4 @@ gv config set organization ORGANIZATION     # the default organization
 gv config unset organization
 ```
 
-Settings live in `~/.grepvine/config.yaml`, or the file given with `--config` or `GREPVINE_CONFIG`. The environment variables `GREPVINE_API_KEY`, `GREPVINE_API_ENDPOINT` and `GREPVINE_ORGANIZATION` override the file. Don't read or edit the file directly, and don't print the API key.
+Settings live in `~/.grepvine/config.yaml`, or the file given with `--config` or `GREPVINE_CONFIG`. The environment variables `GREPVINE_API_KEY`, `GREPVINE_AGENT_SECRET`, `GREPVINE_API_ENDPOINT` and `GREPVINE_ORGANIZATION` override the file. Don't read or edit the file directly, and don't print the API key or agent secret.

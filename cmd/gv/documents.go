@@ -440,21 +440,28 @@ func (a *app) deleteDocuments(ctx context.Context, organization, index string, k
 // parseIndexReference reads ORGANIZATION/INDEX, or a bare INDEX in the
 // default organization.
 func (a *app) parseIndexReference(value string) (string, string, error) {
-	organization, index, ok := strings.Cut(value, "/")
+	return a.parseReference(value, "index")
+}
+
+// parseReference reads ORGANIZATION/NAME, or a bare NAME in the default
+// organization, where kind names what NAME is: an index or an agent.
+func (a *app) parseReference(value, kind string) (string, string, error) {
+	upper := strings.ToUpper(kind)
+	organization, name, ok := strings.Cut(value, "/")
 	if !ok {
 		cfg, _, err := a.endpointAndKey()
 		if err != nil {
 			return "", "", err
 		}
 		if cfg.Organization == "" {
-			return "", "", errors.New("index must be ORGANIZATION/INDEX, or set a default organization to pass only INDEX")
+			return "", "", fmt.Errorf("%s must be ORGANIZATION/%s, or set a default organization to pass only %s", kind, upper, upper)
 		}
-		organization, index = cfg.Organization, value
+		organization, name = cfg.Organization, value
 	}
-	if organization == "" || index == "" || strings.Contains(index, "/") {
-		return "", "", errors.New("index must be ORGANIZATION/INDEX")
+	if organization == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", fmt.Errorf("%s must be ORGANIZATION/%s", kind, upper)
 	}
-	return organization, index, nil
+	return organization, name, nil
 }
 
 // organizationArgument returns the ORGANIZATION argument, or the default
@@ -474,6 +481,9 @@ func (a *app) organizationArgument(args []string) (string, error) {
 }
 
 func friendlyAPIError(err error) error {
+	if failed, ok := errors.AsType[*tokenError](err); ok {
+		return failed
+	}
 	if response, ok := errors.AsType[*httpapi.ErrorStatusCodeWithHeaders](err); ok {
 		return publicAPIError(response)
 	}
@@ -485,27 +495,25 @@ func responseError(response httpapi.Error, requestID httpapi.OptString) error {
 	if id, _ := requestID.Get(); id != "" {
 		message = fmt.Sprintf("%s (%s; request %s)", response.Error, response.Code, id)
 	}
-	if permission := missingPermission(response); permission != "" {
-		message += "\n" + permissionHint(permission)
-	}
-	return errors.New(message)
-}
-
-// missingPermission is the permission an error says the API key lacks, if any.
-func missingPermission(response httpapi.Error) string {
 	for _, detail := range response.Details {
-		if detail.Type == "missing_permission" {
-			return detail.Metadata["permission"]
+		permission := detail.Metadata["permission"]
+		switch {
+		case permission == "":
+		case detail.Type == "missing_permission":
+			message += "\n" + permissionHint(permission)
+		case detail.Type == "agent_missing_permission":
+			// Signing in again cannot help: the agent itself lacks it.
+			message += fmt.Sprintf("\nThe agent does not have the %s permission; ask one of its managers to give it.", permission)
 		}
 	}
-	return ""
+	return errors.New(message)
 }
 
 // permissionHint says how to get a key that has a permission: sign in again
 // and ask for it, with the others the work needs.
 func permissionHint(permission string) string {
 	organization := ""
-	if permission == "manage_members" || permission == "manage_organization" {
+	if permission == "manage_members" || permission == "manage_organization" || permission == "manage_agents" {
 		organization = "--org ORGANIZATION "
 	}
 	return fmt.Sprintf("Sign in for a key that has it: gv login %s--permission %s (repeat --permission for each one you need)", organization, permission)

@@ -20,9 +20,14 @@ func newWhoamiCommand(a *app) *cobra.Command {
 		Short: "Show the signed-in user",
 		Args:  cobra.NoArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
-			client, _, _, err := a.client(true)
+			client, cfg, _, err := a.client(true)
 			if err != nil {
 				return err
+			}
+			if cfg.AgentSecret != "" {
+				// An agent working alone has no account to show.
+				fmt.Fprintln(a.stdout, "Running as an agent, with an agent secret")
+				return nil
 			}
 			response, err := client.GetCurrentUser(command.Context())
 			if err != nil {

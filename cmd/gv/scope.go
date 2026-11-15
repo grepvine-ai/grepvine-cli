@@ -20,6 +20,7 @@ import (
 // change.
 type scopeFlags struct {
 	organization string
+	agent        string
 	indexes      []string
 	permissions  []string
 	expires      string
@@ -27,8 +28,9 @@ type scopeFlags struct {
 
 func (f *scopeFlags) register(command *cobra.Command) {
 	command.Flags().StringVar(&f.organization, "org", "", "the one organization the key reaches (default: all of yours)")
+	command.Flags().StringVar(&f.agent, "agent", "", "an agent of --org the key acts as: it does what both you and the agent may do")
 	command.Flags().StringSliceVar(&f.indexes, "index", nil, "an index the key reaches, repeatable; needs --org (default: all indexes)")
-	command.Flags().StringSliceVar(&f.permissions, "permission", nil, "search, read, write, create_index, manage_index, or with --org manage_members and manage_organization; repeatable (default: search and read)")
+	command.Flags().StringSliceVar(&f.permissions, "permission", nil, "search, read, write, create_index, manage_index, or with --org manage_members, manage_organization and manage_agents; repeatable (default: search and read)")
 	command.Flags().StringVar(&f.expires, "expires", "", "when the key expires: a number of days such as 30d, a date such as 2027-01-31, or never (default: 90 days, at most a year)")
 }
 
@@ -37,9 +39,15 @@ const defaultLifetime = "90d"
 
 // request is the device authorization request for the scope, at now.
 func (f *scopeFlags) request(name string, now time.Time) (*httpapi.DeviceAuthorizationRequest, error) {
-	request := &httpapi.DeviceAuthorizationRequest{APIKeyName: name}
+	request := &httpapi.DeviceAuthorizationRequest{APIKeyName: httpapi.NewOptString(name)}
 	if f.organization != "" {
 		request.Organization = httpapi.NewOptName(httpapi.Name(f.organization))
+	}
+	if f.agent != "" {
+		if f.organization == "" {
+			return nil, fmt.Errorf("--agent needs --org: an agent belongs to one organization")
+		}
+		request.Agent = httpapi.NewOptName(httpapi.Name(f.agent))
 	}
 	if len(f.indexes) > 0 {
 		if f.organization == "" {
@@ -59,7 +67,7 @@ func (f *scopeFlags) request(name string, now time.Time) (*httpapi.DeviceAuthori
 	for _, permission := range permissions {
 		value := httpapi.Permission(permission)
 		if err := value.Validate(); err != nil {
-			return nil, fmt.Errorf("--permission %q is not one of search, read, write, create_index, manage_index, manage_members, manage_organization", permission)
+			return nil, fmt.Errorf("--permission %q is not one of search, read, write, create_index, manage_index, manage_members, manage_organization, manage_agents", permission)
 		}
 		request.Permissions = append(request.Permissions, value)
 	}
@@ -101,10 +109,14 @@ func parseExpiry(value string, now time.Time) (time.Time, error) {
 
 // describeKeyScope is one line that says what a key reaches.
 // A field the service leaves out sets no limit.
-func describeKeyScope(organization httpapi.OptName, indexes httpapi.IndexScope, permissions []httpapi.Permission, expires httpapi.OptDateTime) string {
+func describeKeyScope(key *httpapi.DeviceToken) string {
+	organization, indexes, permissions, expires := key.Organization, key.Indexes, key.Permissions, key.ExpiresAt
 	where := "all organizations"
 	if name, ok := organization.Get(); ok {
 		where = string(name)
+	}
+	if agent, ok := key.Agent.Get(); ok {
+		where = fmt.Sprintf("as agent %s of %s", agent, where)
 	}
 	which := "all indexes"
 	if indexes != nil {

@@ -516,7 +516,7 @@ func TestDeviceLoginCapturesEnvironmentEndpoint(t *testing.T) {
 	if err := saveConfig(a.configPath, config{APIKey: "old-key", Organization: "acme"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.login(t.Context(), &httpapi.DeviceAuthorizationRequest{APIKeyName: "gv"}); err != nil {
+	if err := a.login(t.Context(), &httpapi.DeviceAuthorizationRequest{APIKeyName: httpapi.NewOptString("gv")}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, _, err := a.loadConfig()

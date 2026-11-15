@@ -1,6 +1,6 @@
 ---
 name: grepvine-cli
-description: Search, read, upload and sync documents in Grepvine indexes with the gv command-line tool. Use when the user mentions Grepvine, gv, or a Grepvine organization or index; asks to search a large indexed collection of text or code with regular expressions or literal strings; or asks to upload, sync, list, download or delete documents, or to manage Grepvine indexes, organizations, members or API keys.
+description: Search, read, upload and sync documents in Grepvine indexes with the gv command-line tool. Use when the user mentions Grepvine, gv, or a Grepvine organization or index; asks to search a large indexed collection of text or code with regular expressions or literal strings; or asks to upload, sync, list, download or delete documents, or to manage Grepvine indexes, organizations, members, agents or API keys.
 ---
 
 # Grepvine with gv
@@ -13,7 +13,7 @@ Run `gv <command> --help` whenever you need a flag that is not shown here.
 
 1. Check that `gv` is installed and signed in: `gv whoami --json`.
    - If `gv` is missing, tell the user to install it from https://github.com/grepvine-ai/grepvine-cli.
-   - If it says to sign in, ask the user to run `gv login`. It opens a browser where the user approves the device, so it needs them present. In CI or a container, the user sets `GREPVINE_API_KEY` instead.
+   - If it says to sign in, ask the user to run `gv login`. It opens a browser where the user approves the device, so it needs them present. In CI or a container, the user sets `GREPVINE_API_KEY`, or `GREPVINE_AGENT_SECRET` to run as an agent, instead.
 2. Find the default organization, if one is set: `gv config get organization`. With a default, `docs` means `ORGANIZATION/docs`, and commands that take an organization can omit it. When none is set, always write `ORGANIZATION/INDEX`.
 
 Never print, log, store or commit an API key, and never read the configuration file to look for one.
@@ -75,12 +75,13 @@ See [references/indexing.md](references/indexing.md) for uploads, sync, descript
 Get the user's explicit confirmation, naming the exact target, before any of these:
 
 - `gv delete`, `gv index rm`, `gv org rm`, `gv member rm`, or a `gv sync` whose dry run shows deletions.
-- `gv key create`, which prints a new secret, and `gv member add` or `gv member set-role`, which change who has access.
+- `gv agent rm`, and `gv agent secret rm`, which stops jobs that use that secret.
+- `gv key create` and `gv agent secret create`, which print a new secret, and `gv member add`, `gv member set-role`, `gv agent create`, `gv agent update` or `gv agent manager add`, which change who has access.
 
 The `rm` commands ask for confirmation on a terminal. Pass `--force` to skip it only after the user has confirmed that exact command in the conversation.
 
-For organizations, members, API keys and configuration, see [references/admin.md](references/admin.md).
+For organizations, members, agents, API keys and configuration, see [references/admin.md](references/admin.md).
 
 ## Errors
 
-`gv` prints errors on standard error and exits with a non-zero status. The message says what to do: fix the input, sign in, slow down or retry. `gv upload` and `gv sync` already wait and retry when the service asks them to slow down; for other commands, wait a few seconds before you try again, and do not retry in a tight loop.
+`gv` prints errors on standard error and exits with a non-zero status. The message says what to do: fix the input, sign in, slow down or retry. When an agent lacks a permission, signing in again does not help: tell the user to ask one of the agent's managers. `gv upload` and `gv sync` already wait and retry when the service asks them to slow down; for other commands, wait a few seconds before you try again, and do not retry in a tight loop.

@@ -36,7 +36,7 @@ Or download an archive for your platform from the [releases](https://github.com/
 gv login
 ```
 
-`gv login` opens a browser so you can approve this device. The key it saves asks to search and read every index you can reach, for 90 days (`--expires never` for a key that works until it is revoked); ask for less or more with `--org`, `--index`, `--permission` and `--expires`, and change it in the browser before you approve. A key never does more than your role allows. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
+`gv login` opens a browser so you can approve this device. The key it saves asks to search and read every index you can reach, for 90 days (`--expires never` for a key that works until it is revoked); ask for less or more with `--org`, `--index`, `--permission` and `--expires`, and change it in the browser before you approve. A key never does more than your role allows. If the browser doesn't open, copy the printed URL into one. The API key is saved in `~/.grepvine/config.yaml`, or in the file you pass with `--config` or set in `GREPVINE_CONFIG`. You can also set `GREPVINE_API_KEY` instead, or `GREPVINE_AGENT_SECRET` to run as an [agent](#agents), and `GREPVINE_API_ENDPOINT` to use a different endpoint. `gv whoami` shows who you are signed in as, and `gv logout` removes the saved key.
 
 `gv config` shows and changes the configuration file. `gv config ls` lists each setting with the value `gv` uses and where it comes from: an environment variable, the file or the default. API keys are shown only in part.
 
@@ -106,7 +106,7 @@ gv index tag set example/docs env=prod
 gv index rm example/handbook
 ```
 
-Manage organizations and members with `gv org` and `gv member`. `gv key create` makes an API key you approve in a browser; list and revoke keys, create an organization and transfer its ownership in the console. Run `gv <command> --help` for every flag.
+Manage organizations and members with `gv org` and `gv member`, and agents with `gv agent` (see [Agents](#agents)). `gv key create` makes an API key you approve in a browser; list and revoke keys, create an organization and transfer its ownership in the console. Run `gv <command> --help` for every flag.
 
 ### Default organization
 
@@ -121,13 +121,49 @@ gv search -F docs Grepvine
 gv index ls
 ```
 
+## Agents
+
+An agent is a named identity for automation in one organization, such as a CI job. Its ceiling, the indexes it reaches and its permissions, bounds everything it does. An agent is named `ORGANIZATION/AGENT`.
+
+```sh
+gv agent ls example
+gv agent info example/ci-bot
+gv agent create example/ci-bot --permission search --permission read --index docs
+gv agent update example/ci-bot --permission search --all-indexes
+gv agent manager add example/ci-bot alice
+gv agent disable example/ci-bot
+gv agent rm example/ci-bot
+```
+
+Listing and viewing agents works with any key. Changing them needs a key with the `manage_agents` permission (`gv login --org example --permission manage_agents`), held by one of the agent's managers or an owner or admin.
+
+To work **for you** as the agent, sign in with a key that acts as it. It does what both you and the agent may do:
+
+```sh
+gv login --org example --agent ci-bot
+```
+
+To work **alone**, a job uses an agent secret. Create one, approve it in the browser, and store it where the job runs. It is printed once:
+
+```sh
+gv agent secret create example/ci-bot --expires 90d > ci-bot.secret
+gv agent secret ls example/ci-bot
+gv agent secret rm example/ci-bot gvs_k3J9   # by prefix or ID
+```
+
+Then set `GREPVINE_AGENT_SECRET` in the job, or `agent_secret` in the configuration file (`gv agent secret create --save` writes it there). `gv` exchanges the secret at the token endpoint for a short-lived agent token, uses that token for every request, and exchanges again shortly before it expires. The token stays in memory, and the secret is never sent with API requests. The token endpoint accepts the secret in the form body (`client_secret`) or with HTTP Basic authentication, the agent's ID as the user name; `gv` sends it in the body, so the secret is the only value a job needs. `gv` asks for the agent's full permissions and the default token lifetime.
+
+When both an API key and an agent secret are set, the one from the environment wins over the one from the file; two from the same place are refused. `gv login` and `gv agent secret create --save` each replace the other credential in the file, and `gv logout` removes both. To rotate a secret, create a second one, deploy it, and revoke the first: an agent holds at most two.
+
+A request the agent's ceiling does not allow fails with the permission it lacks; ask one of the agent's managers to give it.
+
 ## JSON output
 
 Add `--json` to print one JSON object per line, with fields as in the API:
 
 - `search`: one result per line. `matches[].offset` counts bytes from the start of the document; subtract `text_start_offset` to find the match within `text`.
 - `list`: one document per line; with `--delimiter`, each common prefix comes first as `{"prefix": ...}`.
-- `whoami`, and the `org`, `member`, `key` and `index` commands: the objects they show.
+- `whoami`, and the `org`, `member`, `agent`, `key` and `index` commands: the objects they show.
 - `put`: the stored document's `{"key", "revision"}`.
 - `delete`: one result per key, in order: `{"key", "revision"}` when deleted, `{"key", "error"}` when not.
 - `upload` and `sync`: each document the index refused, as the API reports it, then a last line of totals: `{"uploaded", "bytes", "deleted", "failed"}`. A refused upload stops `sync` before it deletes anything, so one run reports refused uploads or refused deletions, not both.

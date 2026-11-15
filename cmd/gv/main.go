@@ -128,6 +128,7 @@ func newRootCommand(a *app) *cobra.Command {
 		newWhoamiCommand(a),
 		newOrgCommand(a),
 		newMemberCommand(a),
+		newAgentCommand(a),
 		newKeyCommand(a),
 		newConfigCommand(a),
 		newSkillsCommand(a),

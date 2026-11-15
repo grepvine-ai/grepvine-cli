@@ -20,6 +20,7 @@ import (
 type config struct {
 	Endpoint     string `yaml:"endpoint,omitempty" env:"GREPVINE_API_ENDPOINT"`
 	APIKey       string `yaml:"api_key,omitempty" env:"GREPVINE_API_KEY" secret:"true"`
+	AgentSecret  string `yaml:"agent_secret,omitempty" env:"GREPVINE_AGENT_SECRET" secret:"true"`
 	Organization string `yaml:"organization,omitempty" env:"GREPVINE_ORGANIZATION"`
 }
 
@@ -109,15 +110,35 @@ func saveConfig(path string, cfg config) error {
 	return nil
 }
 
+// endpointAndKey resolves every setting. At most one of the API key and the
+// agent secret is left set: the one from the environment wins over the one
+// from the file, and two from the same place are refused, since they act as
+// different identities.
 func (a *app) endpointAndKey() (config, string, error) {
 	cfg, path, err := a.loadConfig()
 	if err != nil {
 		return config{}, path, err
 	}
 	var resolved config
+	sources := map[string]string{}
 	for _, key := range configKeys {
-		value, _ := a.configValue(key, cfg)
+		value, source := a.configValue(key, cfg)
 		key.field(&resolved).SetString(value)
+		sources[key.name] = source
+	}
+	if resolved.APIKey == "" || resolved.AgentSecret == "" {
+		return resolved, path, nil
+	}
+	keyFromFile, secretFromFile := sources["api_key"] == "config file", sources["agent_secret"] == "config file"
+	switch {
+	case keyFromFile && !secretFromFile:
+		resolved.APIKey = ""
+	case secretFromFile && !keyFromFile:
+		resolved.AgentSecret = ""
+	case keyFromFile:
+		return config{}, path, fmt.Errorf("both an API key and an agent secret are set in %s; keep one:\n  gv config unset agent_secret   (act as yourself)\n  gv config unset api_key        (act as the agent)", path)
+	default:
+		return config{}, path, fmt.Errorf("both %s and %s are set; unset one", sources["api_key"], sources["agent_secret"])
 	}
 	return resolved, path, nil
 }
