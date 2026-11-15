@@ -20,9 +20,14 @@ func newWhoamiCommand(a *app) *cobra.Command {
 		Short: "Show the signed-in user",
 		Args:  cobra.NoArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
-			client, _, _, err := a.client(true)
+			client, cfg, _, err := a.client(true)
 			if err != nil {
 				return err
+			}
+			if cfg.AgentSecret != "" {
+				// An agent working alone has no account to show.
+				fmt.Fprintln(a.stdout, "Running as an agent, with an agent secret")
+				return nil
 			}
 			response, err := client.GetCurrentUser(command.Context())
 			if err != nil {
@@ -94,7 +99,7 @@ func newOrgListCommand(a *app) *cobra.Command {
 						}
 						continue
 					}
-					fmt.Fprintf(table, "%s\t%s\t%s\n", organization.Name, organization.Role, formatTime(organization.CreatedAt))
+					fmt.Fprintf(table, "%s\t%s\t%s\n", organization.Name, organization.Role.Or("-"), formatTime(organization.CreatedAt))
 				}
 				if err := table.Flush(); err != nil {
 					return err
@@ -151,7 +156,9 @@ func (a *app) printOrganization(organization *httpapi.Organization, asJSON bool)
 	table := tabwriter.NewWriter(a.stdout, 0, 8, 1, ' ', 0)
 	fmt.Fprintf(table, "Organization:\t%s\n", organization.Name)
 	fmt.Fprintf(table, "ID:\t%s\n", organization.ID)
-	fmt.Fprintf(table, "Your role:\t%s\n", organization.Role)
+	if role, ok := organization.Role.Get(); ok {
+		fmt.Fprintf(table, "Your role:\t%s\n", role)
+	}
 	fmt.Fprintf(table, "Created:\t%s\n", formatTime(organization.CreatedAt))
 	return table.Flush()
 }

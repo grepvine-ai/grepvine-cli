@@ -99,6 +99,34 @@ func encodeCreateAPIKeyRequest(
 	return nil
 }
 
+func encodeCreateAgentRequest(
+	req *CreateAgentRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeCreateAgentSecretRequest(
+	req *CreateAgentSecretRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCreateIndexRequest(
 	req *CreateIndexRequest,
 	r *http.Request,
@@ -346,8 +374,36 @@ func encodeTransferOrganizationOwnershipRequest(
 	return nil
 }
 
+func encodeUpdateAgentRequest(
+	req *UpdateAgentRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeUpdateIndexRequest(
 	req *UpdateIndexRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUpdateOrganizationRequest(
+	req *UpdateOrganizationRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

@@ -26,9 +26,13 @@ func newLoginCommand(a *app) *cobra.Command {
 The key asks for what the flags say; without them it asks to search and read
 every index of every organization you belong to, for 90 days. You see the
 request in the browser and may change it before you approve it. A key never
-does more than your role allows.`,
+does more than your role allows.
+
+With --agent, the key acts as that agent of --org: it does what both you and
+the agent may do.`,
 		Example: `  gv login
-  gv login --org acme --index docs --permission search --permission read --expires 30d`,
+  gv login --org acme --index docs --permission search --permission read --expires 30d
+  gv login --org acme --agent ci --permission search --permission read`,
 		Args: cobra.NoArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
 			request, err := scope.request(name, time.Now())
@@ -48,7 +52,7 @@ func (a *app) login(ctx context.Context, request *httpapi.DeviceAuthorizationReq
 	if err != nil {
 		return err
 	}
-	created, err := a.deviceKey(ctx, client, request)
+	created, key, err := a.deviceKey(ctx, client, request)
 	if err != nil {
 		return err
 	}
@@ -56,22 +60,37 @@ func (a *app) login(ctx context.Context, request *httpapi.DeviceAuthorizationReq
 	if err != nil {
 		return err
 	}
-	stored.APIKey, stored.Endpoint = created.Key, ""
+	// The file holds one identity: signing in replaces a saved agent secret.
+	stored.APIKey, stored.AgentSecret, stored.Endpoint = key, "", ""
 	if resolved.Endpoint != defaultEndpoint {
 		stored.Endpoint = resolved.Endpoint
 	}
 	if err := saveConfig(path, stored); err != nil {
 		return err
 	}
-	fmt.Fprintf(a.stdout, "Logged in as API key %s: %s.\n", created.Prefix, describeKeyScope(created.Organization, created.Indexes, created.Permissions, created.ExpiresAt))
+	fmt.Fprintf(a.stdout, "Logged in as API key %s: %s.\n", created.Prefix.Or(""), describeKeyScope(created))
 	return nil
 }
 
-// deviceKey asks for a key through the browser: it prints where to approve the
-// request, waits for the decision, and returns the key the person approved.
-// Messages go to standard error, so a caller may print the key on standard
-// output.
-func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *httpapi.DeviceAuthorizationRequest) (*httpapi.APIKeyCreated, error) {
+// deviceKey asks for an API key through the browser and returns it with the
+// secret key itself.
+func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *httpapi.DeviceAuthorizationRequest) (*httpapi.DeviceToken, string, error) {
+	created, err := a.deviceToken(ctx, client, request)
+	if err != nil {
+		return nil, "", err
+	}
+	key, ok := created.Key.Get()
+	if !ok {
+		return nil, "", errors.New("device authorization returned no API key; retry")
+	}
+	return created, key, nil
+}
+
+// deviceToken asks for a credential through the browser: it prints where to
+// approve the request, waits for the decision, and returns what the person
+// approved. Messages go to standard error, so a caller may print the
+// credential on standard output.
+func (a *app) deviceToken(ctx context.Context, client *httpapi.Client, request *httpapi.DeviceAuthorizationRequest) (*httpapi.DeviceToken, error) {
 	authorization, err := client.StartDeviceAuthorization(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("start device authorization: %w", friendlyAPIError(err))
@@ -97,7 +116,7 @@ func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *ht
 			return nil, fmt.Errorf("poll device authorization: %w", friendlyAPIError(err))
 		}
 		switch result := response.(type) {
-		case *httpapi.APIKeyCreated:
+		case *httpapi.DeviceToken:
 			return result, nil
 		case *httpapi.ErrorStatusCodeWithHeaders:
 			switch result.Response.Code {
@@ -107,7 +126,9 @@ func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *ht
 				interval += 5 * time.Second
 				continue
 			case "access_denied":
-				return nil, errors.New("device authorization was denied")
+				// The service says why: denied by the person, or refused, such
+				// as an agent that already has two secrets.
+				return nil, fmt.Errorf("device authorization: %s", result.Response.Error)
 			case "expired_token":
 				return nil, errors.New("device authorization expired")
 			default:
@@ -122,14 +143,14 @@ func (a *app) deviceKey(ctx context.Context, client *httpapi.Client, request *ht
 func newLogoutCommand(a *app) *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Remove the saved API key",
+		Short: "Remove the saved API key and agent secret",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg, path, err := a.loadConfig()
 			if err != nil {
 				return err
 			}
-			cfg.APIKey = ""
+			cfg.APIKey, cfg.AgentSecret = "", ""
 			if strings.TrimRight(cfg.Endpoint, "/") == defaultEndpoint {
 				cfg.Endpoint = ""
 			}

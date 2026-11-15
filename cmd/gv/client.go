@@ -14,10 +14,22 @@ import (
 	"github.com/grepvine-ai/grepvine-cli/internal/httpapi"
 )
 
-type credentials struct{ key string }
+// credentials authenticate requests with an API key or, when an agent secret
+// is set, with the agent tokens it is exchanged for.
+type credentials struct {
+	key    string
+	tokens *agentTokens
+}
 
 //nolint:revive // implements the generated ogen interface
-func (c credentials) ApiKeyAuth(context.Context, httpapi.OperationName) (httpapi.ApiKeyAuth, error) {
+func (c credentials) ApiKeyAuth(ctx context.Context, _ httpapi.OperationName) (httpapi.ApiKeyAuth, error) {
+	if c.tokens != nil {
+		token, err := c.tokens.current(ctx)
+		if err != nil {
+			return httpapi.ApiKeyAuth{}, err
+		}
+		return httpapi.ApiKeyAuth{Token: token}, nil
+	}
 	if c.key == "" {
 		return httpapi.ApiKeyAuth{}, ogenerrors.ErrSkipClientSecurity
 	}
@@ -33,10 +45,14 @@ func (a *app) client(requireKey bool) (*httpapi.Client, config, string, error) {
 	if err != nil {
 		return nil, config{}, path, err
 	}
-	if requireKey && cfg.APIKey == "" {
-		return nil, config{}, path, errors.New("not logged in; run `gv login`")
+	if requireKey && cfg.APIKey == "" && cfg.AgentSecret == "" {
+		return nil, config{}, path, errors.New("not logged in; run `gv login`, or set GREPVINE_AGENT_SECRET to run as an agent")
 	}
-	client, err := httpapi.NewClient(apiEndpoint(cfg.Endpoint), credentials{key: cfg.APIKey}, httpapi.WithClient(a.httpClient))
+	creds := credentials{key: cfg.APIKey}
+	if cfg.AgentSecret != "" {
+		creds.tokens = newAgentTokens(cfg.AgentSecret, cfg.Endpoint, a.httpClient)
+	}
+	client, err := httpapi.NewClient(apiEndpoint(cfg.Endpoint), creds, httpapi.WithClient(a.httpClient))
 	if err != nil {
 		return nil, config{}, path, fmt.Errorf("create API client: %w", err)
 	}

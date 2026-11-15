@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -47,13 +48,13 @@ you belong to, for 90 days. A key never does more than your role allows.`,
 			if err != nil {
 				return err
 			}
-			created, err := a.deviceKey(command.Context(), client, request)
+			created, key, err := a.deviceKey(command.Context(), client, request)
 			if err != nil {
 				return err
 			}
 			fmt.Fprintf(a.stderr, "Created API key %s (%s): %s. Store it now; it is not shown again.\n",
-				created.Name, created.ID, describeKeyScope(created.Organization, created.Indexes, created.Permissions, created.ExpiresAt))
-			fmt.Fprintln(a.stdout, created.Key)
+				created.Name.Or(""), created.ID.Or(uuid.Nil), describeKeyScope(created))
+			fmt.Fprintln(a.stdout, key)
 			return nil
 		},
 	})

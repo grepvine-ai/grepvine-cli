@@ -26,6 +26,8 @@ type APIKey struct {
 	Name string `json:"name"`
 	// The first characters of the key, shown to tell keys apart.
 	Prefix string `json:"prefix"`
+	// The agent the key acts as. Omitted when it acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the key reaches. Omitted when it reaches every organization of the account.
 	Organization OptName    `json:"organization"`
 	Indexes      IndexScope `json:"indexes"`
@@ -54,6 +56,11 @@ func (s *APIKey) GetName() string {
 // GetPrefix returns the value of Prefix.
 func (s *APIKey) GetPrefix() string {
 	return s.Prefix
+}
+
+// GetAgent returns the value of Agent.
+func (s *APIKey) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -106,6 +113,11 @@ func (s *APIKey) SetPrefix(val string) {
 	s.Prefix = val
 }
 
+// SetAgent sets the value of Agent.
+func (s *APIKey) SetAgent(val OptName) {
+	s.Agent = val
+}
+
 // SetOrganization sets the value of Organization.
 func (s *APIKey) SetOrganization(val OptName) {
 	s.Organization = val
@@ -150,6 +162,8 @@ type APIKeyCreated struct {
 	Name string `json:"name"`
 	// The first characters of the key, shown to tell keys apart.
 	Prefix string `json:"prefix"`
+	// The agent the key acts as. Omitted when it acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the key reaches. Omitted when it reaches every organization of the account.
 	Organization OptName    `json:"organization"`
 	Indexes      IndexScope `json:"indexes"`
@@ -180,6 +194,11 @@ func (s *APIKeyCreated) GetName() string {
 // GetPrefix returns the value of Prefix.
 func (s *APIKeyCreated) GetPrefix() string {
 	return s.Prefix
+}
+
+// GetAgent returns the value of Agent.
+func (s *APIKeyCreated) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -237,6 +256,11 @@ func (s *APIKeyCreated) SetPrefix(val string) {
 	s.Prefix = val
 }
 
+// SetAgent sets the value of Agent.
+func (s *APIKeyCreated) SetAgent(val OptName) {
+	s.Agent = val
+}
+
 // SetOrganization sets the value of Organization.
 func (s *APIKeyCreated) SetOrganization(val OptName) {
 	s.Organization = val
@@ -276,8 +300,6 @@ func (s *APIKeyCreated) SetRevokedAt(val OptDateTime) {
 func (s *APIKeyCreated) SetKey(val string) {
 	s.Key = val
 }
-
-func (*APIKeyCreated) pollDeviceTokenRes() {}
 
 // A page of API keys.
 // Ref: #/components/schemas/APIKeyPage
@@ -386,6 +408,374 @@ func (s *AddMemberRequestRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// An agent of an organization: what it reaches and may do, and who manages it.
+// Ref: #/components/schemas/Agent
+type Agent struct {
+	ID          uuid.UUID        `json:"id"`
+	Name        Name             `json:"name"`
+	Description AgentDescription `json:"description"`
+	Indexes     IndexScope       `json:"indexes"`
+	Permissions AgentPermissions `json:"permissions"`
+	// The accounts that manage the agent, by name.
+	Managers []Name `json:"managers"`
+	// The account that created the agent. Omitted once that account is gone.
+	CreatedBy OptName   `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	// When the agent last authenticated a request. Omitted if it never has.
+	LastUsedAt OptDateTime `json:"last_used_at"`
+	// Whether the agent is disabled: every request it makes is refused.
+	Disabled bool `json:"disabled"`
+	// Whether the agent's permissions should be reviewed, because a manager left or lost a role.
+	NeedsReview bool `json:"needs_review"`
+}
+
+// GetID returns the value of ID.
+func (s *Agent) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *Agent) GetName() Name {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *Agent) GetDescription() AgentDescription {
+	return s.Description
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *Agent) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *Agent) GetPermissions() AgentPermissions {
+	return s.Permissions
+}
+
+// GetManagers returns the value of Managers.
+func (s *Agent) GetManagers() []Name {
+	return s.Managers
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *Agent) GetCreatedBy() OptName {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Agent) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetLastUsedAt returns the value of LastUsedAt.
+func (s *Agent) GetLastUsedAt() OptDateTime {
+	return s.LastUsedAt
+}
+
+// GetDisabled returns the value of Disabled.
+func (s *Agent) GetDisabled() bool {
+	return s.Disabled
+}
+
+// GetNeedsReview returns the value of NeedsReview.
+func (s *Agent) GetNeedsReview() bool {
+	return s.NeedsReview
+}
+
+// SetID sets the value of ID.
+func (s *Agent) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *Agent) SetName(val Name) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *Agent) SetDescription(val AgentDescription) {
+	s.Description = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *Agent) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *Agent) SetPermissions(val AgentPermissions) {
+	s.Permissions = val
+}
+
+// SetManagers sets the value of Managers.
+func (s *Agent) SetManagers(val []Name) {
+	s.Managers = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *Agent) SetCreatedBy(val OptName) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Agent) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetLastUsedAt sets the value of LastUsedAt.
+func (s *Agent) SetLastUsedAt(val OptDateTime) {
+	s.LastUsedAt = val
+}
+
+// SetDisabled sets the value of Disabled.
+func (s *Agent) SetDisabled(val bool) {
+	s.Disabled = val
+}
+
+// SetNeedsReview sets the value of NeedsReview.
+func (s *Agent) SetNeedsReview(val bool) {
+	s.NeedsReview = val
+}
+
+func (*Agent) addAgentManagerRes()    {}
+func (*Agent) createAgentRes()        {}
+func (*Agent) getAgentRes()           {}
+func (*Agent) removeAgentManagerRes() {}
+func (*Agent) updateAgentRes()        {}
+
+// What an agent reaches and may do, as a whole. Leave indexes out for every index.
+// Ref: #/components/schemas/AgentCeiling
+type AgentCeiling struct {
+	Indexes     IndexScope       `json:"indexes"`
+	Permissions AgentPermissions `json:"permissions"`
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *AgentCeiling) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *AgentCeiling) GetPermissions() AgentPermissions {
+	return s.Permissions
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *AgentCeiling) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *AgentCeiling) SetPermissions(val AgentPermissions) {
+	s.Permissions = val
+}
+
+type AgentDescription string
+
+// An organization's agents.
+// Ref: #/components/schemas/AgentPage
+type AgentPage struct {
+	Agents []Agent `json:"agents"`
+}
+
+// GetAgents returns the value of Agents.
+func (s *AgentPage) GetAgents() []Agent {
+	return s.Agents
+}
+
+// SetAgents sets the value of Agents.
+func (s *AgentPage) SetAgents(val []Agent) {
+	s.Agents = val
+}
+
+func (*AgentPage) listAgentsRes() {}
+
+type AgentPermissions []Permission
+
+// A secret an agent signs in with, without the secret itself.
+// Ref: #/components/schemas/AgentSecret
+type AgentSecret struct {
+	ID uuid.UUID `json:"id"`
+	// The first characters of the secret, shown to tell secrets apart.
+	Prefix string `json:"prefix"`
+	// The account that created the secret. Omitted once that account is gone.
+	CreatedBy OptName   `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	// When the secret stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the agent last signed in with it. Omitted if it never has.
+	LastUsedAt OptDateTime `json:"last_used_at"`
+}
+
+// GetID returns the value of ID.
+func (s *AgentSecret) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetPrefix returns the value of Prefix.
+func (s *AgentSecret) GetPrefix() string {
+	return s.Prefix
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *AgentSecret) GetCreatedBy() OptName {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *AgentSecret) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *AgentSecret) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// GetLastUsedAt returns the value of LastUsedAt.
+func (s *AgentSecret) GetLastUsedAt() OptDateTime {
+	return s.LastUsedAt
+}
+
+// SetID sets the value of ID.
+func (s *AgentSecret) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetPrefix sets the value of Prefix.
+func (s *AgentSecret) SetPrefix(val string) {
+	s.Prefix = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *AgentSecret) SetCreatedBy(val OptName) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *AgentSecret) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *AgentSecret) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+// SetLastUsedAt sets the value of LastUsedAt.
+func (s *AgentSecret) SetLastUsedAt(val OptDateTime) {
+	s.LastUsedAt = val
+}
+
+// Merged schema.
+// Ref: #/components/schemas/AgentSecretCreated
+type AgentSecretCreated struct {
+	ID uuid.UUID `json:"id"`
+	// The first characters of the secret, shown to tell secrets apart.
+	Prefix string `json:"prefix"`
+	// The account that created the secret. Omitted once that account is gone.
+	CreatedBy OptName   `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+	// When the secret stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the agent last signed in with it. Omitted if it never has.
+	LastUsedAt OptDateTime `json:"last_used_at"`
+	// The secret. It is shown only in this response.
+	Secret string `json:"secret"`
+}
+
+// GetID returns the value of ID.
+func (s *AgentSecretCreated) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetPrefix returns the value of Prefix.
+func (s *AgentSecretCreated) GetPrefix() string {
+	return s.Prefix
+}
+
+// GetCreatedBy returns the value of CreatedBy.
+func (s *AgentSecretCreated) GetCreatedBy() OptName {
+	return s.CreatedBy
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *AgentSecretCreated) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *AgentSecretCreated) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// GetLastUsedAt returns the value of LastUsedAt.
+func (s *AgentSecretCreated) GetLastUsedAt() OptDateTime {
+	return s.LastUsedAt
+}
+
+// GetSecret returns the value of Secret.
+func (s *AgentSecretCreated) GetSecret() string {
+	return s.Secret
+}
+
+// SetID sets the value of ID.
+func (s *AgentSecretCreated) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetPrefix sets the value of Prefix.
+func (s *AgentSecretCreated) SetPrefix(val string) {
+	s.Prefix = val
+}
+
+// SetCreatedBy sets the value of CreatedBy.
+func (s *AgentSecretCreated) SetCreatedBy(val OptName) {
+	s.CreatedBy = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *AgentSecretCreated) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *AgentSecretCreated) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+// SetLastUsedAt sets the value of LastUsedAt.
+func (s *AgentSecretCreated) SetLastUsedAt(val OptDateTime) {
+	s.LastUsedAt = val
+}
+
+// SetSecret sets the value of Secret.
+func (s *AgentSecretCreated) SetSecret(val string) {
+	s.Secret = val
+}
+
+func (*AgentSecretCreated) createAgentSecretRes() {}
+
+// An agent's active secrets.
+// Ref: #/components/schemas/AgentSecretPage
+type AgentSecretPage struct {
+	Secrets []AgentSecret `json:"secrets"`
+}
+
+// GetSecrets returns the value of Secrets.
+func (s *AgentSecretPage) GetSecrets() []AgentSecret {
+	return s.Secrets
+}
+
+// SetSecrets sets the value of Secrets.
+func (s *AgentSecretPage) SetSecrets(val []AgentSecret) {
+	s.Secrets = val
+}
+
+func (*AgentSecretPage) listAgentSecretsRes() {}
+
 type ApiKeyAuth struct {
 	Token string
 	Roles []string
@@ -493,11 +883,15 @@ func (s *ConflictHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ConflictHeaders) addAgentManagerRes()    {}
+func (*ConflictHeaders) createAgentRes()        {}
+func (*ConflictHeaders) createAgentSecretRes()  {}
 func (*ConflictHeaders) createIndexRes()        {}
 func (*ConflictHeaders) createOrganizationRes() {}
 func (*ConflictHeaders) putDocumentRes()        {}
 func (*ConflictHeaders) putObjectsRes()         {}
 func (*ConflictHeaders) registerUserRes()       {}
+func (*ConflictHeaders) updateAgentRes()        {}
 
 // An app the account connected, and what it reaches and may do.
 // Ref: #/components/schemas/Connection
@@ -507,6 +901,8 @@ type Connection struct {
 	ClientName string `json:"client_name"`
 	// The host that serves the app's client metadata document.
 	ClientHost string `json:"client_host"`
+	// The agent the app acts as. Omitted when it acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the connection reaches. Omitted for every organization of the account.
 	Organization OptName     `json:"organization"`
 	Indexes      IndexScope  `json:"indexes"`
@@ -531,6 +927,11 @@ func (s *Connection) GetClientName() string {
 // GetClientHost returns the value of ClientHost.
 func (s *Connection) GetClientHost() string {
 	return s.ClientHost
+}
+
+// GetAgent returns the value of Agent.
+func (s *Connection) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -576,6 +977,11 @@ func (s *Connection) SetClientName(val string) {
 // SetClientHost sets the value of ClientHost.
 func (s *Connection) SetClientHost(val string) {
 	s.ClientHost = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *Connection) SetAgent(val OptName) {
+	s.Agent = val
 }
 
 // SetOrganization sets the value of Organization.
@@ -629,11 +1035,19 @@ func (*ConnectionPage) listConnectionsRes() {}
 // What a connection reaches and may do. A field left out sets no limit.
 // Ref: #/components/schemas/ConnectionScope
 type ConnectionScope struct {
+	// The agent of the connection's organization the app acts as. Omitted for an app that acts as the
+	// account.
+	Agent OptName `json:"agent"`
 	// The one organization the connection reaches. Omitted for every organization of the account. A list
 	// of indexes needs one.
 	Organization OptName     `json:"organization"`
 	Indexes      IndexScope  `json:"indexes"`
 	Permissions  Permissions `json:"permissions"`
+}
+
+// GetAgent returns the value of Agent.
+func (s *ConnectionScope) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -649,6 +1063,11 @@ func (s *ConnectionScope) GetIndexes() IndexScope {
 // GetPermissions returns the value of Permissions.
 func (s *ConnectionScope) GetPermissions() Permissions {
 	return s.Permissions
+}
+
+// SetAgent sets the value of Agent.
+func (s *ConnectionScope) SetAgent(val OptName) {
+	s.Agent = val
 }
 
 // SetOrganization sets the value of Organization.
@@ -738,6 +1157,8 @@ func (s *CookieAuth) SetRoles(val []string) {
 type CreateAPIKeyRequest struct {
 	// A name to tell the key apart, 1 to 128 characters.
 	Name string `json:"name"`
+	// The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the key reaches. Omitted for every organization of the account. A list of
 	// indexes needs one.
 	Organization OptName     `json:"organization"`
@@ -750,6 +1171,11 @@ type CreateAPIKeyRequest struct {
 // GetName returns the value of Name.
 func (s *CreateAPIKeyRequest) GetName() string {
 	return s.Name
+}
+
+// GetAgent returns the value of Agent.
+func (s *CreateAPIKeyRequest) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -777,6 +1203,11 @@ func (s *CreateAPIKeyRequest) SetName(val string) {
 	s.Name = val
 }
 
+// SetAgent sets the value of Agent.
+func (s *CreateAPIKeyRequest) SetAgent(val OptName) {
+	s.Agent = val
+}
+
 // SetOrganization sets the value of Organization.
 func (s *CreateAPIKeyRequest) SetOrganization(val OptName) {
 	s.Organization = val
@@ -794,6 +1225,72 @@ func (s *CreateAPIKeyRequest) SetPermissions(val Permissions) {
 
 // SetExpiresAt sets the value of ExpiresAt.
 func (s *CreateAPIKeyRequest) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+// A new agent. Leave indexes out for every index of the organization, including indexes created later.
+// Ref: #/components/schemas/CreateAgentRequest
+type CreateAgentRequest struct {
+	Name        Name                `json:"name"`
+	Description OptAgentDescription `json:"description"`
+	Indexes     IndexScope          `json:"indexes"`
+	Permissions AgentPermissions    `json:"permissions"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateAgentRequest) GetName() Name {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *CreateAgentRequest) GetDescription() OptAgentDescription {
+	return s.Description
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *CreateAgentRequest) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *CreateAgentRequest) GetPermissions() AgentPermissions {
+	return s.Permissions
+}
+
+// SetName sets the value of Name.
+func (s *CreateAgentRequest) SetName(val Name) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreateAgentRequest) SetDescription(val OptAgentDescription) {
+	s.Description = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *CreateAgentRequest) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *CreateAgentRequest) SetPermissions(val AgentPermissions) {
+	s.Permissions = val
+}
+
+// A new agent secret.
+// Ref: #/components/schemas/CreateAgentSecretRequest
+type CreateAgentSecretRequest struct {
+	// When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *CreateAgentSecretRequest) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *CreateAgentSecretRequest) SetExpiresAt(val OptDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -854,6 +1351,11 @@ func (s *CreateOrganizationRequest) GetName() Name {
 func (s *CreateOrganizationRequest) SetName(val Name) {
 	s.Name = val
 }
+
+// DeleteAgentNoContent is response for DeleteAgent operation.
+type DeleteAgentNoContent struct{}
+
+func (*DeleteAgentNoContent) deleteAgentRes() {}
 
 // DeleteIndexAccepted is response for DeleteIndex operation.
 type DeleteIndexAccepted struct{}
@@ -916,6 +1418,46 @@ func (*DeleteOrganizationAccepted) deleteOrganizationRes() {}
 type DenyDeviceAuthorizationNoContent struct{}
 
 func (*DenyDeviceAuthorizationNoContent) denyDeviceAuthorizationRes() {}
+
+// A new secret of an agent, which a device asks for instead of an API key.
+// Ref: #/components/schemas/DeviceAgentSecret
+type DeviceAgentSecret struct {
+	// The agent's organization.
+	Organization Name `json:"organization"`
+	Agent        Name `json:"agent"`
+	// When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+}
+
+// GetOrganization returns the value of Organization.
+func (s *DeviceAgentSecret) GetOrganization() Name {
+	return s.Organization
+}
+
+// GetAgent returns the value of Agent.
+func (s *DeviceAgentSecret) GetAgent() Name {
+	return s.Agent
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *DeviceAgentSecret) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// SetOrganization sets the value of Organization.
+func (s *DeviceAgentSecret) SetOrganization(val Name) {
+	s.Organization = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *DeviceAgentSecret) SetAgent(val Name) {
+	s.Agent = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *DeviceAgentSecret) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
 
 // The device authorization to approve, and optionally the scope to grant.
 // Ref: #/components/schemas/DeviceApprovalRequest
@@ -1025,11 +1567,16 @@ func (s *DeviceAuthorization) SetInterval(val int) {
 }
 
 // Starts a device authorization. The scope fields are what the device asks for; the person approving
-// it sees them and may change them. A scope field left out sets no limit.
+// it sees them and may change them. A scope field left out sets no limit. A request for an API key
+// names it and its permissions; a request for an agent secret sends `agent_secret` and none of the
+// other fields.
 // Ref: #/components/schemas/DeviceAuthorizationRequest
 type DeviceAuthorizationRequest struct {
-	// The name to give the API key the device receives, 1 to 128 characters.
-	APIKeyName string `json:"api_key_name"`
+	AgentSecret OptDeviceAgentSecret `json:"agent_secret"`
+	// The name to give the API key the device receives, 1 to 128 characters. Required for an API key.
+	APIKeyName OptString `json:"api_key_name"`
+	// The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the key reaches. Omitted for every organization of the account. A list of
 	// indexes needs one.
 	Organization OptName     `json:"organization"`
@@ -1039,9 +1586,19 @@ type DeviceAuthorizationRequest struct {
 	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
+// GetAgentSecret returns the value of AgentSecret.
+func (s *DeviceAuthorizationRequest) GetAgentSecret() OptDeviceAgentSecret {
+	return s.AgentSecret
+}
+
 // GetAPIKeyName returns the value of APIKeyName.
-func (s *DeviceAuthorizationRequest) GetAPIKeyName() string {
+func (s *DeviceAuthorizationRequest) GetAPIKeyName() OptString {
 	return s.APIKeyName
+}
+
+// GetAgent returns the value of Agent.
+func (s *DeviceAuthorizationRequest) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -1064,9 +1621,19 @@ func (s *DeviceAuthorizationRequest) GetExpiresAt() OptDateTime {
 	return s.ExpiresAt
 }
 
+// SetAgentSecret sets the value of AgentSecret.
+func (s *DeviceAuthorizationRequest) SetAgentSecret(val OptDeviceAgentSecret) {
+	s.AgentSecret = val
+}
+
 // SetAPIKeyName sets the value of APIKeyName.
-func (s *DeviceAuthorizationRequest) SetAPIKeyName(val string) {
+func (s *DeviceAuthorizationRequest) SetAPIKeyName(val OptString) {
 	s.APIKeyName = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *DeviceAuthorizationRequest) SetAgent(val OptName) {
+	s.Agent = val
 }
 
 // SetOrganization sets the value of Organization.
@@ -1105,6 +1672,144 @@ func (s *DeviceDecisionRequest) GetUserCode() string {
 func (s *DeviceDecisionRequest) SetUserCode(val string) {
 	s.UserCode = val
 }
+
+// What an approved device receives, once: an API key, with `key` and the key's fields, or a new agent
+// secret in `agent_secret`. Exactly one of `key` and `agent_secret` is set.
+// Ref: #/components/schemas/DeviceToken
+type DeviceToken struct {
+	// The key's unique ID.
+	ID OptUUID `json:"id"`
+	// The name the key was given.
+	Name OptString `json:"name"`
+	// The first characters of the key, shown to tell keys apart.
+	Prefix OptString `json:"prefix"`
+	// The agent the key acts as. Omitted when it acts as the account.
+	Agent OptName `json:"agent"`
+	// The one organization the key reaches. Omitted when it reaches every organization of the account.
+	Organization OptName    `json:"organization"`
+	Indexes      IndexScope `json:"indexes"`
+	// What the key may do.
+	Permissions []Permission `json:"permissions"`
+	// When the key was created.
+	CreatedAt OptDateTime `json:"created_at"`
+	// When the key stops working. Omitted when it never expires.
+	ExpiresAt OptDateTime `json:"expires_at"`
+	// The secret API key. It is shown only in this response; send it as `Authorization: Bearer <key>`.
+	Key         OptString             `json:"key"`
+	AgentSecret OptAgentSecretCreated `json:"agent_secret"`
+}
+
+// GetID returns the value of ID.
+func (s *DeviceToken) GetID() OptUUID {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *DeviceToken) GetName() OptString {
+	return s.Name
+}
+
+// GetPrefix returns the value of Prefix.
+func (s *DeviceToken) GetPrefix() OptString {
+	return s.Prefix
+}
+
+// GetAgent returns the value of Agent.
+func (s *DeviceToken) GetAgent() OptName {
+	return s.Agent
+}
+
+// GetOrganization returns the value of Organization.
+func (s *DeviceToken) GetOrganization() OptName {
+	return s.Organization
+}
+
+// GetIndexes returns the value of Indexes.
+func (s *DeviceToken) GetIndexes() IndexScope {
+	return s.Indexes
+}
+
+// GetPermissions returns the value of Permissions.
+func (s *DeviceToken) GetPermissions() []Permission {
+	return s.Permissions
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *DeviceToken) GetCreatedAt() OptDateTime {
+	return s.CreatedAt
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *DeviceToken) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// GetKey returns the value of Key.
+func (s *DeviceToken) GetKey() OptString {
+	return s.Key
+}
+
+// GetAgentSecret returns the value of AgentSecret.
+func (s *DeviceToken) GetAgentSecret() OptAgentSecretCreated {
+	return s.AgentSecret
+}
+
+// SetID sets the value of ID.
+func (s *DeviceToken) SetID(val OptUUID) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *DeviceToken) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetPrefix sets the value of Prefix.
+func (s *DeviceToken) SetPrefix(val OptString) {
+	s.Prefix = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *DeviceToken) SetAgent(val OptName) {
+	s.Agent = val
+}
+
+// SetOrganization sets the value of Organization.
+func (s *DeviceToken) SetOrganization(val OptName) {
+	s.Organization = val
+}
+
+// SetIndexes sets the value of Indexes.
+func (s *DeviceToken) SetIndexes(val IndexScope) {
+	s.Indexes = val
+}
+
+// SetPermissions sets the value of Permissions.
+func (s *DeviceToken) SetPermissions(val []Permission) {
+	s.Permissions = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *DeviceToken) SetCreatedAt(val OptDateTime) {
+	s.CreatedAt = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *DeviceToken) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
+}
+
+// SetKey sets the value of Key.
+func (s *DeviceToken) SetKey(val OptString) {
+	s.Key = val
+}
+
+// SetAgentSecret sets the value of AgentSecret.
+func (s *DeviceToken) SetAgentSecret(val OptAgentSecretCreated) {
+	s.AgentSecret = val
+}
+
+func (*DeviceToken) pollDeviceTokenRes() {}
 
 // The device code to exchange for an API key.
 // Ref: #/components/schemas/DeviceTokenRequest
@@ -1299,7 +2004,8 @@ func (s *Error) SetDetails(val []ErrorDetail) {
 
 // One piece of information about an error. `type` names what it is and which `metadata` keys it
 // carries; clients ignore types they do not know. `missing_permission`: the API key lacks the
-// permission `metadata.permission` names.
+// permission `metadata.permission` names. `agent_missing_permission`: the agent lacks the permission
+// `metadata.permission` names; one of its managers can grant it.
 // Ref: #/components/schemas/ErrorDetail
 type ErrorDetail struct {
 	// What the detail is, such as `missing_permission`.
@@ -1455,13 +2161,24 @@ func (s *ForbiddenHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ForbiddenHeaders) addAgentManagerRes()           {}
 func (*ForbiddenHeaders) approveOAuthAuthorizationRes() {}
+func (*ForbiddenHeaders) createAgentRes()               {}
+func (*ForbiddenHeaders) createAgentSecretRes()         {}
+func (*ForbiddenHeaders) deleteAgentRes()               {}
 func (*ForbiddenHeaders) denyOAuthAuthorizationRes()    {}
+func (*ForbiddenHeaders) getAgentRes()                  {}
 func (*ForbiddenHeaders) getDeviceAuthorizationRes()    {}
+func (*ForbiddenHeaders) listAgentSecretsRes()          {}
+func (*ForbiddenHeaders) listAgentsRes()                {}
 func (*ForbiddenHeaders) listConnectionsRes()           {}
 func (*ForbiddenHeaders) lookupOAuthAuthorizationRes()  {}
 func (*ForbiddenHeaders) registerUserRes()              {}
+func (*ForbiddenHeaders) removeAgentManagerRes()        {}
+func (*ForbiddenHeaders) revokeAgentSecretRes()         {}
 func (*ForbiddenHeaders) revokeConnectionRes()          {}
+func (*ForbiddenHeaders) updateAgentRes()               {}
+func (*ForbiddenHeaders) updateOrganizationRes()        {}
 
 // GetCurrentUserOKHeaders wraps User with response headers.
 type GetCurrentUserOKHeaders struct {
@@ -2212,6 +2929,8 @@ func (s *InvitationRole) UnmarshalText(data []byte) error {
 // What a key reaches and may do. A field left out sets no limit.
 // Ref: #/components/schemas/KeyScope
 type KeyScope struct {
+	// The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the key reaches. Omitted for every organization of the account. A list of
 	// indexes needs one.
 	Organization OptName     `json:"organization"`
@@ -2219,6 +2938,11 @@ type KeyScope struct {
 	Permissions  Permissions `json:"permissions"`
 	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
 	ExpiresAt OptDateTime `json:"expires_at"`
+}
+
+// GetAgent returns the value of Agent.
+func (s *KeyScope) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -2239,6 +2963,11 @@ func (s *KeyScope) GetPermissions() Permissions {
 // GetExpiresAt returns the value of ExpiresAt.
 func (s *KeyScope) GetExpiresAt() OptDateTime {
 	return s.ExpiresAt
+}
+
+// SetAgent sets the value of Agent.
+func (s *KeyScope) SetAgent(val OptName) {
+	s.Agent = val
 }
 
 // SetOrganization sets the value of Organization.
@@ -2691,20 +3420,31 @@ func (s *NotFoundHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*NotFoundHeaders) addAgentManagerRes()            {}
 func (*NotFoundHeaders) approveDeviceAuthorizationRes() {}
 func (*NotFoundHeaders) approveOAuthAuthorizationRes()  {}
 func (*NotFoundHeaders) checkInvitationRes()            {}
+func (*NotFoundHeaders) createAgentRes()                {}
+func (*NotFoundHeaders) createAgentSecretRes()          {}
+func (*NotFoundHeaders) deleteAgentRes()                {}
 func (*NotFoundHeaders) deleteDocumentRes()             {}
 func (*NotFoundHeaders) deleteIndexRes()                {}
 func (*NotFoundHeaders) deleteOrganizationRes()         {}
 func (*NotFoundHeaders) denyDeviceAuthorizationRes()    {}
+func (*NotFoundHeaders) getAgentRes()                   {}
 func (*NotFoundHeaders) getDeviceAuthorizationRes()     {}
 func (*NotFoundHeaders) getDocumentRes()                {}
 func (*NotFoundHeaders) getIndexRes()                   {}
 func (*NotFoundHeaders) getOrganizationRes()            {}
+func (*NotFoundHeaders) listAgentSecretsRes()           {}
+func (*NotFoundHeaders) listAgentsRes()                 {}
+func (*NotFoundHeaders) removeAgentManagerRes()         {}
 func (*NotFoundHeaders) revokeAPIKeyRes()               {}
+func (*NotFoundHeaders) revokeAgentSecretRes()          {}
 func (*NotFoundHeaders) revokeConnectionRes()           {}
+func (*NotFoundHeaders) updateAgentRes()                {}
 func (*NotFoundHeaders) updateIndexRes()                {}
+func (*NotFoundHeaders) updateOrganizationRes()         {}
 
 // The sign-in request to approve and the scope to grant it.
 // Ref: #/components/schemas/OAuthApprovalRequest
@@ -2870,6 +3610,144 @@ func (s *OAuthRedirect) SetRedirectTo(val url.URL) {
 func (*OAuthRedirect) approveOAuthAuthorizationRes() {}
 func (*OAuthRedirect) denyOAuthAuthorizationRes()    {}
 
+// NewOptAgentCeiling returns new OptAgentCeiling with value set to v.
+func NewOptAgentCeiling(v AgentCeiling) OptAgentCeiling {
+	return OptAgentCeiling{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAgentCeiling is optional AgentCeiling.
+type OptAgentCeiling struct {
+	Value AgentCeiling
+	Set   bool
+}
+
+// IsSet returns true if OptAgentCeiling was set.
+func (o OptAgentCeiling) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAgentCeiling) Reset() {
+	var v AgentCeiling
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAgentCeiling) SetTo(v AgentCeiling) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAgentCeiling) Get() (v AgentCeiling, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAgentCeiling) Or(d AgentCeiling) AgentCeiling {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptAgentDescription returns new OptAgentDescription with value set to v.
+func NewOptAgentDescription(v AgentDescription) OptAgentDescription {
+	return OptAgentDescription{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAgentDescription is optional AgentDescription.
+type OptAgentDescription struct {
+	Value AgentDescription
+	Set   bool
+}
+
+// IsSet returns true if OptAgentDescription was set.
+func (o OptAgentDescription) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAgentDescription) Reset() {
+	var v AgentDescription
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAgentDescription) SetTo(v AgentDescription) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAgentDescription) Get() (v AgentDescription, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAgentDescription) Or(d AgentDescription) AgentDescription {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptAgentSecretCreated returns new OptAgentSecretCreated with value set to v.
+func NewOptAgentSecretCreated(v AgentSecretCreated) OptAgentSecretCreated {
+	return OptAgentSecretCreated{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAgentSecretCreated is optional AgentSecretCreated.
+type OptAgentSecretCreated struct {
+	Value AgentSecretCreated
+	Set   bool
+}
+
+// IsSet returns true if OptAgentSecretCreated was set.
+func (o OptAgentSecretCreated) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAgentSecretCreated) Reset() {
+	var v AgentSecretCreated
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAgentSecretCreated) SetTo(v AgentSecretCreated) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAgentSecretCreated) Get() (v AgentSecretCreated, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAgentSecretCreated) Or(d AgentSecretCreated) AgentSecretCreated {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptBool returns new OptBool with value set to v.
 func NewOptBool(v bool) OptBool {
 	return OptBool{
@@ -2956,6 +3834,52 @@ func (o OptDateTime) Get() (v time.Time, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDeviceAgentSecret returns new OptDeviceAgentSecret with value set to v.
+func NewOptDeviceAgentSecret(v DeviceAgentSecret) OptDeviceAgentSecret {
+	return OptDeviceAgentSecret{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDeviceAgentSecret is optional DeviceAgentSecret.
+type OptDeviceAgentSecret struct {
+	Value DeviceAgentSecret
+	Set   bool
+}
+
+// IsSet returns true if OptDeviceAgentSecret was set.
+func (o OptDeviceAgentSecret) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDeviceAgentSecret) Reset() {
+	var v DeviceAgentSecret
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDeviceAgentSecret) SetTo(v DeviceAgentSecret) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDeviceAgentSecret) Get() (v DeviceAgentSecret, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDeviceAgentSecret) Or(d DeviceAgentSecret) DeviceAgentSecret {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -3422,6 +4346,52 @@ func (o OptQueryRequestMode) Or(d QueryRequestMode) QueryRequestMode {
 	return d
 }
 
+// NewOptRole returns new OptRole with value set to v.
+func NewOptRole(v Role) OptRole {
+	return OptRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptRole is optional Role.
+type OptRole struct {
+	Value Role
+	Set   bool
+}
+
+// IsSet returns true if OptRole was set.
+func (o OptRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptRole) Reset() {
+	var v Role
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptRole) SetTo(v Role) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptRole) Get() (v Role, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptRole) Or(d Role) Role {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptStaffRole returns new OptStaffRole with value set to v.
 func NewOptStaffRole(v StaffRole) OptStaffRole {
 	return OptStaffRole{
@@ -3514,6 +4484,52 @@ func (o OptString) Or(d string) string {
 	return d
 }
 
+// NewOptUUID returns new OptUUID with value set to v.
+func NewOptUUID(v uuid.UUID) OptUUID {
+	return OptUUID{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUUID is optional uuid.UUID.
+type OptUUID struct {
+	Value uuid.UUID
+	Set   bool
+}
+
+// IsSet returns true if OptUUID was set.
+func (o OptUUID) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUUID) Reset() {
+	var v uuid.UUID
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUUID) SetTo(v uuid.UUID) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUUID) Get() (v uuid.UUID, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUUID) Or(d uuid.UUID) uuid.UUID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // An organization, as seen by one of its members.
 // Ref: #/components/schemas/Organization
 type Organization struct {
@@ -3521,11 +4537,14 @@ type Organization struct {
 	ID uuid.UUID `json:"id"`
 	// The organization's name.
 	Name Name `json:"name"`
-	// The authenticated account's role in the organization.
-	Role Role `json:"role"`
+	// The authenticated account's role in the organization. Left out for an agent working on its own,
+	// which is not a member.
+	Role OptRole `json:"role"`
 	// A suspended organization keeps its data, but refuses every operation on its members, indexes,
 	// documents and searches until it is resumed. Contact support.
 	Suspended bool `json:"suspended"`
+	// Whether developers can create agents, as owners and admins always can.
+	MembersCreateAgents bool `json:"members_create_agents"`
 	// When the organization was created.
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -3541,13 +4560,18 @@ func (s *Organization) GetName() Name {
 }
 
 // GetRole returns the value of Role.
-func (s *Organization) GetRole() Role {
+func (s *Organization) GetRole() OptRole {
 	return s.Role
 }
 
 // GetSuspended returns the value of Suspended.
 func (s *Organization) GetSuspended() bool {
 	return s.Suspended
+}
+
+// GetMembersCreateAgents returns the value of MembersCreateAgents.
+func (s *Organization) GetMembersCreateAgents() bool {
+	return s.MembersCreateAgents
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -3566,13 +4590,18 @@ func (s *Organization) SetName(val Name) {
 }
 
 // SetRole sets the value of Role.
-func (s *Organization) SetRole(val Role) {
+func (s *Organization) SetRole(val OptRole) {
 	s.Role = val
 }
 
 // SetSuspended sets the value of Suspended.
 func (s *Organization) SetSuspended(val bool) {
 	s.Suspended = val
+}
+
+// SetMembersCreateAgents sets the value of MembersCreateAgents.
+func (s *Organization) SetMembersCreateAgents(val bool) {
+	s.MembersCreateAgents = val
 }
 
 // SetCreatedAt sets the value of CreatedAt.
@@ -3582,6 +4611,7 @@ func (s *Organization) SetCreatedAt(val time.Time) {
 
 func (*Organization) createOrganizationRes() {}
 func (*Organization) getOrganizationRes()    {}
+func (*Organization) updateOrganizationRes() {}
 
 // A page of organizations.
 // Ref: #/components/schemas/OrganizationPage
@@ -3643,11 +4673,15 @@ func (s *Pagination) SetHasNext(val bool) {
 	s.HasNext = val
 }
 
-// What a pending device authorization asks for.
+// What a pending device authorization asks for. A request for an agent secret has `agent_secret` and
+// none of the key's fields.
 // Ref: #/components/schemas/PendingDeviceAuthorization
 type PendingDeviceAuthorization struct {
+	AgentSecret OptDeviceAgentSecret `json:"agent_secret"`
 	// The name the key the device receives will have.
-	APIKeyName string `json:"api_key_name"`
+	APIKeyName OptString `json:"api_key_name"`
+	// The agent the key acts as. Omitted for a key that acts as the account.
+	Agent OptName `json:"agent"`
 	// The one organization the device asks for. Omitted when it asks for every organization of the
 	// account.
 	Organization OptName     `json:"organization"`
@@ -3657,9 +4691,19 @@ type PendingDeviceAuthorization struct {
 	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
+// GetAgentSecret returns the value of AgentSecret.
+func (s *PendingDeviceAuthorization) GetAgentSecret() OptDeviceAgentSecret {
+	return s.AgentSecret
+}
+
 // GetAPIKeyName returns the value of APIKeyName.
-func (s *PendingDeviceAuthorization) GetAPIKeyName() string {
+func (s *PendingDeviceAuthorization) GetAPIKeyName() OptString {
 	return s.APIKeyName
+}
+
+// GetAgent returns the value of Agent.
+func (s *PendingDeviceAuthorization) GetAgent() OptName {
+	return s.Agent
 }
 
 // GetOrganization returns the value of Organization.
@@ -3682,9 +4726,19 @@ func (s *PendingDeviceAuthorization) GetExpiresAt() OptDateTime {
 	return s.ExpiresAt
 }
 
+// SetAgentSecret sets the value of AgentSecret.
+func (s *PendingDeviceAuthorization) SetAgentSecret(val OptDeviceAgentSecret) {
+	s.AgentSecret = val
+}
+
 // SetAPIKeyName sets the value of APIKeyName.
-func (s *PendingDeviceAuthorization) SetAPIKeyName(val string) {
+func (s *PendingDeviceAuthorization) SetAPIKeyName(val OptString) {
 	s.APIKeyName = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *PendingDeviceAuthorization) SetAgent(val OptName) {
+	s.Agent = val
 }
 
 // SetOrganization sets the value of Organization.
@@ -3780,7 +4834,9 @@ func (*PendingOAuthAuthorization) lookupOAuthAuthorizationRes() {}
 // organization. `search` searches an index; `read` reads and lists its documents; `write` stores and
 // deletes documents; `create_index` creates indexes, and needs every index in scope; `manage_index`
 // changes and deletes indexes. `manage_members` adds members, changes their roles and removes them;
-// `manage_organization` deletes the organization. Both need a key scoped to one organization.
+// `manage_organization` deletes the organization; `manage_agents` creates, changes and deletes agents
+// and their managers, and revokes their secrets, but never creates a secret. These three are opt-in
+// and need a key scoped to one organization.
 // Ref: #/components/schemas/Permission
 type Permission string
 
@@ -3792,6 +4848,7 @@ const (
 	PermissionManageIndex        Permission = "manage_index"
 	PermissionManageMembers      Permission = "manage_members"
 	PermissionManageOrganization Permission = "manage_organization"
+	PermissionManageAgents       Permission = "manage_agents"
 )
 
 // AllValues returns all Permission values.
@@ -3804,6 +4861,7 @@ func (Permission) AllValues() []Permission {
 		PermissionManageIndex,
 		PermissionManageMembers,
 		PermissionManageOrganization,
+		PermissionManageAgents,
 	}
 }
 
@@ -3823,6 +4881,8 @@ func (s Permission) MarshalText() ([]byte, error) {
 	case PermissionManageMembers:
 		return []byte(s), nil
 	case PermissionManageOrganization:
+		return []byte(s), nil
+	case PermissionManageAgents:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -3852,6 +4912,9 @@ func (s *Permission) UnmarshalText(data []byte) error {
 		return nil
 	case PermissionManageOrganization:
 		*s = PermissionManageOrganization
+		return nil
+	case PermissionManageAgents:
+		*s = PermissionManageAgents
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -4372,6 +5435,11 @@ type RevokeAPIKeyNoContent struct{}
 
 func (*RevokeAPIKeyNoContent) revokeAPIKeyRes() {}
 
+// RevokeAgentSecretNoContent is response for RevokeAgentSecret operation.
+type RevokeAgentSecretNoContent struct{}
+
+func (*RevokeAgentSecretNoContent) revokeAgentSecretRes() {}
+
 // RevokeConnectionNoContent is response for RevokeConnection operation.
 type RevokeConnectionNoContent struct{}
 
@@ -4885,6 +5953,46 @@ func (*UnauthorizedHeaders) changePasswordRes() {}
 func (*UnauthorizedHeaders) getCurrentUserRes() {}
 func (*UnauthorizedHeaders) loginRes()          {}
 
+// The changes to make to an agent. A field left out is kept.
+// Ref: #/components/schemas/UpdateAgentRequest
+type UpdateAgentRequest struct {
+	Description OptAgentDescription `json:"description"`
+	// What the agent reaches and may do, replacing it as a whole.
+	Ceiling OptAgentCeiling `json:"ceiling"`
+	// Disables or enables the agent.
+	Disabled OptBool `json:"disabled"`
+}
+
+// GetDescription returns the value of Description.
+func (s *UpdateAgentRequest) GetDescription() OptAgentDescription {
+	return s.Description
+}
+
+// GetCeiling returns the value of Ceiling.
+func (s *UpdateAgentRequest) GetCeiling() OptAgentCeiling {
+	return s.Ceiling
+}
+
+// GetDisabled returns the value of Disabled.
+func (s *UpdateAgentRequest) GetDisabled() OptBool {
+	return s.Disabled
+}
+
+// SetDescription sets the value of Description.
+func (s *UpdateAgentRequest) SetDescription(val OptAgentDescription) {
+	s.Description = val
+}
+
+// SetCeiling sets the value of Ceiling.
+func (s *UpdateAgentRequest) SetCeiling(val OptAgentCeiling) {
+	s.Ceiling = val
+}
+
+// SetDisabled sets the value of Disabled.
+func (s *UpdateAgentRequest) SetDisabled(val OptBool) {
+	s.Disabled = val
+}
+
 // The fields to change. A field that is absent is left as it is; at least one must be present.
 // Ref: #/components/schemas/UpdateIndexRequest
 type UpdateIndexRequest struct {
@@ -4978,6 +6086,23 @@ func (s *UpdateMemberRequestRole) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// The settings to change. A field left out is kept.
+// Ref: #/components/schemas/UpdateOrganizationRequest
+type UpdateOrganizationRequest struct {
+	// Whether developers can create agents.
+	MembersCreateAgents OptBool `json:"members_create_agents"`
+}
+
+// GetMembersCreateAgents returns the value of MembersCreateAgents.
+func (s *UpdateOrganizationRequest) GetMembersCreateAgents() OptBool {
+	return s.MembersCreateAgents
+}
+
+// SetMembersCreateAgents sets the value of MembersCreateAgents.
+func (s *UpdateOrganizationRequest) SetMembersCreateAgents(val OptBool) {
+	s.MembersCreateAgents = val
 }
 
 // A user account.
