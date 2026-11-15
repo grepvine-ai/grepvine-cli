@@ -247,3 +247,39 @@ func TestAgentSecretCreateRefused(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+// An API key and an agent token each reach the API as one bearer header, on an
+// operation that accepts both.
+func TestOneAuthorizationHeader(t *testing.T) {
+	for _, env := range []map[string]string{
+		{"GREPVINE_API_KEY": "gvk_key"},
+		{"GREPVINE_AGENT_SECRET": "gvs_secret"},
+	} {
+		var seen []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Path == "/oauth/token" {
+				io.WriteString(w, `{"access_token":"gvt_1","token_type":"Bearer","expires_in":900}`)
+				return
+			}
+			seen = r.Header.Values("Authorization")
+			io.WriteString(w, `{"results":[],"pagination":{"next_page_id":"","has_next":false}}`)
+		}))
+		a, _, _ := testApp(t, server.URL+"/v1")
+		env["GREPVINE_API_ENDPOINT"] = server.URL + "/v1"
+		a.getenv = func(name string) string { return env[name] }
+		client, _, _, err := a.client(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = client.ListIndexes(t.Context(), httpapi.ListIndexesParams{Organization: "acme"})
+		server.Close()
+		want := "Bearer gvk_key"
+		if env["GREPVINE_AGENT_SECRET"] != "" {
+			want = "Bearer gvt_1"
+		}
+		if err != nil || len(seen) != 1 || seen[0] != want {
+			t.Fatalf("%v: Authorization = %q, %v; want one %q", env, seen, err, want)
+		}
+	}
+}
