@@ -2788,7 +2788,6 @@
       "Error": {
         "description": "A failed request. `code` says what went wrong and is stable; branch on it, not on the message.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "code",
           "reason",
@@ -2819,7 +2818,6 @@
       "ErrorDetail": {
         "description": "One piece of information about an error. `type` names what it is and which `metadata` keys it carries;\nclients ignore types they do not know. `missing_permission`: the API key lacks the permission\n`metadata.permission` names. `agent_missing_permission`: the agent lacks the permission\n`metadata.permission` names; one of its managers can grant it.\n",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "type",
           "metadata"
@@ -2840,7 +2838,6 @@
       },
       "Pagination": {
         "type": "object",
-        "additionalProperties": false,
         "description": "A page may hold fewer results than the requested amount, possibly none, while has_next is true; a query page stops at the server's soft time budget and next_page_id resumes exactly after the last candidate it examined. Clients continue while has_next is true.",
         "required": [
           "next_page_id",
@@ -2870,7 +2867,6 @@
       "User": {
         "description": "A user account.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -2956,7 +2952,6 @@
       "AuthOptions": {
         "description": "How accounts are created on this service.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "signup"
         ],
@@ -2995,7 +2990,6 @@
       "InvitationPreview": {
         "description": "What a pending invitation offers.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "email",
           "expires_at"
@@ -3023,7 +3017,6 @@
       "UsernameAvailability": {
         "description": "Whether a username can be registered.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "name",
           "available"
@@ -3120,7 +3113,6 @@
       "PendingDeviceAuthorization": {
         "description": "What a pending device authorization asks for. A request for an agent secret has `agent_secret` and none of the key's fields.",
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "agent_secret": {
             "$ref": "#/components/schemas/DeviceAgentSecret"
@@ -3176,7 +3168,6 @@
       "DeviceToken": {
         "description": "What an approved device receives, once: an API key, with `key` and the key's fields, or a new agent secret in `agent_secret`. Exactly one of `key` and `agent_secret` is set.",
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "id": {
             "description": "The key's unique ID.",
@@ -3336,7 +3327,6 @@
       "PendingOAuthAuthorization": {
         "description": "Who an app signing in is and what it asks for. The name is the app's own and is not verified; the host is where its metadata document is served.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "client_name",
           "client_host",
@@ -3423,7 +3413,6 @@
       "OAuthRedirect": {
         "description": "Where to send the browser to answer the app.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "redirect_to"
         ],
@@ -3438,7 +3427,6 @@
       "Connection": {
         "description": "An app the account connected, and what it reaches and may do.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "client_name",
@@ -3494,7 +3482,6 @@
       "ConnectionPage": {
         "description": "The account's connections.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "connections"
         ],
@@ -3510,7 +3497,6 @@
       "DeviceAuthorization": {
         "description": "A pending device sign-in: the codes to show the user and to poll with.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "device_code",
           "user_code",
@@ -3650,7 +3636,6 @@
       "APIKey": {
         "description": "An API key, without its secret.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -3736,7 +3721,6 @@
       "APIKeyPage": {
         "description": "A page of API keys.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "pagination"
@@ -3758,7 +3742,6 @@
       "Organization": {
         "description": "An organization, as seen by one of its members.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -3798,7 +3781,6 @@
       "OrganizationPage": {
         "description": "A page of organizations.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "pagination"
@@ -3850,7 +3832,6 @@
       "Agent": {
         "description": "An agent of an organization: what it reaches and may do, and who manages it.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "name",
@@ -3920,7 +3901,6 @@
       "AgentPage": {
         "description": "An organization's agents.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "agents"
         ],
@@ -3993,7 +3973,6 @@
       "AgentSecret": {
         "description": "A secret an agent signs in with, without the secret itself.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "prefix",
@@ -4031,7 +4010,6 @@
       "AgentSecretPage": {
         "description": "An agent's active secrets.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "secrets"
         ],
@@ -4089,7 +4067,6 @@
       "Member": {
         "description": "A member of an organization.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "user",
           "role",
@@ -4119,7 +4096,6 @@
       "MemberPage": {
         "description": "A page of organization members.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "pagination"
@@ -4209,7 +4185,6 @@
       "IndexSummary": {
         "description": "An index as a listing returns it.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "id",
           "organization",
@@ -4282,7 +4257,6 @@
           },
           {
             "type": "object",
-            "additionalProperties": false,
             "required": [
               "permissions"
             ],
@@ -4308,7 +4282,6 @@
       "IndexPage": {
         "description": "A page of indexes.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "pagination"
@@ -4663,7 +4636,6 @@
       "MutationResult": {
         "description": "The outcome of one document. A stored or deleted document has a revision; a document a batch did not change has an error instead.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "key"
         ],
@@ -4685,7 +4657,6 @@
       "MutationBatchResult": {
         "description": "The outcome of each document of a batch.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results"
         ],
@@ -4702,7 +4673,6 @@
       "DocumentSummary": {
         "description": "A document as a listing returns it, without its content.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "key",
           "revision",
@@ -4743,7 +4713,6 @@
       "DocumentPage": {
         "description": "A page of a document listing.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "common_prefixes",
@@ -4831,7 +4800,6 @@
       "Match": {
         "description": "One match, as a byte range of the document.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "offset",
           "length"
@@ -4851,7 +4819,6 @@
       },
       "QueryResult": {
         "type": "object",
-        "additionalProperties": false,
         "description": "One match, or several matches that share lines, together with the lines it covers. A result covers one line unless the query set multiline and a match spans lines.",
         "required": [
           "key",
@@ -4945,7 +4912,6 @@
       "ContextLine": {
         "type": "object",
         "description": "One line near a result. Text is returned whole up to 64 KiB, and up to 64 KiB away from the result; a line that extends past either bound is returned in part and marked truncated.",
-        "additionalProperties": false,
         "required": [
           "line_number",
           "text",
@@ -4971,7 +4937,6 @@
       "QueryPage": {
         "description": "A page of search results.",
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "results",
           "pagination"
