@@ -852,6 +852,17 @@
         "tags": [
           "Organizations"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": []
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Amount"
@@ -925,6 +936,17 @@
         "operationId": "getOrganization",
         "tags": [
           "Organizations"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": []
+          }
         ],
         "parameters": [
           {
@@ -1651,6 +1673,17 @@
         "tags": [
           "Indexes"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": []
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
@@ -1687,6 +1720,19 @@
         "operationId": "createIndex",
         "tags": [
           "Indexes"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "create_index"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -1734,6 +1780,17 @@
         "tags": [
           "Indexes"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": []
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
@@ -1767,6 +1824,19 @@
         "operationId": "updateIndex",
         "tags": [
           "Indexes"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "manage_index"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -1815,6 +1885,19 @@
         "tags": [
           "Indexes"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "manage_index"
+            ]
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
@@ -1846,6 +1929,19 @@
         "operationId": "listDocuments",
         "tags": [
           "Objects"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "read"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -1889,6 +1985,19 @@
         "operationId": "putDocument",
         "tags": [
           "Objects"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "write"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -1955,6 +2064,19 @@
         "operationId": "getDocument",
         "tags": [
           "Objects"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "read"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -2057,6 +2179,19 @@
         "tags": [
           "Objects"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "write"
+            ]
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
@@ -2107,6 +2242,19 @@
         "operationId": "putObjects",
         "tags": [
           "Objects"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "write"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -2161,6 +2309,19 @@
         "tags": [
           "Objects"
         ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "write"
+            ]
+          }
+        ],
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
@@ -2209,6 +2370,19 @@
         "operationId": "queryIndex",
         "tags": [
           "Search"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          },
+          {
+            "agentToken": [
+              "search"
+            ]
+          }
         ],
         "parameters": [
           {
@@ -2322,6 +2496,22 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "GrepvineAPIKey"
+      },
+      "agentToken": {
+        "type": "oauth2",
+        "description": "An agent working alone, such as a CI job, exchanges its agent secret (`gvs_\u2026`) for an agent token\n(`gvt_\u2026`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API\nrequests.\n\nThe token URL is at the service root, not under `/v1`. Send a `POST` with an\n`application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:\n\n- `grant_type`: `client_credentials`.\n- `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the\n  agent's `id` as the user name and the secret as the password, but not both.\n- `scope` (optional): space-separated permissions, to get a token narrower than the agent's\n  permissions.\n- `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.\n\nA successful answer is `{\"access_token\": \"gvt_\u2026\", \"token_type\": \"Bearer\", \"expires_in\": 900,\n\"scope\": \"search read\"}`. There is no refresh token: exchange the secret again before the token\nexpires.\n\nAn error answers `{\"error\": \"\u2026\", \"error_description\": \"\u2026\"}`: 401 `invalid_client` for a secret that is\nunknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope beyond the\nagent's permissions; 400 `invalid_request` for a missing or malformed parameter. Exchanging too often\nis refused with 429 and a `Retry-After` header that says how many seconds to wait.\n\nAn agent working alone sees only its own organization, and only the operations that list this scheme.\n",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://api.grepvine.ai/oauth/token",
+            "scopes": {
+              "search": "Search indexes.",
+              "read": "Read and list documents.",
+              "write": "Store and delete documents.",
+              "create_index": "Create indexes.",
+              "manage_index": "Change and delete indexes."
+            }
+          }
+        }
       }
     },
     "parameters": {
