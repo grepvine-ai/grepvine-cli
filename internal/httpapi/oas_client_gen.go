@@ -2037,12 +2037,24 @@ func (c *Client) sendCreateIndex(ctx context.Context, request *CreateIndexReques
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, CreateIndexOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -2600,12 +2612,24 @@ func (c *Client) sendDeleteDocument(ctx context.Context, params DeleteDocumentPa
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, DeleteDocumentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -2786,12 +2810,24 @@ func (c *Client) sendDeleteIndex(ctx context.Context, params DeleteIndexParams) 
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, DeleteIndexOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -2988,12 +3024,24 @@ func (c *Client) sendDeleteObjects(ctx context.Context, request *DeleteObjectsRe
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, DeleteObjectsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -4172,12 +4220,24 @@ func (c *Client) sendGetDocument(ctx context.Context, params GetDocumentParams) 
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, GetDocumentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -4341,12 +4401,24 @@ func (c *Client) sendGetIndex(ctx context.Context, params GetIndexParams) (res G
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, GetIndexOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -4488,12 +4560,24 @@ func (c *Client) sendGetOrganization(ctx context.Context, params GetOrganization
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, GetOrganizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -5441,12 +5525,24 @@ func (c *Client) sendListDocuments(ctx context.Context, params ListDocumentsPara
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, ListDocumentsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -5643,12 +5739,24 @@ func (c *Client) sendListIndexes(ctx context.Context, params ListIndexesParams) 
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, ListIndexesOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -5992,12 +6100,24 @@ func (c *Client) sendListOrganizations(ctx context.Context, params ListOrganizat
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, ListOrganizationsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -6687,12 +6807,24 @@ func (c *Client) sendPutDocument(ctx context.Context, request *PutDocumentFormMu
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, PutDocumentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -6893,12 +7025,24 @@ func (c *Client) sendPutObjects(ctx context.Context, request PutObjectsReq, para
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, PutObjectsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -7108,12 +7252,24 @@ func (c *Client) sendQueryIndex(ctx context.Context, request *QueryRequest, para
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, QueryIndexOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {
@@ -8754,12 +8910,24 @@ func (c *Client) sendUpdateIndex(ctx context.Context, request *UpdateIndexReques
 				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
 			}
 		}
+		{
+			stage = "Security:AgentToken"
+			switch err := c.securityAgentToken(ctx, UpdateIndexOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 2
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AgentToken\"")
+			}
+		}
 
 		if ok := func() bool {
 		nextRequirement:
 			for _, requirement := range []bitset{
 				{0b00000001},
 				{0b00000010},
+				{0b00000100},
 			} {
 				for i, mask := range requirement {
 					if satisfied[i]&mask != mask {

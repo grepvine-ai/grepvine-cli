@@ -36,6 +36,19 @@ func (c credentials) ApiKeyAuth(ctx context.Context, _ httpapi.OperationName) (h
 	return httpapi.ApiKeyAuth{Token: c.key}, nil
 }
 
+// AgentToken sends the agent token on operations an agent working alone may
+// call. With an API key the operation is authenticated by ApiKeyAuth alone.
+func (c credentials) AgentToken(ctx context.Context, _ httpapi.OperationName) (httpapi.AgentToken, error) {
+	if c.tokens == nil {
+		return httpapi.AgentToken{}, ogenerrors.ErrSkipClientSecurity
+	}
+	token, err := c.tokens.current(ctx)
+	if err != nil {
+		return httpapi.AgentToken{}, err
+	}
+	return httpapi.AgentToken{Token: token}, nil
+}
+
 func (credentials) CookieAuth(context.Context, httpapi.OperationName) (httpapi.CookieAuth, error) {
 	return httpapi.CookieAuth{}, ogenerrors.ErrSkipClientSecurity
 }

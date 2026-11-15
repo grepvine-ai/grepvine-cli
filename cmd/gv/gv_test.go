@@ -1140,6 +1140,11 @@ func (s *fakeService) HandleApiKeyAuth(ctx context.Context, _ httpapi.OperationN
 	return ctx, nil
 }
 
+// HandleAgentToken passes: HandleApiKeyAuth checks the same bearer token.
+func (*fakeService) HandleAgentToken(ctx context.Context, _ httpapi.OperationName, _ httpapi.AgentToken) (context.Context, error) {
+	return ctx, ogenerrors.ErrSkipServerSecurity
+}
+
 func (*fakeService) HandleCookieAuth(ctx context.Context, _ httpapi.OperationName, _ httpapi.CookieAuth) (context.Context, error) {
 	return ctx, ogenerrors.ErrSkipServerSecurity
 }

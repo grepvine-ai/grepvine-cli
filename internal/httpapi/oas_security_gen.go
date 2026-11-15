@@ -13,6 +13,34 @@ import (
 
 // SecurityHandler is handler for security parameters.
 type SecurityHandler interface {
+	// HandleAgentToken handles agentToken security.
+	// An agent working alone, such as a CI job, exchanges its agent secret (`gvs_…`) for an agent token
+	// (`gvt_…`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API
+	// requests.
+	//
+	// The token URL is at the service root, not under `/v1`. Send a `POST` with an
+	// `application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:
+	//
+	//  - `grant_type`: `client_credentials`.
+	//  - `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the
+	//    agent's `id` as the user name and the secret as the password, but not both.
+	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
+	//    permissions.
+	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.
+	//
+	// A successful answer is `{"access_token": "gvt_…", "token_type": "Bearer", "expires_in": 900,
+	// "scope": "search read"}`. There is no refresh token: exchange the secret again before the token
+	// expires.
+	//
+	// An error answers `{"error": "…", "error_description": "…"}`: 401 `invalid_client` for a secret
+	// that is unknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope
+	// beyond the agent's permissions; 400 `invalid_request` for a missing or malformed parameter.
+	// Exchanging too often is refused with 429 and a `Retry-After` header that says how many seconds to
+	// wait.
+	//
+	// An agent working alone sees only its own organization, and only the operations that list this
+	// scheme.
+	HandleAgentToken(ctx context.Context, operationName OperationName, t AgentToken) (context.Context, error)
 	// HandleApiKeyAuth handles apiKeyAuth security.
 	HandleApiKeyAuth(ctx context.Context, operationName OperationName, t ApiKeyAuth) (context.Context, error)
 	// HandleCookieAuth handles cookieAuth security.
@@ -32,6 +60,66 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 		return value, true
 	}
 	return "", false
+}
+
+// oauth2ScopesAgentToken is a private map storing OAuth2 scopes per operation.
+var oauth2ScopesAgentToken = map[string][]string{
+	CreateIndexOperation: []string{
+		"create_index",
+	},
+	DeleteDocumentOperation: []string{
+		"write",
+	},
+	DeleteIndexOperation: []string{
+		"manage_index",
+	},
+	DeleteObjectsOperation: []string{
+		"write",
+	},
+	GetDocumentOperation: []string{
+		"read",
+	},
+	GetIndexOperation:        []string{},
+	GetOrganizationOperation: []string{},
+	ListDocumentsOperation: []string{
+		"read",
+	},
+	ListIndexesOperation:       []string{},
+	ListOrganizationsOperation: []string{},
+	PutDocumentOperation: []string{
+		"write",
+	},
+	PutObjectsOperation: []string{
+		"write",
+	},
+	QueryIndexOperation: []string{
+		"search",
+	},
+	UpdateIndexOperation: []string{
+		"manage_index",
+	},
+}
+
+// GetOAuth2ScopesForAgentToken returns the required OAuth2 scopes for the given operation.
+//
+// This is useful for token exchange scenarios where you need to know which scopes
+// to request when obtaining a token for a downstream API call.
+//
+// Example:
+//
+//	requiredScopes := GetOAuth2ScopesForAgentToken(AddPetOperation)
+//	token := exchangeTokenWithScopes(requiredScopes, "https://api.example.com")
+//
+// Returns nil if the operation has no scope requirements or if the operation is unknown.
+func GetOAuth2ScopesForAgentToken(operation string) []string {
+	scopes, ok := oauth2ScopesAgentToken[operation]
+	if !ok {
+		return nil
+	}
+	// Return a copy to prevent external modification
+	result := make([]string, len(scopes))
+	copy(result, scopes)
+	return result
 }
 
 // operationRolesApiKeyAuth is a private map storing roles per operation.
@@ -176,6 +264,23 @@ func GetRolesForCookieAuth(operation string) []string {
 	return result
 }
 
+func (s *Server) securityAgentToken(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
+	var t AgentToken
+	token, ok := findAuthorization(req.Header, "Bearer")
+	if !ok {
+		return ctx, false, nil
+	}
+	t.Token = token
+	t.Scopes = oauth2ScopesAgentToken[operationName]
+	rctx, err := s.sec.HandleAgentToken(ctx, operationName, t)
+	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
+		return nil, false, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+	return rctx, true, err
+}
+
 func (s *Server) securityApiKeyAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
 	var t ApiKeyAuth
 	token, ok := findAuthorization(req.Header, "Bearer")
@@ -218,12 +323,48 @@ func (s *Server) securityCookieAuth(ctx context.Context, operationName Operation
 
 // SecuritySource is provider of security values (tokens, passwords, etc.).
 type SecuritySource interface {
+	// AgentToken provides agentToken security value.
+	// An agent working alone, such as a CI job, exchanges its agent secret (`gvs_…`) for an agent token
+	// (`gvt_…`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API
+	// requests.
+	//
+	// The token URL is at the service root, not under `/v1`. Send a `POST` with an
+	// `application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:
+	//
+	//  - `grant_type`: `client_credentials`.
+	//  - `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the
+	//    agent's `id` as the user name and the secret as the password, but not both.
+	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
+	//    permissions.
+	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.
+	//
+	// A successful answer is `{"access_token": "gvt_…", "token_type": "Bearer", "expires_in": 900,
+	// "scope": "search read"}`. There is no refresh token: exchange the secret again before the token
+	// expires.
+	//
+	// An error answers `{"error": "…", "error_description": "…"}`: 401 `invalid_client` for a secret
+	// that is unknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope
+	// beyond the agent's permissions; 400 `invalid_request` for a missing or malformed parameter.
+	// Exchanging too often is refused with 429 and a `Retry-After` header that says how many seconds to
+	// wait.
+	//
+	// An agent working alone sees only its own organization, and only the operations that list this
+	// scheme.
+	AgentToken(ctx context.Context, operationName OperationName) (AgentToken, error)
 	// ApiKeyAuth provides apiKeyAuth security value.
 	ApiKeyAuth(ctx context.Context, operationName OperationName) (ApiKeyAuth, error)
 	// CookieAuth provides cookieAuth security value.
 	CookieAuth(ctx context.Context, operationName OperationName) (CookieAuth, error)
 }
 
+func (s *Client) securityAgentToken(ctx context.Context, operationName OperationName, req *http.Request) error {
+	t, err := s.sec.AgentToken(ctx, operationName)
+	if err != nil {
+		return errors.Wrap(err, "security source \"AgentToken\"")
+	}
+	req.Header.Set("Authorization", "Bearer "+t.Token)
+	return nil
+}
 func (s *Client) securityApiKeyAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
 	t, err := s.sec.ApiKeyAuth(ctx, operationName)
 	if err != nil {

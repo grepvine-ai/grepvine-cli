@@ -776,6 +776,31 @@ func (s *AgentSecretPage) SetSecrets(val []AgentSecret) {
 
 func (*AgentSecretPage) listAgentSecretsRes() {}
 
+type AgentToken struct {
+	Token  string
+	Scopes []string
+}
+
+// GetToken returns the value of Token.
+func (s *AgentToken) GetToken() string {
+	return s.Token
+}
+
+// GetScopes returns the value of Scopes.
+func (s *AgentToken) GetScopes() []string {
+	return s.Scopes
+}
+
+// SetToken sets the value of Token.
+func (s *AgentToken) SetToken(val string) {
+	s.Token = val
+}
+
+// SetScopes sets the value of Scopes.
+func (s *AgentToken) SetScopes(val []string) {
+	s.Scopes = val
+}
+
 type ApiKeyAuth struct {
 	Token string
 	Roles []string
