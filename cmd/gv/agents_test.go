@@ -93,7 +93,7 @@ func TestAgentCommands(t *testing.T) {
 func TestAgentMissingPermissionHint(t *testing.T) {
 	err := responseError(httpapi.Error{Code: "forbidden", Error: "this agent does not have the write permission; ask one of its managers",
 		Details: []httpapi.ErrorDetail{{Type: "agent_missing_permission", Metadata: httpapi.ErrorDetailMetadata{"permission": "write"}}}}, httpapi.OptString{})
-	if !strings.Contains(err.Error(), "ask one of its managers to give it") || strings.Contains(err.Error(), "gv login") {
+	if !strings.Contains(err.Error(), "ask one of its managers") || strings.Contains(err.Error(), "gv login") {
 		t.Fatalf("error = %q", err)
 	}
 }

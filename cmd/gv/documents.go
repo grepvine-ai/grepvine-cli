@@ -495,15 +495,12 @@ func responseError(response httpapi.Error, requestID httpapi.OptString) error {
 	if id, _ := requestID.Get(); id != "" {
 		message = fmt.Sprintf("%s (%s; request %s)", response.Error, response.Code, id)
 	}
+	// Only a key's missing permission gets the sign-in hint. When an agent
+	// lacks one (agent_missing_permission), signing in again cannot help, and
+	// the message already says to ask one of its managers.
 	for _, detail := range response.Details {
-		permission := detail.Metadata["permission"]
-		switch {
-		case permission == "":
-		case detail.Type == "missing_permission":
+		if permission := detail.Metadata["permission"]; detail.Type == "missing_permission" && permission != "" {
 			message += "\n" + permissionHint(permission)
-		case detail.Type == "agent_missing_permission":
-			// Signing in again cannot help: the agent itself lacks it.
-			message += fmt.Sprintf("\nThe agent does not have the %s permission; ask one of its managers to give it.", permission)
 		}
 	}
 	return errors.New(message)
