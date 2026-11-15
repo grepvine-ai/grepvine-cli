@@ -15,6 +15,304 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// AddAgentManagerParams is parameters of addAgentManager operation.
+type AddAgentManagerParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// The member's account name. Any spelling that differs only in case refers to the same account.
+	User Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackAddAgentManagerParams(packed middleware.Parameters) (params AddAgentManagerParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "user",
+			In:   "path",
+		}
+		params.User = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeAddAgentManagerParams(args [3]string, argsEscaped bool, r *http.Request) (params AddAgentManagerParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: user.
+	if err := func() error {
+		param := args[2]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[2])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "user",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotUserVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotUserVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.User = Name(paramsDotUserVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.User.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "user",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // AddOrganizationMemberParams is parameters of addOrganizationMember operation.
 type AddOrganizationMemberParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
@@ -534,6 +832,394 @@ func decodeCreateAPIKeyParams(args [0]string, argsEscaped bool, r *http.Request)
 	return params, nil
 }
 
+// CreateAgentParams is parameters of createAgent operation.
+type CreateAgentParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackCreateAgentParams(packed middleware.Parameters) (params CreateAgentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeCreateAgentParams(args [1]string, argsEscaped bool, r *http.Request) (params CreateAgentParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// CreateAgentSecretParams is parameters of createAgentSecret operation.
+type CreateAgentSecretParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackCreateAgentSecretParams(packed middleware.Parameters) (params CreateAgentSecretParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeCreateAgentSecretParams(args [2]string, argsEscaped bool, r *http.Request) (params CreateAgentSecretParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // CreateIndexParams is parameters of createIndex operation.
 type CreateIndexParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
@@ -714,6 +1400,235 @@ func unpackCreateOrganizationParams(packed middleware.Parameters) (params Create
 
 func decodeCreateOrganizationParams(args [0]string, argsEscaped bool, r *http.Request) (params CreateOrganizationParams, _ error) {
 	h := uri.NewHeaderDecoder(r.Header)
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// DeleteAgentParams is parameters of deleteAgent operation.
+type DeleteAgentParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackDeleteAgentParams(packed middleware.Parameters) (params DeleteAgentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeDeleteAgentParams(args [2]string, argsEscaped bool, r *http.Request) (params DeleteAgentParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
 	// Decode header: X-Csrf-Token.
 	if err := func() error {
 		cfg := uri.HeaderParameterDecodingConfig{
@@ -2090,6 +3005,157 @@ func decodeDenyOAuthAuthorizationParams(args [0]string, argsEscaped bool, r *htt
 	return params, nil
 }
 
+// GetAgentParams is parameters of getAgent operation.
+type GetAgentParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+}
+
+func unpackGetAgentParams(packed middleware.Parameters) (params GetAgentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	return params
+}
+
+func decodeGetAgentParams(args [2]string, argsEscaped bool, r *http.Request) (params GetAgentParams, _ error) {
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetDeviceAuthorizationParams is parameters of getDeviceAuthorization operation.
 type GetDeviceAuthorizationParams struct {
 	// Required for a state change that uses cookie authentication.
@@ -2968,6 +4034,238 @@ func decodeListAPIKeysParams(args [0]string, argsEscaped bool, r *http.Request) 
 		return params, &ogenerrors.DecodeParamError{
 			Name: "page",
 			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListAgentSecretsParams is parameters of listAgentSecrets operation.
+type ListAgentSecretsParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+}
+
+func unpackListAgentSecretsParams(packed middleware.Parameters) (params ListAgentSecretsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	return params
+}
+
+func decodeListAgentSecretsParams(args [2]string, argsEscaped bool, r *http.Request) (params ListAgentSecretsParams, _ error) {
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListAgentsParams is parameters of listAgents operation.
+type ListAgentsParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+}
+
+func unpackListAgentsParams(packed middleware.Parameters) (params ListAgentsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	return params
+}
+
+func decodeListAgentsParams(args [1]string, argsEscaped bool, r *http.Request) (params ListAgentsParams, _ error) {
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
 			Err:  err,
 		}
 	}
@@ -5410,6 +6708,304 @@ func decodeQueryIndexParams(args [2]string, argsEscaped bool, r *http.Request) (
 	return params, nil
 }
 
+// RemoveAgentManagerParams is parameters of removeAgentManager operation.
+type RemoveAgentManagerParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// The member's account name. Any spelling that differs only in case refers to the same account.
+	User Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackRemoveAgentManagerParams(packed middleware.Parameters) (params RemoveAgentManagerParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "user",
+			In:   "path",
+		}
+		params.User = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeRemoveAgentManagerParams(args [3]string, argsEscaped bool, r *http.Request) (params RemoveAgentManagerParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: user.
+	if err := func() error {
+		param := args[2]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[2])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "user",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotUserVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotUserVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.User = Name(paramsDotUserVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.User.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "user",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // RemoveOrganizationMemberParams is parameters of removeOrganizationMember operation.
 type RemoveOrganizationMemberParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
@@ -5709,6 +7305,289 @@ func decodeRevokeAPIKeyParams(args [1]string, argsEscaped bool, r *http.Request)
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "api_key_id",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// RevokeAgentSecretParams is parameters of revokeAgentSecret operation.
+type RevokeAgentSecretParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// The ID of the secret, as the listing returns it.
+	SecretID uuid.UUID
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackRevokeAgentSecretParams(packed middleware.Parameters) (params RevokeAgentSecretParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "secret_id",
+			In:   "path",
+		}
+		params.SecretID = packed[key].(uuid.UUID)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeRevokeAgentSecretParams(args [3]string, argsEscaped bool, r *http.Request) (params RevokeAgentSecretParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: secret_id.
+	if err := func() error {
+		param := args[2]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[2])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "secret_id",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToUUID(val)
+				if err != nil {
+					return err
+				}
+
+				params.SecretID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "secret_id",
 			In:   "path",
 			Err:  err,
 		}
@@ -6085,6 +7964,235 @@ func decodeTransferOrganizationOwnershipParams(args [1]string, argsEscaped bool,
 	return params, nil
 }
 
+// UpdateAgentParams is parameters of updateAgent operation.
+type UpdateAgentParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The agent's name within the organization. Any spelling that differs only in case refers to the same
+	// agent.
+	Agent Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackUpdateAgentParams(packed middleware.Parameters) (params UpdateAgentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "agent",
+			In:   "path",
+		}
+		params.Agent = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeUpdateAgentParams(args [2]string, argsEscaped bool, r *http.Request) (params UpdateAgentParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: agent.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "agent",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotAgentVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAgentVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Agent = Name(paramsDotAgentVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Agent.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "agent",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // UpdateIndexParams is parameters of updateIndex operation.
 type UpdateIndexParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
@@ -6241,6 +8349,165 @@ func decodeUpdateIndexParams(args [2]string, argsEscaped bool, r *http.Request) 
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "index",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode header: X-Csrf-Token.
+	if err := func() error {
+		cfg := uri.HeaderParameterDecodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.HasParam(cfg); err == nil {
+			if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotXCsrfTokenVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotXCsrfTokenVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.XCsrfToken.SetTo(paramsDotXCsrfTokenVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.XCsrfToken.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     16,
+							MinLengthSet:  true,
+							MaxLength:     256,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "X-Csrf-Token",
+			In:   "header",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UpdateOrganizationParams is parameters of updateOrganization operation.
+type UpdateOrganizationParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// Required for a state change that uses cookie authentication.
+	XCsrfToken OptString `json:",omitempty,omitzero"`
+}
+
+func unpackUpdateOrganizationParams(packed middleware.Parameters) (params UpdateOrganizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "X-Csrf-Token",
+			In:   "header",
+		}
+		if v, ok := packed[key]; ok {
+			params.XCsrfToken = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeUpdateOrganizationParams(args [1]string, argsEscaped bool, r *http.Request) (params UpdateOrganizationParams, _ error) {
+	h := uri.NewHeaderDecoder(r.Header)
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
 			In:   "path",
 			Err:  err,
 		}

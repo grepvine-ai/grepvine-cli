@@ -29,6 +29,14 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AddAgentManager invokes addAgentManager operation.
+	//
+	// Makes a member of the organization a manager of the agent. Its managers, owners and admins can add
+	// one. A 404 means the account is not an active member; a 409, that their role does not allow
+	// everything the agent may do.
+	//
+	// PUT /organizations/{organization}/agents/{agent}/managers/{user}
+	AddAgentManager(ctx context.Context, params AddAgentManagerParams) (AddAgentManagerRes, error)
 	// AddOrganizationMember invokes addOrganizationMember operation.
 	//
 	// Adds an existing account to the organization with the admin, developer or reader role. Requires the
@@ -41,7 +49,9 @@ type Invoker interface {
 	// Approves a pending device authorization, identified by the code the device shows. The device's next
 	// poll receives a new API key with the name it asked for. Without a scope it grants what the device
 	// asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
-	// approving account can. A code that is unknown, already decided or expired is not found. Only a
+	// approving account can. A request for an agent secret is approved as asked, without a scope, by a
+	// manager of the agent or an account that manages the organization's agents; the device's next poll
+	// receives the new secret. A code that is unknown, already decided or expired is not found. Only a
 	// signed-in session can approve.
 	//
 	// POST /device/authorizations/approve
@@ -82,6 +92,23 @@ type Invoker interface {
 	//
 	// POST /api-keys
 	CreateAPIKey(ctx context.Context, request *CreateAPIKeyRequest, params CreateAPIKeyParams) (*APIKeyCreated, error)
+	// CreateAgent invokes createAgent operation.
+	//
+	// Creates an agent, with the creator as its first manager. Owners and admins can create agents, and
+	// developers too when the organization allows it. The agent's permissions must be within your own, and
+	// within the key's when a key creates it; a key needs `manage_agents`. A 409 means the organization
+	// already has an agent of that name, in any case.
+	//
+	// POST /organizations/{organization}/agents
+	CreateAgent(ctx context.Context, request *CreateAgentRequest, params CreateAgentParams) (CreateAgentRes, error)
+	// CreateAgentSecret invokes createAgentSecret operation.
+	//
+	// Creates a secret the agent signs in with. An agent has at most two, so one can replace the other; a
+	// 409 asks you to remove one first. Its managers, owners and admins can create one, and only from a
+	// signed-in session. The response is the only time the secret is shown, so store it securely.
+	//
+	// POST /organizations/{organization}/agents/{agent}/secrets
+	CreateAgentSecret(ctx context.Context, request *CreateAgentSecretRequest, params CreateAgentSecretParams) (CreateAgentSecretRes, error)
 	// CreateIndex invokes createIndex operation.
 	//
 	// Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the
@@ -97,6 +124,13 @@ type Invoker interface {
 	//
 	// POST /organizations
 	CreateOrganization(ctx context.Context, request *CreateOrganizationRequest, params CreateOrganizationParams) (CreateOrganizationRes, error)
+	// DeleteAgent invokes deleteAgent operation.
+	//
+	// Deletes an agent with its secrets and every credential it has. Requires the owner or admin role. It
+	// can't be undone.
+	//
+	// DELETE /organizations/{organization}/agents/{agent}
+	DeleteAgent(ctx context.Context, params DeleteAgentParams) (DeleteAgentRes, error)
 	// DeleteDocument invokes deleteDocument operation.
 	//
 	// Deletes one document. Send If-Match with a revision to delete it only if it still has that revision.
@@ -142,6 +176,12 @@ type Invoker interface {
 	//
 	// POST /oauth/authorizations/deny
 	DenyOAuthAuthorization(ctx context.Context, request *OAuthDenialRequest, params DenyOAuthAuthorizationParams) (DenyOAuthAuthorizationRes, error)
+	// GetAgent invokes getAgent operation.
+	//
+	// Returns one of the organization's agents. Any member can read it; an agent cannot.
+	//
+	// GET /organizations/{organization}/agents/{agent}
+	GetAgent(ctx context.Context, params GetAgentParams) (GetAgentRes, error)
 	// GetAuthOptions invokes getAuthOptions operation.
 	//
 	// How accounts are created on this service. The console reads it to decide whether to offer
@@ -152,7 +192,8 @@ type Invoker interface {
 	// GetCurrentUser invokes getCurrentUser operation.
 	//
 	// Returns the account the request authenticates as, whether with a session or an API key. A session
-	// request also receives its CSRF token in X-Csrf-Token.
+	// request also receives its CSRF token in X-Csrf-Token. An agent working on its own has no account and
+	// is refused with 403.
 	//
 	// GET /auth/me
 	GetCurrentUser(ctx context.Context) (GetCurrentUserRes, error)
@@ -199,6 +240,19 @@ type Invoker interface {
 	//
 	// GET /api-keys
 	ListAPIKeys(ctx context.Context, params ListAPIKeysParams) (*APIKeyPage, error)
+	// ListAgentSecrets invokes listAgentSecrets operation.
+	//
+	// Lists an agent's active secrets, oldest first. The secret itself is never returned again; `prefix`
+	// tells secrets apart. Its managers, owners and admins can list them.
+	//
+	// GET /organizations/{organization}/agents/{agent}/secrets
+	ListAgentSecrets(ctx context.Context, params ListAgentSecretsParams) (ListAgentSecretsRes, error)
+	// ListAgents invokes listAgents operation.
+	//
+	// Lists an organization's agents, ordered by name. Any member can list them; an agent cannot.
+	//
+	// GET /organizations/{organization}/agents
+	ListAgents(ctx context.Context, params ListAgentsParams) (ListAgentsRes, error)
 	// ListConnections invokes listConnections operation.
 	//
 	// Lists the apps you have connected that are still in use: revoked and ended connections are left out.
@@ -260,10 +314,11 @@ type Invoker interface {
 	LookupOAuthAuthorization(ctx context.Context, request *OAuthAuthorizationRequest, params LookupOAuthAuthorizationParams) (LookupOAuthAuthorizationRes, error)
 	// PollDeviceToken invokes pollDeviceToken operation.
 	//
-	// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
-	// 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with
-	// `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`,
-	// and an unknown, expired or already used code with `expired_token`.
+	// Exchanges an approved device code for an API key, or for the agent secret it asked for, once. Until
+	// the user decides, a poll fails with 400 and code `authorization_pending`: poll again after
+	// `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A
+	// denied authorization fails with `access_denied`, as does a request for a secret of an agent that
+	// already has two, and an unknown, expired or already used code with `expired_token`.
 	//
 	// POST /device/token
 	PollDeviceToken(ctx context.Context, request *DeviceTokenRequest) (PollDeviceTokenRes, error)
@@ -310,6 +365,12 @@ type Invoker interface {
 	//
 	// POST /auth/register
 	RegisterUser(ctx context.Context, request *RegisterRequest) (RegisterUserRes, error)
+	// RemoveAgentManager invokes removeAgentManager operation.
+	//
+	// Removes a manager of the agent. Its managers, owners and admins can remove one.
+	//
+	// DELETE /organizations/{organization}/agents/{agent}/managers/{user}
+	RemoveAgentManager(ctx context.Context, params RemoveAgentManagerParams) (RemoveAgentManagerRes, error)
 	// RemoveOrganizationMember invokes removeOrganizationMember operation.
 	//
 	// Removes a member from the organization. Requires the owner or admin role. The owner can't be
@@ -324,6 +385,13 @@ type Invoker interface {
 	//
 	// DELETE /api-keys/{api_key_id}
 	RevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams) (RevokeAPIKeyRes, error)
+	// RevokeAgentSecret invokes revokeAgentSecret operation.
+	//
+	// Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
+	// it stop working at once. Its managers, owners and admins can revoke one.
+	//
+	// DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
+	RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (RevokeAgentSecretRes, error)
 	// RevokeConnection invokes revokeConnection operation.
 	//
 	// Revokes one of the authenticated account's connections. The app's requests are refused from then on,
@@ -337,7 +405,8 @@ type Invoker interface {
 	// Starts signing in a device, such as the command-line client, without entering a password on it. Show
 	// the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve
 	// it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires
-	// after `expires_in` seconds.
+	// after `expires_in` seconds. A device may ask for a new secret of an agent instead of an API key,
+	// with `agent_secret` and none of the key's fields.
 	//
 	// POST /device/authorizations
 	StartDeviceAuthorization(ctx context.Context, request *DeviceAuthorizationRequest) (*DeviceAuthorization, error)
@@ -349,6 +418,16 @@ type Invoker interface {
 	//
 	// PUT /organizations/{organization}/owner
 	TransferOrganizationOwnership(ctx context.Context, request *TransferOwnershipRequest, params TransferOrganizationOwnershipParams) error
+	// UpdateAgent invokes updateAgent operation.
+	//
+	// Changes an agent's description or permissions, or disables or enables it. Its managers, owners and
+	// admins can change it, and only within their own permissions (and the key's, for a key with
+	// `manage_agents`); any of them can disable it. New permissions must also be allowed by every
+	// manager's role, or the change is refused with 409. Saving the permissions of an agent with no
+	// managers makes you one. A disabled agent is refused at once, with every credential it has.
+	//
+	// PATCH /organizations/{organization}/agents/{agent}
+	UpdateAgent(ctx context.Context, request *UpdateAgentRequest, params UpdateAgentParams) (UpdateAgentRes, error)
 	// UpdateIndex invokes updateIndex operation.
 	//
 	// Changes the index's description or tags. A field absent from the request is left as it is. The name
@@ -356,6 +435,13 @@ type Invoker interface {
 	//
 	// PATCH /organizations/{organization}/indexes/{index}
 	UpdateIndex(ctx context.Context, request *UpdateIndexRequest, params UpdateIndexParams) (UpdateIndexRes, error)
+	// UpdateOrganization invokes updateOrganization operation.
+	//
+	// Changes an organization's settings. Requires the owner or admin role, and only a signed-in session
+	// can change them.
+	//
+	// PATCH /organizations/{organization}
+	UpdateOrganization(ctx context.Context, request *UpdateOrganizationRequest, params UpdateOrganizationParams) (UpdateOrganizationRes, error)
 	// UpdateOrganizationMember invokes updateOrganizationMember operation.
 	//
 	// Changes a member's role to admin, developer or reader. Requires the owner or admin role. The owner's
@@ -404,6 +490,215 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AddAgentManager invokes addAgentManager operation.
+//
+// Makes a member of the organization a manager of the agent. Its managers, owners and admins can add
+// one. A 404 means the account is not an active member; a 409, that their role does not allow
+// everything the agent may do.
+//
+// PUT /organizations/{organization}/agents/{agent}/managers/{user}
+func (c *Client) AddAgentManager(ctx context.Context, params AddAgentManagerParams) (AddAgentManagerRes, error) {
+	res, err := c.sendAddAgentManager(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendAddAgentManager(ctx context.Context, params AddAgentManagerParams) (res AddAgentManagerRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("addAgentManager"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}/managers/{user}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, AddAgentManagerOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [6]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/managers/"
+	{
+		// Encode "user" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "user",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.User); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[5] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PUT", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, AddAgentManagerOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, AddAgentManagerOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeAddAgentManagerResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // AddOrganizationMember invokes addOrganizationMember operation.
@@ -579,7 +874,9 @@ func (c *Client) sendAddOrganizationMember(ctx context.Context, request *AddMemb
 // Approves a pending device authorization, identified by the code the device shows. The device's next
 // poll receives a new API key with the name it asked for. Without a scope it grants what the device
 // asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
-// approving account can. A code that is unknown, already decided or expired is not found. Only a
+// approving account can. A request for an agent secret is approved as asked, without a scope, by a
+// manager of the agent or an account that manages the organization's agents; the device's next poll
+// receives the new secret. A code that is unknown, already decided or expired is not found. Only a
 // signed-in session can approve.
 //
 // POST /device/authorizations/approve
@@ -1253,6 +1550,367 @@ func (c *Client) sendCreateAPIKey(ctx context.Context, request *CreateAPIKeyRequ
 	return result, nil
 }
 
+// CreateAgent invokes createAgent operation.
+//
+// Creates an agent, with the creator as its first manager. Owners and admins can create agents, and
+// developers too when the organization allows it. The agent's permissions must be within your own, and
+// within the key's when a key creates it; a key needs `manage_agents`. A 409 means the organization
+// already has an agent of that name, in any case.
+//
+// POST /organizations/{organization}/agents
+func (c *Client) CreateAgent(ctx context.Context, request *CreateAgentRequest, params CreateAgentParams) (CreateAgentRes, error) {
+	res, err := c.sendCreateAgent(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCreateAgent(ctx context.Context, request *CreateAgentRequest, params CreateAgentParams) (res CreateAgentRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("createAgent"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateAgentOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateAgentRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, CreateAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, CreateAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateAgentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CreateAgentSecret invokes createAgentSecret operation.
+//
+// Creates a secret the agent signs in with. An agent has at most two, so one can replace the other; a
+// 409 asks you to remove one first. Its managers, owners and admins can create one, and only from a
+// signed-in session. The response is the only time the secret is shown, so store it securely.
+//
+// POST /organizations/{organization}/agents/{agent}/secrets
+func (c *Client) CreateAgentSecret(ctx context.Context, request *CreateAgentSecretRequest, params CreateAgentSecretParams) (CreateAgentSecretRes, error) {
+	res, err := c.sendCreateAgentSecret(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCreateAgentSecret(ctx context.Context, request *CreateAgentSecretRequest, params CreateAgentSecretParams) (res CreateAgentSecretRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("createAgentSecret"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}/secrets"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, CreateAgentSecretOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [5]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/secrets"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateAgentSecretRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, CreateAgentSecretOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, CreateAgentSecretOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeCreateAgentSecretResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // CreateIndex invokes createIndex operation.
 //
 // Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the
@@ -1561,6 +2219,192 @@ func (c *Client) sendCreateOrganization(ctx context.Context, request *CreateOrga
 
 	stage = "DecodeResponse"
 	result, err := decodeCreateOrganizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DeleteAgent invokes deleteAgent operation.
+//
+// Deletes an agent with its secrets and every credential it has. Requires the owner or admin role. It
+// can't be undone.
+//
+// DELETE /organizations/{organization}/agents/{agent}
+func (c *Client) DeleteAgent(ctx context.Context, params DeleteAgentParams) (DeleteAgentRes, error) {
+	res, err := c.sendDeleteAgent(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteAgent(ctx context.Context, params DeleteAgentParams) (res DeleteAgentRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("deleteAgent"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, DeleteAgentOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, DeleteAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, DeleteAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeDeleteAgentResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2644,6 +3488,174 @@ func (c *Client) sendDenyOAuthAuthorization(ctx context.Context, request *OAuthD
 	return result, nil
 }
 
+// GetAgent invokes getAgent operation.
+//
+// Returns one of the organization's agents. Any member can read it; an agent cannot.
+//
+// GET /organizations/{organization}/agents/{agent}
+func (c *Client) GetAgent(ctx context.Context, params GetAgentParams) (GetAgentRes, error) {
+	res, err := c.sendGetAgent(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetAgent(ctx context.Context, params GetAgentParams) (res GetAgentRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getAgent"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetAgentOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, GetAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetAgentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetAuthOptions invokes getAuthOptions operation.
 //
 // How accounts are created on this service. The console reads it to decide whether to offer
@@ -2728,7 +3740,8 @@ func (c *Client) sendGetAuthOptions(ctx context.Context) (res *AuthOptions, err 
 // GetCurrentUser invokes getCurrentUser operation.
 //
 // Returns the account the request authenticates as, whether with a session or an API key. A session
-// request also receives its CSRF token in X-Csrf-Token.
+// request also receives its CSRF token in X-Csrf-Token. An agent working on its own has no account and
+// is refused with 403.
 //
 // GET /auth/me
 func (c *Client) GetCurrentUser(ctx context.Context) (GetCurrentUserRes, error) {
@@ -3778,6 +4791,323 @@ func (c *Client) sendListAPIKeys(ctx context.Context, params ListAPIKeysParams) 
 
 	stage = "DecodeResponse"
 	result, err := decodeListAPIKeysResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListAgentSecrets invokes listAgentSecrets operation.
+//
+// Lists an agent's active secrets, oldest first. The secret itself is never returned again; `prefix`
+// tells secrets apart. Its managers, owners and admins can list them.
+//
+// GET /organizations/{organization}/agents/{agent}/secrets
+func (c *Client) ListAgentSecrets(ctx context.Context, params ListAgentSecretsParams) (ListAgentSecretsRes, error) {
+	res, err := c.sendListAgentSecrets(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListAgentSecrets(ctx context.Context, params ListAgentSecretsParams) (res ListAgentSecretsRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listAgentSecrets"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}/secrets"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListAgentSecretsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [5]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/secrets"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ListAgentSecretsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, ListAgentSecretsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListAgentSecretsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListAgents invokes listAgents operation.
+//
+// Lists an organization's agents, ordered by name. Any member can list them; an agent cannot.
+//
+// GET /organizations/{organization}/agents
+func (c *Client) ListAgents(ctx context.Context, params ListAgentsParams) (ListAgentsRes, error) {
+	res, err := c.sendListAgents(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListAgents(ctx context.Context, params ListAgentsParams) (res ListAgentsRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("listAgents"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, ListAgentsOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ListAgentsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, ListAgentsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeListAgentsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -5084,10 +6414,11 @@ func (c *Client) sendLookupOAuthAuthorization(ctx context.Context, request *OAut
 
 // PollDeviceToken invokes pollDeviceToken operation.
 //
-// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
-// 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with
-// `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`,
-// and an unknown, expired or already used code with `expired_token`.
+// Exchanges an approved device code for an API key, or for the agent secret it asked for, once. Until
+// the user decides, a poll fails with 400 and code `authorization_pending`: poll again after
+// `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A
+// denied authorization fails with `access_denied`, as does a request for a secret of an agent that
+// already has two, and an unknown, expired or already used code with `expired_token`.
 //
 // POST /device/token
 func (c *Client) PollDeviceToken(ctx context.Context, request *DeviceTokenRequest) (PollDeviceTokenRes, error) {
@@ -5908,6 +7239,213 @@ func (c *Client) sendRegisterUser(ctx context.Context, request *RegisterRequest)
 	return result, nil
 }
 
+// RemoveAgentManager invokes removeAgentManager operation.
+//
+// Removes a manager of the agent. Its managers, owners and admins can remove one.
+//
+// DELETE /organizations/{organization}/agents/{agent}/managers/{user}
+func (c *Client) RemoveAgentManager(ctx context.Context, params RemoveAgentManagerParams) (RemoveAgentManagerRes, error) {
+	res, err := c.sendRemoveAgentManager(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRemoveAgentManager(ctx context.Context, params RemoveAgentManagerParams) (res RemoveAgentManagerRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("removeAgentManager"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}/managers/{user}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RemoveAgentManagerOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [6]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/managers/"
+	{
+		// Encode "user" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "user",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.User); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[5] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RemoveAgentManagerOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, RemoveAgentManagerOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRemoveAgentManagerResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // RemoveOrganizationMember invokes removeOrganizationMember operation.
 //
 // Removes a member from the organization. Requires the owner or admin role. The owner can't be
@@ -6255,6 +7793,211 @@ func (c *Client) sendRevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams
 	return result, nil
 }
 
+// RevokeAgentSecret invokes revokeAgentSecret operation.
+//
+// Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
+// it stop working at once. Its managers, owners and admins can revoke one.
+//
+// DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
+func (c *Client) RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (RevokeAgentSecretRes, error) {
+	res, err := c.sendRevokeAgentSecret(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (res RevokeAgentSecretRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("revokeAgentSecret"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}/secrets/{secret_id}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RevokeAgentSecretOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [6]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/secrets/"
+	{
+		// Encode "secret_id" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "secret_id",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.UUIDToString(params.SecretID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[5] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RevokeAgentSecretOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, RevokeAgentSecretOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeRevokeAgentSecretResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // RevokeConnection invokes revokeConnection operation.
 //
 // Revokes one of the authenticated account's connections. The app's requests are refused from then on,
@@ -6422,7 +8165,8 @@ func (c *Client) sendRevokeConnection(ctx context.Context, params RevokeConnecti
 // Starts signing in a device, such as the command-line client, without entering a password on it. Show
 // the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve
 // it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires
-// after `expires_in` seconds.
+// after `expires_in` seconds. A device may ask for a new secret of an agent instead of an API key,
+// with `agent_secret` and none of the key's fields.
 //
 // POST /device/authorizations
 func (c *Client) StartDeviceAuthorization(ctx context.Context, request *DeviceAuthorizationRequest) (*DeviceAuthorization, error) {
@@ -6672,6 +8416,198 @@ func (c *Client) sendTransferOrganizationOwnership(ctx context.Context, request 
 	return result, nil
 }
 
+// UpdateAgent invokes updateAgent operation.
+//
+// Changes an agent's description or permissions, or disables or enables it. Its managers, owners and
+// admins can change it, and only within their own permissions (and the key's, for a key with
+// `manage_agents`); any of them can disable it. New permissions must also be allowed by every
+// manager's role, or the change is refused with 409. Saving the permissions of an agent with no
+// managers makes you one. A disabled agent is refused at once, with every credential it has.
+//
+// PATCH /organizations/{organization}/agents/{agent}
+func (c *Client) UpdateAgent(ctx context.Context, request *UpdateAgentRequest, params UpdateAgentParams) (UpdateAgentRes, error) {
+	res, err := c.sendUpdateAgent(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateAgent(ctx context.Context, request *UpdateAgentRequest, params UpdateAgentParams) (res UpdateAgentRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateAgent"),
+		semconv.HTTPRequestMethodKey.String("PATCH"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/agents/{agent}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateAgentOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/agents/"
+	{
+		// Encode "agent" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "agent",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Agent); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateAgentRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, UpdateAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, UpdateAgentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateAgentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // UpdateIndex invokes updateIndex operation.
 //
 // Changes the index's description or tags. A field absent from the request is left as it is. The name
@@ -6854,6 +8790,173 @@ func (c *Client) sendUpdateIndex(ctx context.Context, request *UpdateIndexReques
 
 	stage = "DecodeResponse"
 	result, err := decodeUpdateIndexResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateOrganization invokes updateOrganization operation.
+//
+// Changes an organization's settings. Requires the owner or admin role, and only a signed-in session
+// can change them.
+//
+// PATCH /organizations/{organization}
+func (c *Client) UpdateOrganization(ctx context.Context, request *UpdateOrganizationRequest, params UpdateOrganizationParams) (UpdateOrganizationRes, error) {
+	res, err := c.sendUpdateOrganization(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateOrganization(ctx context.Context, request *UpdateOrganizationRequest, params UpdateOrganizationParams) (res UpdateOrganizationRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateOrganization"),
+		semconv.HTTPRequestMethodKey.String("PATCH"),
+		semconv.URLTemplateKey.String("/organizations/{organization}"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UpdateOrganizationOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateOrganizationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	stage = "EncodeHeaderParams"
+	h := uri.NewHeaderEncoder(r.Header)
+	{
+		cfg := uri.HeaderParameterEncodingConfig{
+			Name:    "X-Csrf-Token",
+			Explode: false,
+		}
+		if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.XCsrfToken.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode header")
+		}
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, UpdateOrganizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, UpdateOrganizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeUpdateOrganizationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -13,6 +13,17 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
+// AddAgentManager implements addAgentManager operation.
+//
+// Makes a member of the organization a manager of the agent. Its managers, owners and admins can add
+// one. A 404 means the account is not an active member; a 409, that their role does not allow
+// everything the agent may do.
+//
+// PUT /organizations/{organization}/agents/{agent}/managers/{user}
+func (UnimplementedHandler) AddAgentManager(ctx context.Context, params AddAgentManagerParams) (r AddAgentManagerRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // AddOrganizationMember implements addOrganizationMember operation.
 //
 // Adds an existing account to the organization with the admin, developer or reader role. Requires the
@@ -28,7 +39,9 @@ func (UnimplementedHandler) AddOrganizationMember(ctx context.Context, req *AddM
 // Approves a pending device authorization, identified by the code the device shows. The device's next
 // poll receives a new API key with the name it asked for. Without a scope it grants what the device
 // asked for; a scope replaces that as a whole, narrower or wider. The key never does more than the
-// approving account can. A code that is unknown, already decided or expired is not found. Only a
+// approving account can. A request for an agent secret is approved as asked, without a scope, by a
+// manager of the agent or an account that manages the organization's agents; the device's next poll
+// receives the new secret. A code that is unknown, already decided or expired is not found. Only a
 // signed-in session can approve.
 //
 // POST /device/authorizations/approve
@@ -84,6 +97,29 @@ func (UnimplementedHandler) CreateAPIKey(ctx context.Context, req *CreateAPIKeyR
 	return r, ht.ErrNotImplemented
 }
 
+// CreateAgent implements createAgent operation.
+//
+// Creates an agent, with the creator as its first manager. Owners and admins can create agents, and
+// developers too when the organization allows it. The agent's permissions must be within your own, and
+// within the key's when a key creates it; a key needs `manage_agents`. A 409 means the organization
+// already has an agent of that name, in any case.
+//
+// POST /organizations/{organization}/agents
+func (UnimplementedHandler) CreateAgent(ctx context.Context, req *CreateAgentRequest, params CreateAgentParams) (r CreateAgentRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// CreateAgentSecret implements createAgentSecret operation.
+//
+// Creates a secret the agent signs in with. An agent has at most two, so one can replace the other; a
+// 409 asks you to remove one first. Its managers, owners and admins can create one, and only from a
+// signed-in session. The response is the only time the secret is shown, so store it securely.
+//
+// POST /organizations/{organization}/agents/{agent}/secrets
+func (UnimplementedHandler) CreateAgentSecret(ctx context.Context, req *CreateAgentSecretRequest, params CreateAgentSecretParams) (r CreateAgentSecretRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // CreateIndex implements createIndex operation.
 //
 // Creates an empty index. Requires the owner or admin role. A new index is usually `ready` in the
@@ -102,6 +138,16 @@ func (UnimplementedHandler) CreateIndex(ctx context.Context, req *CreateIndexReq
 //
 // POST /organizations
 func (UnimplementedHandler) CreateOrganization(ctx context.Context, req *CreateOrganizationRequest, params CreateOrganizationParams) (r CreateOrganizationRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// DeleteAgent implements deleteAgent operation.
+//
+// Deletes an agent with its secrets and every credential it has. Requires the owner or admin role. It
+// can't be undone.
+//
+// DELETE /organizations/{organization}/agents/{agent}
+func (UnimplementedHandler) DeleteAgent(ctx context.Context, params DeleteAgentParams) (r DeleteAgentRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -168,6 +214,15 @@ func (UnimplementedHandler) DenyOAuthAuthorization(ctx context.Context, req *OAu
 	return r, ht.ErrNotImplemented
 }
 
+// GetAgent implements getAgent operation.
+//
+// Returns one of the organization's agents. Any member can read it; an agent cannot.
+//
+// GET /organizations/{organization}/agents/{agent}
+func (UnimplementedHandler) GetAgent(ctx context.Context, params GetAgentParams) (r GetAgentRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetAuthOptions implements getAuthOptions operation.
 //
 // How accounts are created on this service. The console reads it to decide whether to offer
@@ -181,7 +236,8 @@ func (UnimplementedHandler) GetAuthOptions(ctx context.Context) (r *AuthOptions,
 // GetCurrentUser implements getCurrentUser operation.
 //
 // Returns the account the request authenticates as, whether with a session or an API key. A session
-// request also receives its CSRF token in X-Csrf-Token.
+// request also receives its CSRF token in X-Csrf-Token. An agent working on its own has no account and
+// is refused with 403.
 //
 // GET /auth/me
 func (UnimplementedHandler) GetCurrentUser(ctx context.Context) (r GetCurrentUserRes, _ error) {
@@ -246,6 +302,25 @@ func (UnimplementedHandler) GetUsernameAvailability(ctx context.Context, params 
 //
 // GET /api-keys
 func (UnimplementedHandler) ListAPIKeys(ctx context.Context, params ListAPIKeysParams) (r *APIKeyPage, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListAgentSecrets implements listAgentSecrets operation.
+//
+// Lists an agent's active secrets, oldest first. The secret itself is never returned again; `prefix`
+// tells secrets apart. Its managers, owners and admins can list them.
+//
+// GET /organizations/{organization}/agents/{agent}/secrets
+func (UnimplementedHandler) ListAgentSecrets(ctx context.Context, params ListAgentSecretsParams) (r ListAgentSecretsRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// ListAgents implements listAgents operation.
+//
+// Lists an organization's agents, ordered by name. Any member can list them; an agent cannot.
+//
+// GET /organizations/{organization}/agents
+func (UnimplementedHandler) ListAgents(ctx context.Context, params ListAgentsParams) (r ListAgentsRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -334,10 +409,11 @@ func (UnimplementedHandler) LookupOAuthAuthorization(ctx context.Context, req *O
 
 // PollDeviceToken implements pollDeviceToken operation.
 //
-// Exchanges an approved device code for an API key, once. Until the user decides, a poll fails with
-// 400 and code `authorization_pending`: poll again after `interval` seconds. Polling sooner fails with
-// `slow_down` and adds 5 seconds to the interval. A denied authorization fails with `access_denied`,
-// and an unknown, expired or already used code with `expired_token`.
+// Exchanges an approved device code for an API key, or for the agent secret it asked for, once. Until
+// the user decides, a poll fails with 400 and code `authorization_pending`: poll again after
+// `interval` seconds. Polling sooner fails with `slow_down` and adds 5 seconds to the interval. A
+// denied authorization fails with `access_denied`, as does a request for a secret of an agent that
+// already has two, and an unknown, expired or already used code with `expired_token`.
 //
 // POST /device/token
 func (UnimplementedHandler) PollDeviceToken(ctx context.Context, req *DeviceTokenRequest) (r PollDeviceTokenRes, _ error) {
@@ -399,6 +475,15 @@ func (UnimplementedHandler) RegisterUser(ctx context.Context, req *RegisterReque
 	return r, ht.ErrNotImplemented
 }
 
+// RemoveAgentManager implements removeAgentManager operation.
+//
+// Removes a manager of the agent. Its managers, owners and admins can remove one.
+//
+// DELETE /organizations/{organization}/agents/{agent}/managers/{user}
+func (UnimplementedHandler) RemoveAgentManager(ctx context.Context, params RemoveAgentManagerParams) (r RemoveAgentManagerRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // RemoveOrganizationMember implements removeOrganizationMember operation.
 //
 // Removes a member from the organization. Requires the owner or admin role. The owner can't be
@@ -419,6 +504,16 @@ func (UnimplementedHandler) RevokeAPIKey(ctx context.Context, params RevokeAPIKe
 	return r, ht.ErrNotImplemented
 }
 
+// RevokeAgentSecret implements revokeAgentSecret operation.
+//
+// Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
+// it stop working at once. Its managers, owners and admins can revoke one.
+//
+// DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
+func (UnimplementedHandler) RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (r RevokeAgentSecretRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // RevokeConnection implements revokeConnection operation.
 //
 // Revokes one of the authenticated account's connections. The app's requests are refused from then on,
@@ -435,7 +530,8 @@ func (UnimplementedHandler) RevokeConnection(ctx context.Context, params RevokeC
 // Starts signing in a device, such as the command-line client, without entering a password on it. Show
 // the user `user_code` and send them to `verification_uri` (or `verification_uri_complete`) to approve
 // it in a signed-in browser, then poll for the API key with `device_code`. The authorization expires
-// after `expires_in` seconds.
+// after `expires_in` seconds. A device may ask for a new secret of an agent instead of an API key,
+// with `agent_secret` and none of the key's fields.
 //
 // POST /device/authorizations
 func (UnimplementedHandler) StartDeviceAuthorization(ctx context.Context, req *DeviceAuthorizationRequest) (r *DeviceAuthorization, _ error) {
@@ -453,6 +549,19 @@ func (UnimplementedHandler) TransferOrganizationOwnership(ctx context.Context, r
 	return ht.ErrNotImplemented
 }
 
+// UpdateAgent implements updateAgent operation.
+//
+// Changes an agent's description or permissions, or disables or enables it. Its managers, owners and
+// admins can change it, and only within their own permissions (and the key's, for a key with
+// `manage_agents`); any of them can disable it. New permissions must also be allowed by every
+// manager's role, or the change is refused with 409. Saving the permissions of an agent with no
+// managers makes you one. A disabled agent is refused at once, with every credential it has.
+//
+// PATCH /organizations/{organization}/agents/{agent}
+func (UnimplementedHandler) UpdateAgent(ctx context.Context, req *UpdateAgentRequest, params UpdateAgentParams) (r UpdateAgentRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // UpdateIndex implements updateIndex operation.
 //
 // Changes the index's description or tags. A field absent from the request is left as it is. The name
@@ -460,6 +569,16 @@ func (UnimplementedHandler) TransferOrganizationOwnership(ctx context.Context, r
 //
 // PATCH /organizations/{organization}/indexes/{index}
 func (UnimplementedHandler) UpdateIndex(ctx context.Context, req *UpdateIndexRequest, params UpdateIndexParams) (r UpdateIndexRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// UpdateOrganization implements updateOrganization operation.
+//
+// Changes an organization's settings. Requires the owner or admin role, and only a signed-in session
+// can change them.
+//
+// PATCH /organizations/{organization}
+func (UnimplementedHandler) UpdateOrganization(ctx context.Context, req *UpdateOrganizationRequest, params UpdateOrganizationParams) (r UpdateOrganizationRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
