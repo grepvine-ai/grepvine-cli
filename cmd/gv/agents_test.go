@@ -324,11 +324,10 @@ func TestAgentTokenRefused(t *testing.T) {
 			return
 		}
 		if r.Method == http.MethodPost {
-			w.WriteHeader(http.StatusCreated)
-			io.WriteString(w, ciAgent)
+			io.WriteString(w, `{"results":[],"pagination":{"next_page_id":"","has_next":false}}`)
 			return
 		}
-		io.WriteString(w, `{"agents":[]}`)
+		io.WriteString(w, acme)
 	}))
 	defer server.Close()
 	reset := func() {
@@ -348,26 +347,26 @@ func TestAgentTokenRefused(t *testing.T) {
 		return client
 	}
 
-	if _, err := newClient().ListAgents(t.Context(), httpapi.ListAgentsParams{Organization: "acme"}); err != nil {
-		t.Fatalf("list after a refused token: %v", err)
+	if _, err := newClient().GetOrganization(t.Context(), httpapi.GetOrganizationParams{Organization: "acme"}); err != nil {
+		t.Fatalf("get after a refused token: %v", err)
 	}
 	if exchanges.Load() != 2 || len(seen) != 2 || seen[1] != "Bearer gvt_2 " {
-		t.Fatalf("list: exchanges = %d, requests = %q", exchanges.Load(), seen)
+		t.Fatalf("get: exchanges = %d, requests = %q", exchanges.Load(), seen)
 	}
 
 	reset()
-	request := &httpapi.CreateAgentRequest{Name: "ci-bot", Indexes: httpapi.IndexScope{"docs"}, Permissions: httpapi.AgentPermissions{"search"}}
-	if _, err := newClient().CreateAgent(t.Context(), request, httpapi.CreateAgentParams{Organization: "acme"}); err != nil {
-		t.Fatalf("create after a refused token: %v", err)
+	query := &httpapi.QueryRequest{Pattern: "Grepvine"}
+	if _, err := newClient().QueryIndex(t.Context(), query, httpapi.QueryIndexParams{Organization: "acme", Index: "docs"}); err != nil {
+		t.Fatalf("query after a refused token: %v", err)
 	}
 	if len(seen) != 2 || !strings.HasPrefix(seen[1], "Bearer gvt_2 {") || strings.TrimPrefix(seen[0], "Bearer gvt_1") != strings.TrimPrefix(seen[1], "Bearer gvt_2") {
-		t.Fatalf("create: requests = %q, want the same body sent again", seen)
+		t.Fatalf("query: requests = %q, want the same body sent again", seen)
 	}
 
 	reset()
 	refuseAll = true
-	if _, err := newClient().ListAgents(t.Context(), httpapi.ListAgentsParams{Organization: "acme"}); err == nil {
-		t.Fatal("list succeeded though every token is refused")
+	if _, err := newClient().GetOrganization(t.Context(), httpapi.GetOrganizationParams{Organization: "acme"}); err == nil {
+		t.Fatal("get succeeded though every token is refused")
 	}
 	if exchanges.Load() != 2 || len(seen) != 2 {
 		t.Fatalf("refused twice: exchanges = %d, requests = %q, want one retry", exchanges.Load(), seen)
@@ -375,7 +374,7 @@ func TestAgentTokenRefused(t *testing.T) {
 
 	reset()
 	tokens := newAgentTokens("gvs_secret", server.URL, http.DefaultClient)
-	streamed, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/v1/organizations/acme/agents", io.NopCloser(strings.NewReader("{}")))
+	streamed, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/v1/organizations/acme/indexes/docs/query", io.NopCloser(strings.NewReader("{}")))
 	streamed.Header.Set("Authorization", "Bearer gvt_1")
 	response, err := retryRefused{base: http.DefaultTransport, tokens: tokens}.RoundTrip(streamed)
 	if err != nil || response.StatusCode != http.StatusUnauthorized || len(seen) != 1 || exchanges.Load() != 0 {
