@@ -143,7 +143,7 @@ To work **for you** as the agent, sign in with a key that acts as it. It does wh
 gv login --org example --agent ci-bot
 ```
 
-To work **alone**, a job uses an agent secret. Create one, approve it in the browser, and store it where the job runs. It is printed once:
+To work **alone**, a job uses an agent secret. Create one, approve it in the browser, and store it where the job runs. It is printed once, on standard output; standard error shows the agent's client ID, for OAuth libraries that ask for one beside the secret:
 
 ```sh
 gv agent secret create example/ci-bot --expires 90d > ci-bot.secret
@@ -151,7 +151,7 @@ gv agent secret ls example/ci-bot
 gv agent secret rm example/ci-bot gvs_k3J9   # by prefix or ID
 ```
 
-Then set `GREPVINE_AGENT_SECRET` in the job, or `agent_secret` in the configuration file (`gv agent secret create --save` writes it there). `gv` exchanges the secret at the token endpoint for a short-lived agent token, uses that token for every request, and exchanges again shortly before it expires. The token stays in memory, and the secret is never sent with API requests. The token endpoint accepts the secret in the form body (`client_secret`) or with HTTP Basic authentication, the agent's ID as the user name; `gv` sends it in the body, so the secret is the only value a job needs. `gv` asks for the agent's full permissions and the default token lifetime.
+Then set `GREPVINE_AGENT_SECRET` in the job, or `agent_secret` in the configuration file (`gv agent secret create --save` writes it there). `gv` exchanges the secret at the token endpoint for a short-lived agent token, uses that token for every request, and exchanges again shortly before it expires. The token stays in memory, and the secret is never sent with API requests. The token endpoint accepts the secret in the form body (`client_secret`) or with HTTP Basic authentication, the client ID as the user name; a client ID is optional, but one that is sent must match the secret. `gv` sends it in the body, so the secret is the only value a job needs. `gv` asks for the agent's full permissions and the default token lifetime.
 
 When both an API key and an agent secret are set, the one from the environment wins over the one from the file; two from the same place are refused. `gv login` and `gv agent secret create --save` each replace the other credential in the file, and `gv logout` removes both. To rotate a secret, create a second one, deploy it, and revoke the first: an agent holds at most two.
 

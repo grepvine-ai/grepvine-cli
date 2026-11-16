@@ -12,7 +12,7 @@ import (
 	"github.com/grepvine-ai/grepvine-cli/internal/httpapi"
 )
 
-// --expires never sends no expiry; without --expires, gv asks for 90 days.
+// --expires never sends a null expiry; without --expires, gv asks for 90 days.
 func TestExpiresNever(t *testing.T) {
 	request, err := (&scopeFlags{expires: "never"}).request("ci", time.Now())
 	if err != nil {
@@ -22,7 +22,7 @@ func TestExpiresNever(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(body), "expires_at") {
+	if !strings.Contains(string(body), `"expires_at":null`) {
 		t.Fatalf("request = %s", body)
 	}
 	if got := describeKeyScope(&httpapi.DeviceToken{Permissions: []httpapi.Permission{"read"}}); got != "all organizations · all indexes · read · never expires" {

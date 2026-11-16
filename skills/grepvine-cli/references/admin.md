@@ -42,7 +42,7 @@ gv agent rm ORGANIZATION/AGENT
 An agent marked `needs review` keeps working; `gv agent update ORGANIZATION/AGENT` with no flags saves it as it is and clears the mark, once the user has checked it.
 
 ```sh
-gv agent secret create ORGANIZATION/AGENT --expires 90d   # approved in a browser; prints the secret once
+gv agent secret create ORGANIZATION/AGENT --expires 90d   # approved in a browser; prints the secret once, and the client ID on stderr
 gv agent secret ls ORGANIZATION/AGENT --json
 gv agent secret rm ORGANIZATION/AGENT PREFIX
 ```
