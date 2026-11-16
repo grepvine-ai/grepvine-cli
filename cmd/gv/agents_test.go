@@ -285,3 +285,92 @@ func TestOneAuthorizationHeader(t *testing.T) {
 		}
 	}
 }
+
+// When the API refuses an agent token, as after the secret is rotated, gv
+// exchanges the secret again and sends the request once more, body and all.
+// It retries once, only a request it can send again, and sends the secret
+// only to the token endpoint.
+func TestAgentTokenRefused(t *testing.T) {
+	var exchanges atomic.Int32
+	var mu sync.Mutex
+	var seen []string // Authorization and body of every API request
+	refuseAll := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/oauth/token" {
+			fmt.Fprintf(w, `{"access_token":"gvt_%d","token_type":"Bearer","expires_in":900}`, exchanges.Add(1))
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		authorization := r.Header.Get("Authorization")
+		mu.Lock()
+		seen = append(seen, authorization+" "+string(body))
+		mu.Unlock()
+		if strings.Contains(authorization+string(body), "gvs_") {
+			t.Errorf("API saw the secret: %q %q", authorization, body)
+		}
+		if refuseAll || authorization == "Bearer gvt_1" {
+			w.WriteHeader(http.StatusUnauthorized)
+			io.WriteString(w, `{"error":"the token was revoked","code":"unauthenticated"}`)
+			return
+		}
+		if r.Method == http.MethodPost {
+			w.WriteHeader(http.StatusCreated)
+			io.WriteString(w, ciAgent)
+			return
+		}
+		io.WriteString(w, `{"agents":[]}`)
+	}))
+	defer server.Close()
+	reset := func() {
+		exchanges.Store(0)
+		seen = nil
+	}
+
+	a, _, _ := testApp(t, server.URL+"/v1")
+	a.getenv = func(name string) string {
+		return map[string]string{"GREPVINE_API_ENDPOINT": server.URL + "/v1", "GREPVINE_AGENT_SECRET": "gvs_secret"}[name]
+	}
+	newClient := func() *httpapi.Client {
+		client, _, _, err := a.client(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return client
+	}
+
+	if _, err := newClient().ListAgents(t.Context(), httpapi.ListAgentsParams{Organization: "acme"}); err != nil {
+		t.Fatalf("list after a refused token: %v", err)
+	}
+	if exchanges.Load() != 2 || len(seen) != 2 || seen[1] != "Bearer gvt_2 " {
+		t.Fatalf("list: exchanges = %d, requests = %q", exchanges.Load(), seen)
+	}
+
+	reset()
+	request := &httpapi.CreateAgentRequest{Name: "ci-bot", Indexes: httpapi.IndexScope{"docs"}, Permissions: httpapi.AgentPermissions{"search"}}
+	if _, err := newClient().CreateAgent(t.Context(), request, httpapi.CreateAgentParams{Organization: "acme"}); err != nil {
+		t.Fatalf("create after a refused token: %v", err)
+	}
+	if len(seen) != 2 || !strings.HasPrefix(seen[1], "Bearer gvt_2 {") || strings.TrimPrefix(seen[0], "Bearer gvt_1") != strings.TrimPrefix(seen[1], "Bearer gvt_2") {
+		t.Fatalf("create: requests = %q, want the same body sent again", seen)
+	}
+
+	reset()
+	refuseAll = true
+	if _, err := newClient().ListAgents(t.Context(), httpapi.ListAgentsParams{Organization: "acme"}); err == nil {
+		t.Fatal("list succeeded though every token is refused")
+	}
+	if exchanges.Load() != 2 || len(seen) != 2 {
+		t.Fatalf("refused twice: exchanges = %d, requests = %q, want one retry", exchanges.Load(), seen)
+	}
+
+	reset()
+	tokens := newAgentTokens("gvs_secret", server.URL, http.DefaultClient)
+	streamed, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, server.URL+"/v1/organizations/acme/agents", io.NopCloser(strings.NewReader("{}")))
+	streamed.Header.Set("Authorization", "Bearer gvt_1")
+	response, err := retryRefused{base: http.DefaultTransport, tokens: tokens}.RoundTrip(streamed)
+	if err != nil || response.StatusCode != http.StatusUnauthorized || len(seen) != 1 || exchanges.Load() != 0 {
+		t.Fatalf("a body that cannot be sent again was retried: %v, %v, %q", response, err, seen)
+	}
+	_ = response.Body.Close()
+}

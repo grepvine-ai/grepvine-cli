@@ -109,3 +109,47 @@ func (t *agentTokens) exchange(ctx context.Context) (string, time.Duration, erro
 		return "", 0, &tokenError{fmt.Sprintf("exchange agent secret: unexpected answer %s; retry", response.Status)}
 	}
 }
+
+// forget drops token if it is still the current one, so the next request
+// exchanges the secret again. A token another request already replaced stays
+// replaced, so concurrent refusals lead to one exchange.
+func (t *agentTokens) forget(token string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.token == token {
+		t.token = ""
+	}
+}
+
+// retryRefused sends API requests made with an agent token, and when the API
+// refuses one with 401, as it does for a token revoked when the secret is
+// rotated, exchanges the secret again and sends the request once more. A
+// request whose body cannot be sent again is not retried.
+type retryRefused struct {
+	base   http.RoundTripper
+	tokens *agentTokens
+}
+
+func (r retryRefused) RoundTrip(request *http.Request) (*http.Response, error) {
+	replayable := request.Body == nil || request.Body == http.NoBody || request.GetBody != nil
+	response, err := r.base.RoundTrip(request)
+	token, agent := strings.CutPrefix(request.Header.Get("Authorization"), "Bearer ")
+	if err != nil || response.StatusCode != http.StatusUnauthorized || !agent || !replayable {
+		return response, err
+	}
+	r.tokens.forget(token)
+	_, _ = io.Copy(io.Discard, response.Body)
+	_ = response.Body.Close()
+	fresh, err := r.tokens.current(request.Context())
+	if err != nil {
+		return nil, err
+	}
+	retry := request.Clone(request.Context())
+	if request.GetBody != nil {
+		if retry.Body, err = request.GetBody(); err != nil {
+			return nil, err
+		}
+	}
+	retry.Header.Set("Authorization", "Bearer "+fresh)
+	return r.base.RoundTrip(retry)
+}

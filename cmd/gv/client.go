@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/ogen-go/ogen/ogenerrors"
@@ -62,10 +63,16 @@ func (a *app) client(requireKey bool) (*httpapi.Client, config, string, error) {
 		return nil, config{}, path, errors.New("not logged in; run `gv login`, or set GREPVINE_AGENT_SECRET to run as an agent")
 	}
 	creds := credentials{key: cfg.APIKey}
+	httpClient := a.httpClient
 	if cfg.AgentSecret != "" {
+		// The secret goes to the token endpoint through a.httpClient; only the
+		// API client retries a refused agent token.
 		creds.tokens = newAgentTokens(cfg.AgentSecret, cfg.Endpoint, a.httpClient)
+		retrying := *a.httpClient
+		retrying.Transport = retryRefused{base: transportOf(a.httpClient), tokens: creds.tokens}
+		httpClient = &retrying
 	}
-	client, err := httpapi.NewClient(apiEndpoint(cfg.Endpoint), creds, httpapi.WithClient(a.httpClient))
+	client, err := httpapi.NewClient(apiEndpoint(cfg.Endpoint), creds, httpapi.WithClient(httpClient))
 	if err != nil {
 		return nil, config{}, path, fmt.Errorf("create API client: %w", err)
 	}
@@ -82,4 +89,11 @@ func apiEndpoint(endpoint string) string {
 
 func publicAPIError(response *httpapi.ErrorStatusCodeWithHeaders) error {
 	return responseError(response.Response, response.XRequestID)
+}
+
+func transportOf(client *http.Client) http.RoundTripper {
+	if client.Transport != nil {
+		return client.Transport
+	}
+	return http.DefaultTransport
 }
