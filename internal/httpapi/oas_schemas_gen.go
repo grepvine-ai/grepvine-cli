@@ -697,6 +697,9 @@ type AgentSecretCreated struct {
 	LastUsedAt OptDateTime `json:"last_used_at"`
 	// The secret. It is shown only in this response.
 	Secret string `json:"secret"`
+	// The agent's `id`, for OAuth clients that ask for a client ID beside the secret when they exchange it
+	// for a token.
+	ClientID uuid.UUID `json:"client_id"`
 }
 
 // GetID returns the value of ID.
@@ -734,6 +737,11 @@ func (s *AgentSecretCreated) GetSecret() string {
 	return s.Secret
 }
 
+// GetClientID returns the value of ClientID.
+func (s *AgentSecretCreated) GetClientID() uuid.UUID {
+	return s.ClientID
+}
+
 // SetID sets the value of ID.
 func (s *AgentSecretCreated) SetID(val uuid.UUID) {
 	s.ID = val
@@ -767,6 +775,11 @@ func (s *AgentSecretCreated) SetLastUsedAt(val OptDateTime) {
 // SetSecret sets the value of Secret.
 func (s *AgentSecretCreated) SetSecret(val string) {
 	s.Secret = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *AgentSecretCreated) SetClientID(val uuid.UUID) {
+	s.ClientID = val
 }
 
 func (*AgentSecretCreated) createAgentSecretRes() {}
@@ -1190,7 +1203,7 @@ func (s *CookieAuth) SetRoles(val []string) {
 	s.Roles = val
 }
 
-// Creates an API key. A scope field left out sets no limit.
+// Creates an API key. A scope field left out sets no limit; the expiry is always given.
 // Ref: #/components/schemas/CreateAPIKeyRequest
 type CreateAPIKeyRequest struct {
 	// A name to tell the key apart, 1 to 128 characters.
@@ -1202,8 +1215,8 @@ type CreateAPIKeyRequest struct {
 	Organization OptName     `json:"organization"`
 	Indexes      IndexScope  `json:"indexes"`
 	Permissions  Permissions `json:"permissions"`
-	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
-	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the key stops working, at most one year ahead, or null for a key that never expires.
+	ExpiresAt NilDateTime `json:"expires_at"`
 }
 
 // GetName returns the value of Name.
@@ -1232,7 +1245,7 @@ func (s *CreateAPIKeyRequest) GetPermissions() Permissions {
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
-func (s *CreateAPIKeyRequest) GetExpiresAt() OptDateTime {
+func (s *CreateAPIKeyRequest) GetExpiresAt() NilDateTime {
 	return s.ExpiresAt
 }
 
@@ -1262,7 +1275,7 @@ func (s *CreateAPIKeyRequest) SetPermissions(val Permissions) {
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
-func (s *CreateAPIKeyRequest) SetExpiresAt(val OptDateTime) {
+func (s *CreateAPIKeyRequest) SetExpiresAt(val NilDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -1318,17 +1331,17 @@ func (s *CreateAgentRequest) SetPermissions(val AgentPermissions) {
 // A new agent secret.
 // Ref: #/components/schemas/CreateAgentSecretRequest
 type CreateAgentSecretRequest struct {
-	// When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
-	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the secret stops working, at most one year ahead, or null for a secret that never expires.
+	ExpiresAt NilDateTime `json:"expires_at"`
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
-func (s *CreateAgentSecretRequest) GetExpiresAt() OptDateTime {
+func (s *CreateAgentSecretRequest) GetExpiresAt() NilDateTime {
 	return s.ExpiresAt
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
-func (s *CreateAgentSecretRequest) SetExpiresAt(val OptDateTime) {
+func (s *CreateAgentSecretRequest) SetExpiresAt(val NilDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -1463,8 +1476,8 @@ type DeviceAgentSecret struct {
 	// The agent's organization.
 	Organization Name `json:"organization"`
 	Agent        Name `json:"agent"`
-	// When the secret stops working, at most one year ahead. Omitted for a secret that never expires.
-	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the secret stops working, at most one year ahead, or null for a secret that never expires.
+	ExpiresAt NilDateTime `json:"expires_at"`
 }
 
 // GetOrganization returns the value of Organization.
@@ -1478,7 +1491,7 @@ func (s *DeviceAgentSecret) GetAgent() Name {
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
-func (s *DeviceAgentSecret) GetExpiresAt() OptDateTime {
+func (s *DeviceAgentSecret) GetExpiresAt() NilDateTime {
 	return s.ExpiresAt
 }
 
@@ -1493,7 +1506,7 @@ func (s *DeviceAgentSecret) SetAgent(val Name) {
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
-func (s *DeviceAgentSecret) SetExpiresAt(val OptDateTime) {
+func (s *DeviceAgentSecret) SetExpiresAt(val NilDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -1606,8 +1619,8 @@ func (s *DeviceAuthorization) SetInterval(val int) {
 
 // Starts a device authorization. The scope fields are what the device asks for; the person approving
 // it sees them and may change them. A scope field left out sets no limit. A request for an API key
-// names it and its permissions; a request for an agent secret sends `agent_secret` and none of the
-// other fields.
+// names it, its permissions and its expiry (`expires_at`, null for never); a request for an agent
+// secret sends `agent_secret` and none of the other fields.
 // Ref: #/components/schemas/DeviceAuthorizationRequest
 type DeviceAuthorizationRequest struct {
 	AgentSecret OptDeviceAgentSecret `json:"agent_secret"`
@@ -1620,8 +1633,8 @@ type DeviceAuthorizationRequest struct {
 	Organization OptName     `json:"organization"`
 	Indexes      IndexScope  `json:"indexes"`
 	Permissions  Permissions `json:"permissions"`
-	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
-	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the key stops working, at most one year ahead, or null for a key that never expires.
+	ExpiresAt OptNilDateTime `json:"expires_at"`
 }
 
 // GetAgentSecret returns the value of AgentSecret.
@@ -1655,7 +1668,7 @@ func (s *DeviceAuthorizationRequest) GetPermissions() Permissions {
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
-func (s *DeviceAuthorizationRequest) GetExpiresAt() OptDateTime {
+func (s *DeviceAuthorizationRequest) GetExpiresAt() OptNilDateTime {
 	return s.ExpiresAt
 }
 
@@ -1690,7 +1703,7 @@ func (s *DeviceAuthorizationRequest) SetPermissions(val Permissions) {
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
-func (s *DeviceAuthorizationRequest) SetExpiresAt(val OptDateTime) {
+func (s *DeviceAuthorizationRequest) SetExpiresAt(val OptNilDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -2964,7 +2977,7 @@ func (s *InvitationRole) UnmarshalText(data []byte) error {
 	}
 }
 
-// What a key reaches and may do. A field left out sets no limit.
+// What a key reaches and may do. A field left out sets no limit; the expiry is always given.
 // Ref: #/components/schemas/KeyScope
 type KeyScope struct {
 	// The agent of the key's organization the key acts as. Omitted for a key that acts as the account.
@@ -2974,8 +2987,8 @@ type KeyScope struct {
 	Organization OptName     `json:"organization"`
 	Indexes      IndexScope  `json:"indexes"`
 	Permissions  Permissions `json:"permissions"`
-	// When the key stops working, at most one year ahead. Omitted for a key that never expires.
-	ExpiresAt OptDateTime `json:"expires_at"`
+	// When the key stops working, at most one year ahead, or null for a key that never expires.
+	ExpiresAt NilDateTime `json:"expires_at"`
 }
 
 // GetAgent returns the value of Agent.
@@ -2999,7 +3012,7 @@ func (s *KeyScope) GetPermissions() Permissions {
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
-func (s *KeyScope) GetExpiresAt() OptDateTime {
+func (s *KeyScope) GetExpiresAt() NilDateTime {
 	return s.ExpiresAt
 }
 
@@ -3024,7 +3037,7 @@ func (s *KeyScope) SetPermissions(val Permissions) {
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
-func (s *KeyScope) SetExpiresAt(val OptDateTime) {
+func (s *KeyScope) SetExpiresAt(val NilDateTime) {
 	s.ExpiresAt = val
 }
 
@@ -3386,6 +3399,51 @@ func (*MutationResult) deleteDocumentRes() {}
 func (*MutationResult) putDocumentRes()    {}
 
 type Name string
+
+// NewNilDateTime returns new NilDateTime with value set to v.
+func NewNilDateTime(v time.Time) NilDateTime {
+	return NilDateTime{
+		Value: v,
+	}
+}
+
+// NilDateTime is nullable time.Time.
+type NilDateTime struct {
+	Value time.Time
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilDateTime) SetTo(v time.Time) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilDateTime) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilDateTime) SetToNull() {
+	o.Null = true
+	var v time.Time
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilDateTime) Get() (v time.Time, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
 
 // NewNilString returns new NilString with value set to v.
 func NewNilString(v string) NilString {
@@ -4332,6 +4390,74 @@ func (o OptName) Get() (v Name, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptName) Or(d Name) Name {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptNilDateTime returns new OptNilDateTime with value set to v.
+func NewOptNilDateTime(v time.Time) OptNilDateTime {
+	return OptNilDateTime{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNilDateTime is optional nullable time.Time.
+type OptNilDateTime struct {
+	Value time.Time
+	Set   bool
+	Null  bool
+}
+
+// IsSet returns true if OptNilDateTime was set.
+func (o OptNilDateTime) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNilDateTime) Reset() {
+	var v time.Time
+	o.Value = v
+	o.Set = false
+	o.Null = false
+}
+
+// SetTo sets value to v.
+func (o *OptNilDateTime) SetTo(v time.Time) {
+	o.Set = true
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o OptNilDateTime) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *OptNilDateTime) SetToNull() {
+	o.Set = true
+	o.Null = true
+	var v time.Time
+	o.Value = v
+}
+
+// IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
+func (o OptNilDateTime) IsEmpty() bool {
+	return !o.Set && !o.Null
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNilDateTime) Get() (v time.Time, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNilDateTime) Or(d time.Time) time.Time {
 	if v, ok := o.Get(); ok {
 		return v
 	}

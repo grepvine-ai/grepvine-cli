@@ -2505,7 +2505,7 @@
       },
       "agentToken": {
         "type": "oauth2",
-        "description": "An agent working alone, such as a CI job, exchanges its agent secret (`gvs_\u2026`) for an agent token\n(`gvt_\u2026`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API\nrequests.\n\nThe token URL is at the service root, not under `/v1`. Send a `POST` with an\n`application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:\n\n- `grant_type`: `client_credentials`.\n- `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the\n  agent's `id` as the user name and the secret as the password, but not both.\n- `scope` (optional): space-separated permissions, to get a token narrower than the agent's\n  permissions.\n- `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.\n\nA successful answer is `{\"access_token\": \"gvt_\u2026\", \"token_type\": \"Bearer\", \"expires_in\": 900,\n\"scope\": \"search read\"}`. There is no refresh token: exchange the secret again before the token\nexpires.\n\nAn error answers `{\"error\": \"\u2026\", \"error_description\": \"\u2026\"}`: 401 `invalid_client` for a secret that is\nunknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope beyond the\nagent's permissions; 400 `invalid_request` for a missing or malformed parameter. Exchanging too often\nis refused with 429 and a `Retry-After` header that says how many seconds to wait.\n\nAn agent working alone sees only its own organization, and only the operations that list this scheme.\n",
+        "description": "An agent working alone, such as a CI job, exchanges its agent secret (`gvs_\u2026`) for an agent token\n(`gvt_\u2026`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API\nrequests.\n\nThe token URL is at the service root, not under `/v1`. Send a `POST` with an\n`application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:\n\n- `grant_type`: `client_credentials`.\n- `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the\n  agent's `id` as the user name and the secret as the password, but not both.\n- `client_id` (optional): the agent's `id`, returned as `client_id` when the secret is created. The\n  secret alone identifies the agent; a `client_id` that is sent, here or as a non-empty HTTP Basic\n  user name, must match it, or the exchange fails with `invalid_client`.\n- `scope` (optional): space-separated permissions, to get a token narrower than the agent's\n  permissions.\n- `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.\n\nA successful answer is `{\"access_token\": \"gvt_\u2026\", \"token_type\": \"Bearer\", \"expires_in\": 900,\n\"scope\": \"search read\"}`. There is no refresh token: exchange the secret again before the token\nexpires.\n\nAn error answers `{\"error\": \"\u2026\", \"error_description\": \"\u2026\"}`: 401 `invalid_client` for a secret that is\nunknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope beyond the\nagent's permissions; 400 `invalid_request` for a missing or malformed parameter. Exchanging too often\nis refused with 429 and a `Retry-After` header that says how many seconds to wait.\n\nAn agent working alone sees only its own organization, and only the operations that list this scheme.\n",
         "flows": {
           "clientCredentials": {
             "tokenUrl": "https://api.grepvine.ai/oauth/token",
@@ -3082,7 +3082,7 @@
         }
       },
       "DeviceAuthorizationRequest": {
-        "description": "Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it and its permissions; a request for an agent secret sends `agent_secret` and none of the other fields.",
+        "description": "Starts a device authorization. The scope fields are what the device asks for; the person approving it sees them and may change them. A scope field left out sets no limit. A request for an API key names it, its permissions and its expiry (`expires_at`, null for never); a request for an agent secret sends `agent_secret` and none of the other fields.",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -3110,8 +3110,11 @@
             "$ref": "#/components/schemas/Permissions"
           },
           "expires_at": {
-            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
-            "type": "string",
+            "description": "When the key stops working, at most one year ahead, or null for a key that never expires.",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }
@@ -3154,7 +3157,8 @@
         "additionalProperties": false,
         "required": [
           "organization",
-          "agent"
+          "agent",
+          "expires_at"
         ],
         "properties": {
           "organization": {
@@ -3165,8 +3169,11 @@
             "$ref": "#/components/schemas/Name"
           },
           "expires_at": {
-            "description": "When the secret stops working, at most one year ahead. Omitted for a secret that never expires.",
-            "type": "string",
+            "description": "When the secret stops working, at most one year ahead, or null for a secret that never expires.",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }
@@ -3247,11 +3254,12 @@
         }
       },
       "KeyScope": {
-        "description": "What a key reaches and may do. A field left out sets no limit.",
+        "description": "What a key reaches and may do. A field left out sets no limit; the expiry is always given.",
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "permissions"
+          "permissions",
+          "expires_at"
         ],
         "properties": {
           "agent": {
@@ -3269,8 +3277,11 @@
             "$ref": "#/components/schemas/Permissions"
           },
           "expires_at": {
-            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
-            "type": "string",
+            "description": "When the key stops working, at most one year ahead, or null for a key that never expires.",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }
@@ -3604,12 +3615,13 @@
         }
       },
       "CreateAPIKeyRequest": {
-        "description": "Creates an API key. A scope field left out sets no limit.",
+        "description": "Creates an API key. A scope field left out sets no limit; the expiry is always given.",
         "type": "object",
         "additionalProperties": false,
         "required": [
           "name",
-          "permissions"
+          "permissions",
+          "expires_at"
         ],
         "properties": {
           "name": {
@@ -3633,8 +3645,11 @@
             "$ref": "#/components/schemas/Permissions"
           },
           "expires_at": {
-            "description": "When the key stops working, at most one year ahead. Omitted for a key that never expires.",
-            "type": "string",
+            "description": "When the key stops working, at most one year ahead, or null for a key that never expires.",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }
@@ -4038,10 +4053,16 @@
         "description": "A new agent secret.",
         "type": "object",
         "additionalProperties": false,
+        "required": [
+          "expires_at"
+        ],
         "properties": {
           "expires_at": {
-            "description": "When the secret stops working, at most one year ahead. Omitted for a secret that never expires.",
-            "type": "string",
+            "description": "When the secret stops working, at most one year ahead, or null for a secret that never expires.",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }
@@ -4055,12 +4076,18 @@
           {
             "type": "object",
             "required": [
-              "secret"
+              "secret",
+              "client_id"
             ],
             "properties": {
               "secret": {
                 "description": "The secret. It is shown only in this response.",
                 "type": "string"
+              },
+              "client_id": {
+                "description": "The agent's `id`, for OAuth clients that ask for a client ID beside the secret when they exchange it for a token.",
+                "type": "string",
+                "format": "uuid"
               }
             }
           }

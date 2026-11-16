@@ -1,6 +1,6 @@
 {
   "repository": "grepvine-ai/grepvine",
-  "commit": "f7177b8c1ea2e25c48c3c9efeafcfa4d8788bb91",
+  "commit": "df16be2704edcec2df28fcf0f90ec694078f7298",
   "path": "api/openapi.yaml",
   "operations": [
     "registerUser",
@@ -57,5 +57,5 @@
     "deleteObjects",
     "queryIndex"
   ],
-  "snapshot_sha256": "2f69a5e4867f16246a6ade34eeebe61d26a99733c87eed3b8e3ee653412102f1"
+  "snapshot_sha256": "52523355e8d0e13a7c993d9b1def34efb75c2cc2c3f77952dff49f0497d6f656"
 }
