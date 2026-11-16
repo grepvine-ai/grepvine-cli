@@ -24,6 +24,9 @@ type SecurityHandler interface {
 	//  - `grant_type`: `client_credentials`.
 	//  - `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the
 	//    agent's `id` as the user name and the secret as the password, but not both.
+	//  - `client_id` (optional): the agent's `id`, returned as `client_id` when the secret is created. The
+	//    secret alone identifies the agent; a `client_id` that is sent, here or as a non-empty HTTP Basic
+	//    user name, must match it, or the exchange fails with `invalid_client`.
 	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
 	//    permissions.
 	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.
@@ -334,6 +337,9 @@ type SecuritySource interface {
 	//  - `grant_type`: `client_credentials`.
 	//  - `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the
 	//    agent's `id` as the user name and the secret as the password, but not both.
+	//  - `client_id` (optional): the agent's `id`, returned as `client_id` when the secret is created. The
+	//    secret alone identifies the agent; a `client_id` that is sent, here or as a non-empty HTTP Basic
+	//    user name, must match it, or the exchange fails with `invalid_client`.
 	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
 	//    permissions.
 	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.

@@ -73,7 +73,8 @@ func (f *scopeFlags) request(name string, now time.Time) (*httpapi.DeviceAuthori
 	}
 	switch f.expires {
 	case "never":
-		// A key that works until it is revoked: no expiry sent.
+		// A key that works until it is revoked: the expiry is sent as null.
+		request.ExpiresAt.SetToNull()
 	default:
 		// The service has no default lifetime; gv's is 90 days.
 		value := f.expires
@@ -84,7 +85,7 @@ func (f *scopeFlags) request(name string, now time.Time) (*httpapi.DeviceAuthori
 		if err != nil {
 			return nil, err
 		}
-		request.ExpiresAt = httpapi.NewOptDateTime(at)
+		request.ExpiresAt = httpapi.NewOptNilDateTime(at)
 	}
 	return request, nil
 }

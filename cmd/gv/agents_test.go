@@ -219,13 +219,13 @@ func TestAgentSecretExchange(t *testing.T) {
 func TestAgentSecretCreate(t *testing.T) {
 	s, a, execute := newAdminServer(t, map[string]adminResponse{
 		"POST /device/authorizations": {200, `{"device_code":"device","user_code":"ABCD-EFGH","verification_uri":"https://console.example/device","verification_uri_complete":"https://console.example/device?user_code=ABCD-EFGH","expires_in":600,"interval":5}`},
-		"POST /device/token":          {200, `{"agent_secret":{"id":"11111111-1111-4111-8111-111111111111","prefix":"gvs_aaaa","created_at":"2026-11-01T00:00:00Z","secret":"gvs_aaaa_full"}}`},
+		"POST /device/token":          {200, `{"agent_secret":{"id":"11111111-1111-4111-8111-111111111111","prefix":"gvs_aaaa","created_at":"2026-11-01T00:00:00Z","secret":"gvs_aaaa_full","client_id":"22222222-2222-4222-8222-222222222222"}}`},
 	})
 	stdout, stderr, err := execute("", "agent", "secret", "create", "acme/ci-bot", "--expires", "never", "--save")
-	if err != nil || stdout != "gvs_aaaa_full\n" || !strings.Contains(stderr, "ABCD-EFGH") || !strings.Contains(stderr, "never expires") {
+	if err != nil || stdout != "gvs_aaaa_full\n" || !strings.Contains(stderr, "ABCD-EFGH") || !strings.Contains(stderr, "never expires") || !strings.Contains(stderr, "Client ID: 22222222-2222-4222-8222-222222222222") {
 		t.Fatalf("secret create = %q, %q, %v", stdout, stderr, err)
 	}
-	if got := s.sent()[0]; got != `POST /device/authorizations {"agent_secret":{"organization":"acme","agent":"ci-bot"}}` {
+	if got := s.sent()[0]; got != `POST /device/authorizations {"agent_secret":{"organization":"acme","agent":"ci-bot","expires_at":null}}` {
 		t.Fatalf("request = %s", got)
 	}
 	cfg, _, err := a.loadConfig()

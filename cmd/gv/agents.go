@@ -537,7 +537,8 @@ func newAgentSecretCreateCommand(a *app) *cobra.Command {
 		Short: "Create an agent secret that you approve in a browser, and print it",
 		Long: `Create an agent secret and print it on standard output. It is shown only
 once. You approve it in a browser, as a manager of the agent or an owner or
-admin.
+admin. Standard error shows the agent's client ID, for OAuth libraries that
+ask for one beside the secret.
 
 With --save, gv also saves it to the configuration file, replacing the saved
 API key: gv then runs as the agent. Run gv login to act as yourself again.`,
@@ -549,12 +550,14 @@ API key: gv then runs as the agent. Run gv login to act as yourself again.`,
 				return err
 			}
 			wanted := httpapi.DeviceAgentSecret{Organization: httpapi.Name(organization), Agent: httpapi.Name(name)}
-			if expires != "never" {
+			if expires == "never" {
+				wanted.ExpiresAt.SetToNull()
+			} else {
 				at, err := parseExpiry(orDefault(expires, defaultLifetime), time.Now())
 				if err != nil {
 					return err
 				}
-				wanted.ExpiresAt = httpapi.NewOptDateTime(at)
+				wanted.ExpiresAt = httpapi.NewNilDateTime(at)
 			}
 			client, _, path, err := a.client(false)
 			if err != nil {
@@ -573,6 +576,7 @@ API key: gv then runs as the agent. Run gv login to act as yourself again.`,
 				until = "until " + at.UTC().Format(time.DateOnly)
 			}
 			fmt.Fprintf(a.stderr, "Created secret %s for agent %s/%s (%s). Store it now; it is not shown again.\n", created.Prefix, organization, name, until)
+			fmt.Fprintf(a.stderr, "Client ID: %s (the agent's ID, for OAuth libraries that ask for one beside the secret)\n", created.ClientID)
 			fmt.Fprintln(a.stdout, created.Secret)
 			if !save {
 				return nil
