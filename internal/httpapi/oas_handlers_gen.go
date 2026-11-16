@@ -6594,6 +6594,14 @@ func (s *Server) handleListAgentsRequest(args [1]string, argsEscaped bool, w htt
 					Name: "organization",
 					In:   "path",
 				}: params.Organization,
+				{
+					Name: "amount",
+					In:   "query",
+				}: params.Amount,
+				{
+					Name: "page",
+					In:   "query",
+				}: params.Page,
 			},
 			Raw: r,
 		}

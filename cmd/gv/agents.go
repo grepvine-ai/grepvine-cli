@@ -95,24 +95,31 @@ func newAgentListCommand(a *app) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			response, err := client.ListAgents(command.Context(), httpapi.ListAgentsParams{Organization: httpapi.Name(organization)})
-			page, err := agentAnswer[httpapi.AgentPage](organization, "list agents", response, err)
-			if err != nil {
-				return err
-			}
-			if asJSON {
-				for i := range page.Agents {
-					if err := writeJSONLine(a.stdout, &page.Agents[i]); err != nil {
-						return err
-					}
-				}
-				return nil
-			}
 			table := tabwriter.NewWriter(a.stdout, 0, 8, 2, ' ', 0)
-			fmt.Fprintln(table, "NAME\tSTATUS\tPERMISSIONS\tINDEXES\tLAST USED")
-			for i := range page.Agents {
-				agent := &page.Agents[i]
-				fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n", agent.Name, agentStatus(agent), joinPermissions(agent.Permissions), describeIndexes(agent.Indexes), lastUsed(agent.LastUsedAt))
+			if !asJSON {
+				fmt.Fprintln(table, "NAME\tSTATUS\tPERMISSIONS\tINDEXES\tLAST USED")
+			}
+			params := httpapi.ListAgentsParams{Organization: httpapi.Name(organization)}
+			for {
+				response, err := client.ListAgents(command.Context(), params)
+				page, err := agentAnswer[httpapi.AgentPage](organization, "list agents", response, err)
+				if err != nil {
+					return err
+				}
+				for i := range page.Results {
+					agent := &page.Results[i]
+					if asJSON {
+						if err := writeJSONLine(a.stdout, agent); err != nil {
+							return err
+						}
+						continue
+					}
+					fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\n", agent.Name, agentStatus(agent), joinPermissions(agent.Permissions), describeIndexes(agent.Indexes), lastUsed(agent.LastUsedAt))
+				}
+				if !page.Pagination.HasNext {
+					break
+				}
+				params.Page = httpapi.NewOptString(page.Pagination.NextPageID)
 			}
 			return table.Flush()
 		},

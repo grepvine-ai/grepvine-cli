@@ -574,20 +574,33 @@ func (s *AgentCeiling) SetPermissions(val AgentPermissions) {
 
 type AgentDescription string
 
-// An organization's agents.
+// A page of an organization's agents.
 // Ref: #/components/schemas/AgentPage
 type AgentPage struct {
-	Agents []Agent `json:"agents"`
+	// The agents on this page.
+	Results []Agent `json:"results"`
+	// How to request the next page.
+	Pagination Pagination `json:"pagination"`
 }
 
-// GetAgents returns the value of Agents.
-func (s *AgentPage) GetAgents() []Agent {
-	return s.Agents
+// GetResults returns the value of Results.
+func (s *AgentPage) GetResults() []Agent {
+	return s.Results
 }
 
-// SetAgents sets the value of Agents.
-func (s *AgentPage) SetAgents(val []Agent) {
-	s.Agents = val
+// GetPagination returns the value of Pagination.
+func (s *AgentPage) GetPagination() Pagination {
+	return s.Pagination
+}
+
+// SetResults sets the value of Results.
+func (s *AgentPage) SetResults(val []Agent) {
+	s.Results = val
+}
+
+// SetPagination sets the value of Pagination.
+func (s *AgentPage) SetPagination(val Pagination) {
+	s.Pagination = val
 }
 
 func (*AgentPage) listAgentsRes() {}

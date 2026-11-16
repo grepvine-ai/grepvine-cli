@@ -22,7 +22,8 @@ const ciAgent = `{"id":"0198f13d-f525-7f84-a98e-3c0264919c42","name":"ci-bot","d
 func TestAgentCommands(t *testing.T) {
 	secrets := `{"secrets":[{"id":"11111111-1111-4111-8111-111111111111","prefix":"gvs_aaaa","created_at":"2026-11-01T00:00:00Z"},{"id":"22222222-2222-4222-8222-222222222222","prefix":"gvs_bbbb","created_at":"2026-11-02T00:00:00Z"}]}`
 	s, _, execute := newAdminServer(t, map[string]adminResponse{
-		"GET /organizations/acme/agents":                                                        {200, `{"agents":[` + ciAgent + `]}`},
+		"GET /organizations/acme/agents":                                                        {200, `{"results":[` + ciAgent + `],"pagination":{"next_page_id":"p2","has_next":true}}`},
+		"GET /organizations/acme/agents?page=p2":                                                {200, `{"results":[` + strings.Replace(strings.Replace(ciAgent, "ci-bot", "zeta-bot", 1), "0198f13d", "0198f13e", 1) + `],"pagination":{"next_page_id":"","has_next":false}}`},
 		"GET /organizations/acme/agents/ci-bot":                                                 {200, ciAgent},
 		"POST /organizations/acme/agents":                                                       {201, ciAgent},
 		"PATCH /organizations/acme/agents/ci-bot":                                               {200, ciAgent},
@@ -34,9 +35,10 @@ func TestAgentCommands(t *testing.T) {
 	})
 
 	stdout, _, err := execute("", "agent", "ls", "acme")
-	if err != nil || !strings.Contains(stdout, "ci") || !strings.Contains(stdout, "needs review") || !strings.Contains(stdout, "search, read") {
+	if err != nil || !strings.Contains(stdout, "ci") || !strings.Contains(stdout, "needs review") || !strings.Contains(stdout, "search, read") || !strings.Contains(stdout, "zeta-bot") {
 		t.Fatalf("agent ls = %q, %v", stdout, err)
 	}
+	expectRequests(t, s, "GET /organizations/acme/agents", "GET /organizations/acme/agents")
 
 	_, _, err = execute("", "agent", "create", "acme/ci-bot", "--permission", "search", "--permission", "read", "--index", "docs")
 	if err != nil {
@@ -154,7 +156,7 @@ func TestAgentSecretExchange(t *testing.T) {
 		mu.Lock()
 		seen = append(seen, r.Header.Get("Authorization"))
 		mu.Unlock()
-		io.WriteString(w, `{"agents":[]}`)
+		io.WriteString(w, `{"results":[],"pagination":{"next_page_id":"","has_next":false}}`)
 	}))
 	defer server.Close()
 
