@@ -203,6 +203,15 @@ func TestAgentSecretExchange(t *testing.T) {
 	if _, err := bad.current(t.Context()); err == nil || !strings.Contains(err.Error(), "invalid_client") || !strings.Contains(err.Error(), "gv agent secret create") {
 		t.Fatalf("invalid secret error = %v", err)
 	}
+
+	busy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "7")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer busy.Close()
+	if _, err := newAgentTokens("gvs_secret", busy.URL, http.DefaultClient).current(t.Context()); err == nil || !strings.Contains(err.Error(), "slow down and retry in 7 seconds") {
+		t.Fatalf("too many exchanges error = %v", err)
+	}
 }
 
 // secret create asks for the secret through the browser, prints it once, and
