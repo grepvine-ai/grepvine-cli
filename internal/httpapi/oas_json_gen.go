@@ -1284,17 +1284,22 @@ func (s *AgentPage) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *AgentPage) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("agents")
+		e.FieldStart("results")
 		e.ArrStart()
-		for _, elem := range s.Agents {
+		for _, elem := range s.Results {
 			elem.Encode(e)
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("pagination")
+		s.Pagination.Encode(e)
+	}
 }
 
-var jsonFieldsNameOfAgentPage = [1]string{
-	0: "agents",
+var jsonFieldsNameOfAgentPage = [2]string{
+	0: "results",
+	1: "pagination",
 }
 
 // Decode decodes AgentPage from json.
@@ -1306,23 +1311,33 @@ func (s *AgentPage) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "agents":
+		case "results":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				s.Agents = make([]Agent, 0)
+				s.Results = make([]Agent, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
 					var elem Agent
 					if err := elem.Decode(d); err != nil {
 						return err
 					}
-					s.Agents = append(s.Agents, elem)
+					s.Results = append(s.Results, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"agents\"")
+				return errors.Wrap(err, "decode field \"results\"")
+			}
+		case "pagination":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Pagination.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"pagination\"")
 			}
 		default:
 			return d.Skip()
@@ -1334,7 +1349,7 @@ func (s *AgentPage) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

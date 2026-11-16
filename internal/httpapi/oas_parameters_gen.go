@@ -4195,6 +4195,13 @@ func decodeListAgentSecretsParams(args [2]string, argsEscaped bool, r *http.Requ
 type ListAgentsParams struct {
 	// The organization's name. Any spelling that differs only in case refers to the same organization.
 	Organization Name
+	// The largest number of results to return in one page, from 1 to 200. Defaults to 50. A page can hold
+	// fewer, even none, while more follow.
+	Amount OptInt `json:",omitempty,omitzero"`
+	// The `next_page_id` of the previous page, to continue where it stopped; omit it for the first page. A
+	// token is valid for 15 minutes, and only for the same caller and the same request, including
+	// `amount`.
+	Page OptString `json:",omitempty,omitzero"`
 }
 
 func unpackListAgentsParams(packed middleware.Parameters) (params ListAgentsParams) {
@@ -4205,10 +4212,29 @@ func unpackListAgentsParams(packed middleware.Parameters) (params ListAgentsPara
 		}
 		params.Organization = packed[key].(Name)
 	}
+	{
+		key := middleware.ParameterKey{
+			Name: "amount",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Amount = v.(OptInt)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "page",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Page = v.(OptString)
+		}
+	}
 	return params
 }
 
 func decodeListAgentsParams(args [1]string, argsEscaped bool, r *http.Request) (params ListAgentsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
 	// Decode path: organization.
 	if err := func() error {
 		param := args[0]
@@ -4266,6 +4292,145 @@ func decodeListAgentsParams(args [1]string, argsEscaped bool, r *http.Request) (
 		return params, &ogenerrors.DecodeParamError{
 			Name: "organization",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	// Set default value for query: amount.
+	{
+		val := int(50)
+		params.Amount.SetTo(val)
+	}
+	// Decode query: amount.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "amount",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotAmountVal int
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToInt(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAmountVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Amount.SetTo(paramsDotAmountVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Amount.Get(); ok {
+					if err := func() error {
+						if err := (validate.Int{
+							MinSet:        true,
+							Min:           1,
+							MaxSet:        true,
+							Max:           200,
+							MinExclusive:  false,
+							MaxExclusive:  false,
+							MultipleOfSet: false,
+							MultipleOf:    0,
+							Pattern:       nil,
+						}).Validate(int64(value)); err != nil {
+							return errors.Wrap(err, "int")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "amount",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: page.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "page",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotPageVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotPageVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Page.SetTo(paramsDotPageVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Page.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:     0,
+							MinLengthSet:  false,
+							MaxLength:     4096,
+							MaxLengthSet:  true,
+							Email:         false,
+							Hostname:      false,
+							Regex:         nil,
+							MinNumeric:    0,
+							MinNumericSet: false,
+							MaxNumeric:    0,
+							MaxNumericSet: false,
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "page",
+			In:   "query",
 			Err:  err,
 		}
 	}
