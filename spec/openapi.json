@@ -1244,11 +1244,17 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "$ref": "#/components/parameters/Amount"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
           }
         ],
         "responses": {
           "200": {
-            "description": "The agents.",
+            "description": "A page of agents.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3899,17 +3905,23 @@
         }
       },
       "AgentPage": {
-        "description": "An organization's agents.",
+        "description": "A page of an organization's agents.",
         "type": "object",
         "required": [
-          "agents"
+          "results",
+          "pagination"
         ],
         "properties": {
-          "agents": {
+          "results": {
+            "description": "The agents on this page.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Agent"
             }
+          },
+          "pagination": {
+            "description": "How to request the next page.",
+            "$ref": "#/components/schemas/Pagination"
           }
         }
       },
