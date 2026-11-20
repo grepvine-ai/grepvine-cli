@@ -1365,7 +1365,7 @@
       },
       "patch": {
         "summary": "Update an agent",
-        "description": "Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused at once, with every credential it has.",
+        "description": "Changes an agent's description or permissions, or disables or enables it. Its managers, owners and admins can change it, and only within their own permissions (and the key's, for a key with `manage_agents`); any of them can disable it. New permissions must also be allowed by every manager's role, or the change is refused with 409. Saving the permissions of an agent with no managers makes you one. A disabled agent is refused everywhere within 10 seconds, with every credential it has.",
         "operationId": "updateAgent",
         "tags": [
           "Agents"
@@ -1636,7 +1636,7 @@
     "/organizations/{organization}/agents/{agent}/secrets/{secret_id}": {
       "delete": {
         "summary": "Revoke an agent secret",
-        "description": "Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working at once. Its managers, owners and admins can revoke one.",
+        "description": "Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for it stop working everywhere within 10 seconds. Its managers, owners and admins can revoke one.",
         "operationId": "revokeAgentSecret",
         "tags": [
           "Agents"
@@ -1658,6 +1658,59 @@
         "responses": {
           "204": {
             "description": "The secret was revoked."
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/organizations/{organization}/usage": {
+      "get": {
+        "summary": "Get organization usage",
+        "description": "Returns what the organization stores and the requests it makes, for one index or all of them, over a window that\nends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by month. Times are UTC.\nRequires the owner or admin role; a key needs the `read_usage` permission. Usage can trail activity by up to an\nhour.\n",
+        "operationId": "getOrganizationUsage",
+        "tags": [
+          "Organizations"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Organization"
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "description": "The length of each bucket: `hour` for the last 24 hours, `day` for the last 30 days, `month` for the last 12 months.",
+            "schema": {
+              "$ref": "#/components/schemas/UsageResolution"
+            }
+          },
+          {
+            "name": "index",
+            "in": "query",
+            "description": "Counts only this index. Omit it for every index and the requests made on the organization itself. Any spelling that differs only in case refers to the same index.",
+            "schema": {
+              "$ref": "#/components/schemas/IndexName"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The organization's usage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationUsage"
+                }
+              }
+            }
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
@@ -2505,7 +2558,7 @@
       },
       "agentToken": {
         "type": "oauth2",
-        "description": "An agent working alone, such as a CI job, exchanges its agent secret (`gvs_\u2026`) for an agent token\n(`gvt_\u2026`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API\nrequests.\n\nThe token URL is at the service root, not under `/v1`. Send a `POST` with an\n`application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:\n\n- `grant_type`: `client_credentials`.\n- `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the\n  agent's `id` as the user name and the secret as the password, but not both.\n- `client_id` (optional): the agent's `id`, returned as `client_id` when the secret is created. The\n  secret alone identifies the agent; a `client_id` that is sent, here or as a non-empty HTTP Basic\n  user name, must match it, or the exchange fails with `invalid_client`.\n- `scope` (optional): space-separated permissions, to get a token narrower than the agent's\n  permissions.\n- `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.\n\nA successful answer is `{\"access_token\": \"gvt_\u2026\", \"token_type\": \"Bearer\", \"expires_in\": 900,\n\"scope\": \"search read\"}`. There is no refresh token: exchange the secret again before the token\nexpires.\n\nAn error answers `{\"error\": \"\u2026\", \"error_description\": \"\u2026\"}`: 401 `invalid_client` for a secret that is\nunknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope beyond the\nagent's permissions; 400 `invalid_request` for a missing or malformed parameter. Exchanging too often\nis refused with 429 and a `Retry-After` header that says how many seconds to wait.\n\nAn agent working alone sees only its own organization, and only the operations that list this scheme.\n",
+        "description": "An agent working alone, such as a CI job, exchanges its agent secret (`gvs_\u2026`) for an agent token\n(`gvt_\u2026`) and sends the token as `Authorization: Bearer`. The secret itself is never sent with API\nrequests.\n\nThe token URL is at the service root, not under `/v1`. Send a `POST` with an\n`application/x-www-form-urlencoded` body of at most 16 KiB, each parameter at most once:\n\n- `grant_type`: `client_credentials`.\n- `client_secret`: the agent secret. Alternatively send it with HTTP Basic authentication, with the\n  agent's `id` as the user name and the secret as the password, but not both.\n- `client_id` (optional): the agent's `id`, returned as `client_id` when the secret is created. The\n  secret alone identifies the agent; a `client_id` that is sent, here or as a non-empty HTTP Basic\n  user name, must match it, or the exchange fails with `invalid_client`.\n- `scope` (optional): space-separated permissions, to get a token narrower than the agent's\n  permissions.\n- `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900. A token never\n  outlives its secret: one exchanged shortly before the secret expires ends when the secret does, and the\n  answer's `expires_in` says so.\n\nA successful answer is `{\"access_token\": \"gvt_\u2026\", \"token_type\": \"Bearer\", \"expires_in\": 900,\n\"scope\": \"search read\"}`. There is no refresh token: exchange the secret again before the token\nexpires.\n\nAn error answers `{\"error\": \"\u2026\", \"error_description\": \"\u2026\"}`: 401 `invalid_client` for a secret that is\nunknown, revoked or expired, or belongs to a disabled agent; 400 `invalid_scope` for a scope beyond the\nagent's permissions; 400 `invalid_request` for a missing or malformed parameter. Exchanging too often\nis refused with 429 and a `Retry-After` header that says how many seconds to wait.\n\nAn agent working alone sees only its own organization, and only the operations that list this scheme.\n",
         "flows": {
           "clientCredentials": {
             "tokenUrl": "https://api.grepvine.ai/oauth/token",
@@ -3584,7 +3637,7 @@
         }
       },
       "Permission": {
-        "description": "A permission a key can carry. A key never does more than its account's role allows in an organization.\n`search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;\n`create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.\n`manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the\norganization; `manage_agents` creates, changes and deletes agents and their managers, and revokes their\nsecrets, but never creates a secret. These three are opt-in and need a key scoped to one organization.\n",
+        "description": "A permission a key can carry. A key never does more than its account's role allows in an organization.\n`search` searches an index; `read` reads and lists its documents; `write` stores and deletes documents;\n`create_index` creates indexes, and needs every index in scope; `manage_index` changes and deletes indexes.\n`manage_members` adds members, changes their roles and removes them; `manage_organization` deletes the\norganization; `manage_agents` creates, changes and deletes agents and their managers, and revokes their\nsecrets, but never creates a secret; `read_usage` reads the organization's usage, and needs every index in scope.\nThese four are opt-in and need a key scoped to one organization; none can be granted to an app or an agent.\n",
         "type": "string",
         "enum": [
           "search",
@@ -3594,7 +3647,8 @@
           "manage_index",
           "manage_members",
           "manage_organization",
-          "manage_agents"
+          "manage_agents",
+          "read_usage"
         ]
       },
       "Permissions": {
@@ -3907,6 +3961,134 @@
           "needs_review": {
             "description": "Whether the agent's permissions should be reviewed, because a manager left or lost a role.",
             "type": "boolean"
+          }
+        }
+      },
+      "UsageResolution": {
+        "description": "The length of a usage bucket.",
+        "type": "string",
+        "enum": [
+          "hour",
+          "day",
+          "month"
+        ]
+      },
+      "OrganizationUsage": {
+        "description": "What an organization, or one of its indexes, stores and the requests it makes, by bucket.",
+        "type": "object",
+        "required": [
+          "resolution",
+          "current",
+          "buckets"
+        ],
+        "properties": {
+          "resolution": {
+            "$ref": "#/components/schemas/UsageResolution"
+          },
+          "current": {
+            "$ref": "#/components/schemas/StorageUsage"
+          },
+          "buckets": {
+            "description": "One bucket per hour, day or month of the window, oldest first, each present even with no activity. The last bucket is the current one and is still filling.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsageBucket"
+            }
+          }
+        }
+      },
+      "StorageUsage": {
+        "description": "What is stored now: the documents and their total size, as uploaded. Metadata is not counted.",
+        "type": "object",
+        "required": [
+          "documents",
+          "stored_bytes"
+        ],
+        "properties": {
+          "documents": {
+            "description": "The number of documents.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "description": "The total size of the documents in bytes, as uploaded and as a download returns them.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "UsageBucket": {
+        "description": "Usage in one hour, day or month.",
+        "type": "object",
+        "required": [
+          "start",
+          "requests"
+        ],
+        "properties": {
+          "start": {
+            "description": "When the bucket starts, in UTC.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "documents": {
+            "description": "The average number of documents stored during the bucket, rounded down. Storage is measured once an hour; this is absent when it was not measured in any hour of the bucket, such as the current hour before its measurement.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "stored_bytes": {
+            "description": "The average size of the documents stored during the bucket, in bytes, rounded down: the size measured in each hour of the bucket, an index that did not exist counting as zero, divided by the hours measured. Documents stored and deleted within the same hour are not seen. Absent when no hour of the bucket was measured.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "requests": {
+            "$ref": "#/components/schemas/UsageRequests"
+          }
+        }
+      },
+      "UsageRequests": {
+        "description": "The successful requests in a bucket, by operation. A request that was refused or failed is not counted. An API request and an MCP tool call each count once; a batch counts once.",
+        "type": "object",
+        "required": [
+          "search",
+          "read",
+          "write",
+          "manage",
+          "total"
+        ],
+        "properties": {
+          "search": {
+            "description": "Searches.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "read": {
+            "description": "Document reads and listings.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "write": {
+            "description": "Document writes and deletions.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "manage": {
+            "description": "Every other request on the organization or its indexes, such as reading or changing an index or the members.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "total": {
+            "description": "All of them.",
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },

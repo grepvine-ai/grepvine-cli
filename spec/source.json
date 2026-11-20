@@ -1,6 +1,6 @@
 {
   "repository": "grepvine-ai/grepvine",
-  "commit": "3c2f8a7171187ef70ffa56364dee8fc7ae5c52da",
+  "commit": "f98ea9247bdeaa4a825f8692f043b0299bf739e2",
   "path": "api/openapi.yaml",
   "operations": [
     "registerUser",
@@ -44,6 +44,7 @@
     "listAgentSecrets",
     "createAgentSecret",
     "revokeAgentSecret",
+    "getOrganizationUsage",
     "listIndexes",
     "createIndex",
     "getIndex",
@@ -57,5 +58,5 @@
     "deleteObjects",
     "queryIndex"
   ],
-  "snapshot_sha256": "52523355e8d0e13a7c993d9b1def34efb75c2cc2c3f77952dff49f0497d6f656"
+  "snapshot_sha256": "931f7780fc2845843e6cc407ff2d80989bb8d88ba53fc1ca9d97a8cf10f246b8"
 }
