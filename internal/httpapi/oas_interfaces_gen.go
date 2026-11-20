@@ -85,6 +85,10 @@ type GetOrganizationRes interface {
 	getOrganizationRes()
 }
 
+type GetOrganizationUsageRes interface {
+	getOrganizationUsageRes()
+}
+
 type ListAgentSecretsRes interface {
 	listAgentSecretsRes()
 }

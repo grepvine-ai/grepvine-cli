@@ -2220,6 +2220,7 @@ func (*ForbiddenHeaders) deleteAgentRes()               {}
 func (*ForbiddenHeaders) denyOAuthAuthorizationRes()    {}
 func (*ForbiddenHeaders) getAgentRes()                  {}
 func (*ForbiddenHeaders) getDeviceAuthorizationRes()    {}
+func (*ForbiddenHeaders) getOrganizationUsageRes()      {}
 func (*ForbiddenHeaders) listAgentSecretsRes()          {}
 func (*ForbiddenHeaders) listAgentsRes()                {}
 func (*ForbiddenHeaders) listConnectionsRes()           {}
@@ -3532,6 +3533,7 @@ func (*NotFoundHeaders) getDeviceAuthorizationRes()     {}
 func (*NotFoundHeaders) getDocumentRes()                {}
 func (*NotFoundHeaders) getIndexRes()                   {}
 func (*NotFoundHeaders) getOrganizationRes()            {}
+func (*NotFoundHeaders) getOrganizationUsageRes()       {}
 func (*NotFoundHeaders) listAgentSecretsRes()           {}
 func (*NotFoundHeaders) listAgentsRes()                 {}
 func (*NotFoundHeaders) removeAgentManagerRes()         {}
@@ -4074,6 +4076,52 @@ func (o OptIndexDescription) Or(d IndexDescription) IndexDescription {
 	return d
 }
 
+// NewOptIndexName returns new OptIndexName with value set to v.
+func NewOptIndexName(v IndexName) OptIndexName {
+	return OptIndexName{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptIndexName is optional IndexName.
+type OptIndexName struct {
+	Value IndexName
+	Set   bool
+}
+
+// IsSet returns true if OptIndexName was set.
+func (o OptIndexName) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptIndexName) Reset() {
+	var v IndexName
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptIndexName) SetTo(v IndexName) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptIndexName) Get() (v IndexName, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptIndexName) Or(d IndexName) IndexName {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptIndexTagChanges returns new OptIndexTagChanges with value set to v.
 func NewOptIndexTagChanges(v IndexTagChanges) OptIndexTagChanges {
 	return OptIndexTagChanges{
@@ -4206,6 +4254,52 @@ func (o OptInt) Get() (v int, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt64 returns new OptInt64 with value set to v.
+func NewOptInt64(v int64) OptInt64 {
+	return OptInt64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt64 is optional int64.
+type OptInt64 struct {
+	Value int64
+	Set   bool
+}
+
+// IsSet returns true if OptInt64 was set.
+func (o OptInt64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt64) Reset() {
+	var v int64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt64) SetTo(v int64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt64) Get() (v int64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt64) Or(d int64) int64 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -4806,6 +4900,48 @@ func (s *OrganizationPage) SetPagination(val Pagination) {
 	s.Pagination = val
 }
 
+// What an organization, or one of its indexes, stores and the requests it makes, by bucket.
+// Ref: #/components/schemas/OrganizationUsage
+type OrganizationUsage struct {
+	Resolution UsageResolution `json:"resolution"`
+	Current    StorageUsage    `json:"current"`
+	// One bucket per hour, day or month of the window, oldest first, each present even with no activity.
+	// The last bucket is the current one and is still filling.
+	Buckets []UsageBucket `json:"buckets"`
+}
+
+// GetResolution returns the value of Resolution.
+func (s *OrganizationUsage) GetResolution() UsageResolution {
+	return s.Resolution
+}
+
+// GetCurrent returns the value of Current.
+func (s *OrganizationUsage) GetCurrent() StorageUsage {
+	return s.Current
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *OrganizationUsage) GetBuckets() []UsageBucket {
+	return s.Buckets
+}
+
+// SetResolution sets the value of Resolution.
+func (s *OrganizationUsage) SetResolution(val UsageResolution) {
+	s.Resolution = val
+}
+
+// SetCurrent sets the value of Current.
+func (s *OrganizationUsage) SetCurrent(val StorageUsage) {
+	s.Current = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *OrganizationUsage) SetBuckets(val []UsageBucket) {
+	s.Buckets = val
+}
+
+func (*OrganizationUsage) getOrganizationUsageRes() {}
+
 // A page may hold fewer results than the requested amount, possibly none, while has_next is true; a
 // query page stops at the server's soft time budget and next_page_id resumes exactly after the last
 // candidate it examined. Clients continue while has_next is true.
@@ -4999,8 +5135,9 @@ func (*PendingOAuthAuthorization) lookupOAuthAuthorizationRes() {}
 // deletes documents; `create_index` creates indexes, and needs every index in scope; `manage_index`
 // changes and deletes indexes. `manage_members` adds members, changes their roles and removes them;
 // `manage_organization` deletes the organization; `manage_agents` creates, changes and deletes agents
-// and their managers, and revokes their secrets, but never creates a secret. These three are opt-in
-// and need a key scoped to one organization.
+// and their managers, and revokes their secrets, but never creates a secret; `read_usage` reads the
+// organization's usage, and needs every index in scope. These four are opt-in and need a key scoped to
+// one organization; none can be granted to an app or an agent.
 // Ref: #/components/schemas/Permission
 type Permission string
 
@@ -5013,6 +5150,7 @@ const (
 	PermissionManageMembers      Permission = "manage_members"
 	PermissionManageOrganization Permission = "manage_organization"
 	PermissionManageAgents       Permission = "manage_agents"
+	PermissionReadUsage          Permission = "read_usage"
 )
 
 // AllValues returns all Permission values.
@@ -5026,6 +5164,7 @@ func (Permission) AllValues() []Permission {
 		PermissionManageMembers,
 		PermissionManageOrganization,
 		PermissionManageAgents,
+		PermissionReadUsage,
 	}
 }
 
@@ -5047,6 +5186,8 @@ func (s Permission) MarshalText() ([]byte, error) {
 	case PermissionManageOrganization:
 		return []byte(s), nil
 	case PermissionManageAgents:
+		return []byte(s), nil
+	case PermissionReadUsage:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -5079,6 +5220,9 @@ func (s *Permission) UnmarshalText(data []byte) error {
 		return nil
 	case PermissionManageAgents:
 		*s = PermissionManageAgents
+		return nil
+	case PermissionReadUsage:
+		*s = PermissionReadUsage
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -5754,6 +5898,35 @@ func (s *StaffRole) UnmarshalText(data []byte) error {
 	}
 }
 
+// What is stored now: the documents and their total size, as uploaded. Metadata is not counted.
+// Ref: #/components/schemas/StorageUsage
+type StorageUsage struct {
+	// The number of documents.
+	Documents int64 `json:"documents"`
+	// The total size of the documents in bytes, as uploaded and as a download returns them.
+	StoredBytes int64 `json:"stored_bytes"`
+}
+
+// GetDocuments returns the value of Documents.
+func (s *StorageUsage) GetDocuments() int64 {
+	return s.Documents
+}
+
+// GetStoredBytes returns the value of StoredBytes.
+func (s *StorageUsage) GetStoredBytes() int64 {
+	return s.StoredBytes
+}
+
+// SetDocuments sets the value of Documents.
+func (s *StorageUsage) SetDocuments(val int64) {
+	s.Documents = val
+}
+
+// SetStoredBytes sets the value of StoredBytes.
+func (s *StorageUsage) SetStoredBytes(val int64) {
+	s.StoredBytes = val
+}
+
 // A boolean metadata value with its type named.
 // Ref: #/components/schemas/TaggedBooleanMetadataValue
 type TaggedBooleanMetadataValue struct {
@@ -6267,6 +6440,180 @@ func (s *UpdateOrganizationRequest) GetMembersCreateAgents() OptBool {
 // SetMembersCreateAgents sets the value of MembersCreateAgents.
 func (s *UpdateOrganizationRequest) SetMembersCreateAgents(val OptBool) {
 	s.MembersCreateAgents = val
+}
+
+// Usage in one hour, day or month.
+// Ref: #/components/schemas/UsageBucket
+type UsageBucket struct {
+	// When the bucket starts, in UTC.
+	Start time.Time `json:"start"`
+	// The average number of documents stored during the bucket, rounded down. Storage is measured once an
+	// hour; this is absent when it was not measured in any hour of the bucket, such as the current hour
+	// before its measurement.
+	Documents OptInt64 `json:"documents"`
+	// The average size of the documents stored during the bucket, in bytes, rounded down: the size
+	// measured in each hour of the bucket, an index that did not exist counting as zero, divided by the
+	// hours measured. Documents stored and deleted within the same hour are not seen. Absent when no hour
+	// of the bucket was measured.
+	StoredBytes OptInt64      `json:"stored_bytes"`
+	Requests    UsageRequests `json:"requests"`
+}
+
+// GetStart returns the value of Start.
+func (s *UsageBucket) GetStart() time.Time {
+	return s.Start
+}
+
+// GetDocuments returns the value of Documents.
+func (s *UsageBucket) GetDocuments() OptInt64 {
+	return s.Documents
+}
+
+// GetStoredBytes returns the value of StoredBytes.
+func (s *UsageBucket) GetStoredBytes() OptInt64 {
+	return s.StoredBytes
+}
+
+// GetRequests returns the value of Requests.
+func (s *UsageBucket) GetRequests() UsageRequests {
+	return s.Requests
+}
+
+// SetStart sets the value of Start.
+func (s *UsageBucket) SetStart(val time.Time) {
+	s.Start = val
+}
+
+// SetDocuments sets the value of Documents.
+func (s *UsageBucket) SetDocuments(val OptInt64) {
+	s.Documents = val
+}
+
+// SetStoredBytes sets the value of StoredBytes.
+func (s *UsageBucket) SetStoredBytes(val OptInt64) {
+	s.StoredBytes = val
+}
+
+// SetRequests sets the value of Requests.
+func (s *UsageBucket) SetRequests(val UsageRequests) {
+	s.Requests = val
+}
+
+// The successful requests in a bucket, by operation. A request that was refused or failed is not
+// counted. An API request and an MCP tool call each count once; a batch counts once.
+// Ref: #/components/schemas/UsageRequests
+type UsageRequests struct {
+	// Searches.
+	Search int64 `json:"search"`
+	// Document reads and listings.
+	Read int64 `json:"read"`
+	// Document writes and deletions.
+	Write int64 `json:"write"`
+	// Every other request on the organization or its indexes, such as reading or changing an index or the
+	// members.
+	Manage int64 `json:"manage"`
+	// All of them.
+	Total int64 `json:"total"`
+}
+
+// GetSearch returns the value of Search.
+func (s *UsageRequests) GetSearch() int64 {
+	return s.Search
+}
+
+// GetRead returns the value of Read.
+func (s *UsageRequests) GetRead() int64 {
+	return s.Read
+}
+
+// GetWrite returns the value of Write.
+func (s *UsageRequests) GetWrite() int64 {
+	return s.Write
+}
+
+// GetManage returns the value of Manage.
+func (s *UsageRequests) GetManage() int64 {
+	return s.Manage
+}
+
+// GetTotal returns the value of Total.
+func (s *UsageRequests) GetTotal() int64 {
+	return s.Total
+}
+
+// SetSearch sets the value of Search.
+func (s *UsageRequests) SetSearch(val int64) {
+	s.Search = val
+}
+
+// SetRead sets the value of Read.
+func (s *UsageRequests) SetRead(val int64) {
+	s.Read = val
+}
+
+// SetWrite sets the value of Write.
+func (s *UsageRequests) SetWrite(val int64) {
+	s.Write = val
+}
+
+// SetManage sets the value of Manage.
+func (s *UsageRequests) SetManage(val int64) {
+	s.Manage = val
+}
+
+// SetTotal sets the value of Total.
+func (s *UsageRequests) SetTotal(val int64) {
+	s.Total = val
+}
+
+// The length of a usage bucket.
+// Ref: #/components/schemas/UsageResolution
+type UsageResolution string
+
+const (
+	UsageResolutionHour  UsageResolution = "hour"
+	UsageResolutionDay   UsageResolution = "day"
+	UsageResolutionMonth UsageResolution = "month"
+)
+
+// AllValues returns all UsageResolution values.
+func (UsageResolution) AllValues() []UsageResolution {
+	return []UsageResolution{
+		UsageResolutionHour,
+		UsageResolutionDay,
+		UsageResolutionMonth,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s UsageResolution) MarshalText() ([]byte, error) {
+	switch s {
+	case UsageResolutionHour:
+		return []byte(s), nil
+	case UsageResolutionDay:
+		return []byte(s), nil
+	case UsageResolutionMonth:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *UsageResolution) UnmarshalText(data []byte) error {
+	switch UsageResolution(data) {
+	case UsageResolutionHour:
+		*s = UsageResolutionHour
+		return nil
+	case UsageResolutionDay:
+		*s = UsageResolutionDay
+		return nil
+	case UsageResolutionMonth:
+		*s = UsageResolutionMonth
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // A user account.

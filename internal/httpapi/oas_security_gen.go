@@ -29,7 +29,9 @@ type SecurityHandler interface {
 	//    user name, must match it, or the exchange fails with `invalid_client`.
 	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
 	//    permissions.
-	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.
+	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900. A
+	//    token never outlives its secret: one exchanged shortly before the secret expires ends when the
+	//    secret does, and the answer's `expires_in` says so.
 	//
 	// A successful answer is `{"access_token": "gvt_…", "token_type": "Bearer", "expires_in": 900,
 	// "scope": "search read"}`. There is no refresh token: exchange the secret again before the token
@@ -150,6 +152,7 @@ var operationRolesApiKeyAuth = map[string][]string{
 	GetDocumentOperation:                   []string{},
 	GetIndexOperation:                      []string{},
 	GetOrganizationOperation:               []string{},
+	GetOrganizationUsageOperation:          []string{},
 	ListAPIKeysOperation:                   []string{},
 	ListAgentSecretsOperation:              []string{},
 	ListAgentsOperation:                    []string{},
@@ -221,6 +224,7 @@ var operationRolesCookieAuth = map[string][]string{
 	GetDocumentOperation:                   []string{},
 	GetIndexOperation:                      []string{},
 	GetOrganizationOperation:               []string{},
+	GetOrganizationUsageOperation:          []string{},
 	ListAPIKeysOperation:                   []string{},
 	ListAgentSecretsOperation:              []string{},
 	ListAgentsOperation:                    []string{},
@@ -342,7 +346,9 @@ type SecuritySource interface {
 	//    user name, must match it, or the exchange fails with `invalid_client`.
 	//  - `scope` (optional): space-separated permissions, to get a token narrower than the agent's
 	//    permissions.
-	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900.
+	//  - `expires_in` (optional): the token's lifetime in seconds, from 60 to 3600. Defaults to 900. A
+	//    token never outlives its secret: one exchanged shortly before the secret expires ends when the
+	//    secret does, and the answer's `expires_in` says so.
 	//
 	// A successful answer is `{"access_token": "gvt_…", "token_type": "Bearer", "expires_in": 900,
 	// "scope": "search read"}`. There is no refresh token: exchange the secret again before the token

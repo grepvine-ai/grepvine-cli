@@ -204,6 +204,15 @@ type Handler interface {
 	//
 	// GET /organizations/{organization}
 	GetOrganization(ctx context.Context, params GetOrganizationParams) (GetOrganizationRes, error)
+	// GetOrganizationUsage implements getOrganizationUsage operation.
+	//
+	// Returns what the organization stores and the requests it makes, for one index or all of them, over a
+	// window that ends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by
+	// month. Times are UTC. Requires the owner or admin role; a key needs the `read_usage` permission.
+	// Usage can trail activity by up to an hour.
+	//
+	// GET /organizations/{organization}/usage
+	GetOrganizationUsage(ctx context.Context, params GetOrganizationUsageParams) (GetOrganizationUsageRes, error)
 	// GetUsernameAvailability implements getUsernameAvailability operation.
 	//
 	// Reports whether an account can register this username now. Accounts and organizations share one
@@ -367,7 +376,7 @@ type Handler interface {
 	// RevokeAgentSecret implements revokeAgentSecret operation.
 	//
 	// Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
-	// it stop working at once. Its managers, owners and admins can revoke one.
+	// it stop working everywhere within 10 seconds. Its managers, owners and admins can revoke one.
 	//
 	// DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
 	RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (RevokeAgentSecretRes, error)
@@ -403,7 +412,8 @@ type Handler interface {
 	// admins can change it, and only within their own permissions (and the key's, for a key with
 	// `manage_agents`); any of them can disable it. New permissions must also be allowed by every
 	// manager's role, or the change is refused with 409. Saving the permissions of an agent with no
-	// managers makes you one. A disabled agent is refused at once, with every credential it has.
+	// managers makes you one. A disabled agent is refused everywhere within 10 seconds, with every
+	// credential it has.
 	//
 	// PATCH /organizations/{organization}/agents/{agent}
 	UpdateAgent(ctx context.Context, req *UpdateAgentRequest, params UpdateAgentParams) (UpdateAgentRes, error)

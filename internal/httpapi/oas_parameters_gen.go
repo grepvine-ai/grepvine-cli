@@ -3782,6 +3782,217 @@ func decodeGetOrganizationParams(args [1]string, argsEscaped bool, r *http.Reque
 	return params, nil
 }
 
+// GetOrganizationUsageParams is parameters of getOrganizationUsage operation.
+type GetOrganizationUsageParams struct {
+	// The organization's name. Any spelling that differs only in case refers to the same organization.
+	Organization Name
+	// The length of each bucket: `hour` for the last 24 hours, `day` for the last 30 days, `month` for the
+	// last 12 months.
+	Resolution UsageResolution
+	// Counts only this index. Omit it for every index and the requests made on the organization itself.
+	// Any spelling that differs only in case refers to the same index.
+	Index OptIndexName `json:",omitempty,omitzero"`
+}
+
+func unpackGetOrganizationUsageParams(packed middleware.Parameters) (params GetOrganizationUsageParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organization",
+			In:   "path",
+		}
+		params.Organization = packed[key].(Name)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "resolution",
+			In:   "query",
+		}
+		params.Resolution = packed[key].(UsageResolution)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "index",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Index = v.(OptIndexName)
+		}
+	}
+	return params
+}
+
+func decodeGetOrganizationUsageParams(args [1]string, argsEscaped bool, r *http.Request) (params GetOrganizationUsageParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: organization.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organization",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				var paramsDotOrganizationVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Organization = Name(paramsDotOrganizationVal)
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Organization.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organization",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: resolution.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "resolution",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Resolution = UsageResolution(c)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := params.Resolution.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "resolution",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: index.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "index",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotIndexVal IndexName
+				if err := func() error {
+					var paramsDotIndexValVal string
+					if err := func() error {
+						val, err := d.DecodeValue()
+						if err != nil {
+							return err
+						}
+
+						c, err := conv.ToString(val)
+						if err != nil {
+							return err
+						}
+
+						paramsDotIndexValVal = c
+						return nil
+					}(); err != nil {
+						return err
+					}
+					paramsDotIndexVal = IndexName(paramsDotIndexValVal)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Index.SetTo(paramsDotIndexVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Index.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "index",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetUsernameAvailabilityParams is parameters of getUsernameAvailability operation.
 type GetUsernameAvailabilityParams struct {
 	// The username to check.

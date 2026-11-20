@@ -225,6 +225,15 @@ type Invoker interface {
 	//
 	// GET /organizations/{organization}
 	GetOrganization(ctx context.Context, params GetOrganizationParams) (GetOrganizationRes, error)
+	// GetOrganizationUsage invokes getOrganizationUsage operation.
+	//
+	// Returns what the organization stores and the requests it makes, for one index or all of them, over a
+	// window that ends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by
+	// month. Times are UTC. Requires the owner or admin role; a key needs the `read_usage` permission.
+	// Usage can trail activity by up to an hour.
+	//
+	// GET /organizations/{organization}/usage
+	GetOrganizationUsage(ctx context.Context, params GetOrganizationUsageParams) (GetOrganizationUsageRes, error)
 	// GetUsernameAvailability invokes getUsernameAvailability operation.
 	//
 	// Reports whether an account can register this username now. Accounts and organizations share one
@@ -388,7 +397,7 @@ type Invoker interface {
 	// RevokeAgentSecret invokes revokeAgentSecret operation.
 	//
 	// Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
-	// it stop working at once. Its managers, owners and admins can revoke one.
+	// it stop working everywhere within 10 seconds. Its managers, owners and admins can revoke one.
 	//
 	// DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
 	RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (RevokeAgentSecretRes, error)
@@ -424,7 +433,8 @@ type Invoker interface {
 	// admins can change it, and only within their own permissions (and the key's, for a key with
 	// `manage_agents`); any of them can disable it. New permissions must also be allowed by every
 	// manager's role, or the change is refused with 409. Saving the permissions of an agent with no
-	// managers makes you one. A disabled agent is refused at once, with every credential it has.
+	// managers makes you one. A disabled agent is refused everywhere within 10 seconds, with every
+	// credential it has.
 	//
 	// PATCH /organizations/{organization}/agents/{agent}
 	UpdateAgent(ctx context.Context, request *UpdateAgentRequest, params UpdateAgentParams) (UpdateAgentRes, error)
@@ -4615,6 +4625,194 @@ func (c *Client) sendGetOrganization(ctx context.Context, params GetOrganization
 	return result, nil
 }
 
+// GetOrganizationUsage invokes getOrganizationUsage operation.
+//
+// Returns what the organization stores and the requests it makes, for one index or all of them, over a
+// window that ends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by
+// month. Times are UTC. Requires the owner or admin role; a key needs the `read_usage` permission.
+// Usage can trail activity by up to an hour.
+//
+// GET /organizations/{organization}/usage
+func (c *Client) GetOrganizationUsage(ctx context.Context, params GetOrganizationUsageParams) (GetOrganizationUsageRes, error) {
+	res, err := c.sendGetOrganizationUsage(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetOrganizationUsage(ctx context.Context, params GetOrganizationUsageParams) (res GetOrganizationUsageRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getOrganizationUsage"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/organizations/{organization}/usage"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, GetOrganizationUsageOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organization" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organization",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			if unwrapped := string(params.Organization); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/usage"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "resolution" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "resolution",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(string(params.Resolution)))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "index" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "index",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Index.Get(); ok {
+				if unwrapped := string(val); true {
+					return e.EncodeValue(conv.StringToString(unwrapped))
+				}
+				return nil
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetOrganizationUsageOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
+			}
+		}
+		{
+			stage = "Security:ApiKeyAuth"
+			switch err := c.securityApiKeyAuth(ctx, GetOrganizationUsageOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 1
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"ApiKeyAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+				{0b00000010},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer func() {
+		// Drain the body to EOF before closing, so the underlying
+		// connection can be reused by the Transport regardless of the
+		// response status code. See https://github.com/ogen-go/ogen/issues/1670.
+		_, _ = io.Copy(io.Discard, body)
+		_ = body.Close()
+	}()
+
+	stage = "DecodeResponse"
+	result, err := decodeGetOrganizationUsageResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetUsernameAvailability invokes getUsernameAvailability operation.
 //
 // Reports whether an account can register this username now. Accounts and organizations share one
@@ -7990,7 +8188,7 @@ func (c *Client) sendRevokeAPIKey(ctx context.Context, params RevokeAPIKeyParams
 // RevokeAgentSecret invokes revokeAgentSecret operation.
 //
 // Revokes one of the agent's secrets: it can't sign in with it any more, and the tokens exchanged for
-// it stop working at once. Its managers, owners and admins can revoke one.
+// it stop working everywhere within 10 seconds. Its managers, owners and admins can revoke one.
 //
 // DELETE /organizations/{organization}/agents/{agent}/secrets/{secret_id}
 func (c *Client) RevokeAgentSecret(ctx context.Context, params RevokeAgentSecretParams) (RevokeAgentSecretRes, error) {
@@ -8616,7 +8814,8 @@ func (c *Client) sendTransferOrganizationOwnership(ctx context.Context, request 
 // admins can change it, and only within their own permissions (and the key's, for a key with
 // `manage_agents`); any of them can disable it. New permissions must also be allowed by every
 // manager's role, or the change is refused with 409. Saving the permissions of an agent with no
-// managers makes you one. A disabled agent is refused at once, with every credential it has.
+// managers makes you one. A disabled agent is refused everywhere within 10 seconds, with every
+// credential it has.
 //
 // PATCH /organizations/{organization}/agents/{agent}
 func (c *Client) UpdateAgent(ctx context.Context, request *UpdateAgentRequest, params UpdateAgentParams) (UpdateAgentRes, error) {

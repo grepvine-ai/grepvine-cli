@@ -31,6 +31,7 @@ const (
 	GetDocumentOperation                   OperationName = "GetDocument"
 	GetIndexOperation                      OperationName = "GetIndex"
 	GetOrganizationOperation               OperationName = "GetOrganization"
+	GetOrganizationUsageOperation          OperationName = "GetOrganizationUsage"
 	GetUsernameAvailabilityOperation       OperationName = "GetUsernameAvailability"
 	ListAPIKeysOperation                   OperationName = "ListAPIKeys"
 	ListAgentSecretsOperation              OperationName = "ListAgentSecrets"
