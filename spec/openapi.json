@@ -1674,7 +1674,7 @@
     "/organizations/{organization}/usage": {
       "get": {
         "summary": "Get organization usage",
-        "description": "Returns what the organization stores and the requests it makes, for one index or all of them, over a window that\nends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by month. Times are UTC.\nRequires the owner or admin role; a key needs the `read_usage` permission. Usage can trail activity by up to an\nhour.\n",
+        "description": "Returns what the organization stores and the requests it makes, for one index or all of them, over a window that\nends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by month, starting no earlier\nthan the hour, day or month the organization was created. Times are UTC.\nRequires the owner or admin role; a key needs the `read_usage` permission. Usage can trail activity by up to an\nhour.\n",
         "operationId": "getOrganizationUsage",
         "tags": [
           "Organizations"
@@ -3989,7 +3989,7 @@
             "$ref": "#/components/schemas/StorageUsage"
           },
           "buckets": {
-            "description": "One bucket per hour, day or month of the window, oldest first, each present even with no activity. The last bucket is the current one and is still filling.",
+            "description": "One bucket per hour, day or month of the window, oldest first, each present even with no activity; the window starts no earlier than the bucket the organization was created in. The last bucket is the current one and is still filling.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UsageBucket"
