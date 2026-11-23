@@ -4905,8 +4905,9 @@ func (s *OrganizationPage) SetPagination(val Pagination) {
 type OrganizationUsage struct {
 	Resolution UsageResolution `json:"resolution"`
 	Current    StorageUsage    `json:"current"`
-	// One bucket per hour, day or month of the window, oldest first, each present even with no activity.
-	// The last bucket is the current one and is still filling.
+	// One bucket per hour, day or month of the window, oldest first, each present even with no activity;
+	// the window starts no earlier than the bucket the organization was created in. The last bucket is the
+	// current one and is still filling.
 	Buckets []UsageBucket `json:"buckets"`
 }
 

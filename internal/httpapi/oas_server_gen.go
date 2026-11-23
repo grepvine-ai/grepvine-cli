@@ -208,8 +208,9 @@ type Handler interface {
 	//
 	// Returns what the organization stores and the requests it makes, for one index or all of them, over a
 	// window that ends now: the last 24 hours by hour, the last 30 days by day, or the last 12 months by
-	// month. Times are UTC. Requires the owner or admin role; a key needs the `read_usage` permission.
-	// Usage can trail activity by up to an hour.
+	// month, starting no earlier than the hour, day or month the organization was created. Times are UTC.
+	// Requires the owner or admin role; a key needs the `read_usage` permission. Usage can trail activity
+	// by up to an hour.
 	//
 	// GET /organizations/{organization}/usage
 	GetOrganizationUsage(ctx context.Context, params GetOrganizationUsageParams) (GetOrganizationUsageRes, error)
